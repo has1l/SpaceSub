@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: spacesub-db
+    environment:
+      POSTGRES_USER: spacesub
+      POSTGRES_PASSWORD: spacesub
+      POSTGRES_DB: spacesub
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U spacesub']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: spacesub-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://spacesub:spacesub@postgres:5432/spacesub?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET}
+      YANDEX_REDIRECT_URI: ${YANDEX_REDIRECT_URI}
+      PORT: 3000
+    ports:
+      - '3000:3000'
+
+volumes:
+  pgdata:

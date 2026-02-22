@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  yandexId  String   @unique @map("yandex_id")
+  email     String   @unique
+  name      String?
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  subscriptions        Subscription[]
+  transactions         Transaction[]
+  notificationSettings NotificationSettings?
+  notifications        Notification[]
+  oauthTokens          OAuthToken[]
+
+  @@map("users")
+}
+
+model Subscription {
+  id            String             @id @default(uuid())
+  userId        String             @map("user_id")
+  name          String
+  description   String?
+  amount        Decimal            @db.Decimal(10, 2)
+  currency      String             @default("RUB")
+  billingCycle  BillingCycle       @default(MONTHLY) @map("billing_cycle")
+  nextBilling   DateTime           @map("next_billing")
+  category      String?
+  isActive      Boolean            @default(true) @map("is_active")
+  logoUrl       String?            @map("logo_url")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@map("subscriptions")
+}
+
+enum BillingCycle {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+model Transaction {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  subscriptionId String?  @map("subscription_id")
+  amount         Decimal  @db.Decimal(10, 2)
+  currency       String   @default("RUB")
+  description    String?
+  source         String?
+  transactionDate DateTime @map("transaction_date")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@map("transactions")
+}
+
+model NotificationSettings {
+  id                    String  @id @default(uuid())
+  userId                String  @unique @map("user_id")
+  emailNotifications    Boolean @default(true) @map("email_notifications")
+  pushNotifications     Boolean @default(false) @map("push_notifications")
+  daysBefore            Int     @default(3) @map("days_before")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  title     String
+  message   String
+  type      NotificationType @default(BILLING_REMINDER)
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  BILLING_REMINDER
+  PRICE_CHANGE
+  NEW_TRANSACTION
+  SYSTEM
+}
+
+model OAuthToken {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  provider     String
+  accessToken  String   @map("access_token")
+  refreshToken String?  @map("refresh_token")
+  expiresAt    DateTime? @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@map("oauth_tokens")
+}
