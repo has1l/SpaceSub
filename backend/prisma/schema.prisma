@@ -54,15 +54,16 @@ enum BillingCycle {
 }
 
 model Transaction {
-  id             String   @id @default(uuid())
-  userId         String   @map("user_id")
-  subscriptionId String?  @map("subscription_id")
-  amount         Decimal  @db.Decimal(10, 2)
-  currency       String   @default("RUB")
-  description    String?
-  source         String?
-  transactionDate DateTime @map("transaction_date")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  subscriptionId  String?   @map("subscription_id")
+  amount          Decimal   @db.Decimal(10, 2)
+  currency        String    @default("RUB")
+  description     String
+  source          String?
+  transactionDate DateTime  @map("transaction_date")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)

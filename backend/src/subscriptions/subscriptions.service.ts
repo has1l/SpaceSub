@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { Prisma } from '@prisma/client';
+import type { SubscriptionSuggestion } from '../transactions/transactions-analysis.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -21,6 +22,20 @@ export class SubscriptionsService {
         category: dto.category,
         isActive: dto.isActive ?? true,
         logoUrl: dto.logoUrl,
+      },
+    });
+  }
+
+  async createFromSuggestion(userId: string, suggestion: SubscriptionSuggestion) {
+    return this.prisma.subscription.create({
+      data: {
+        userId,
+        name: suggestion.name,
+        amount: new Prisma.Decimal(suggestion.amount),
+        currency: suggestion.currency,
+        billingCycle: suggestion.billingCycle,
+        nextBilling: new Date(suggestion.nextBilling),
+        isActive: true,
       },
     });
   }
