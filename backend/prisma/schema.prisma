@@ -21,6 +21,8 @@ model User {
   notificationSettings NotificationSettings?
   notifications        Notification[]
   oauthTokens          OAuthToken[]
+  bankConnections      BankConnection[]
+  importedTransactions ImportedTransaction[]
 
   @@map("users")
 }
@@ -118,4 +120,81 @@ model OAuthToken {
 
   @@unique([userId, provider])
   @@map("oauth_tokens")
+}
+
+// ──────────────────────────────────────────
+// Bank Integration
+// ──────────────────────────────────────────
+
+enum BankProvider {
+  FLEX
+  // future: TINKOFF, SBER, YOUMONEY
+}
+
+enum BankConnectionStatus {
+  CONNECTED
+  EXPIRED
+  ERROR
+  DISCONNECTED
+}
+
+enum BankSyncStatus {
+  SUCCESS
+  FAILED
+}
+
+model BankConnection {
+  id           String               @id @default(uuid())
+  userId       String               @map("user_id")
+  provider     BankProvider
+  status       BankConnectionStatus @default(CONNECTED)
+  accessToken  String               @map("access_token")
+  refreshToken String?              @map("refresh_token")
+  expiresAt    DateTime?            @map("expires_at")
+  lastSyncAt   DateTime?            @map("last_sync_at")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syncLogs             BankSyncLog[]
+  importedTransactions ImportedTransaction[]
+
+  @@unique([userId, provider])
+  @@map("bank_connections")
+}
+
+model BankSyncLog {
+  id            String         @id @default(uuid())
+  connectionId  String         @map("connection_id")
+  status        BankSyncStatus
+  importedCount Int            @default(0) @map("imported_count")
+  errorMessage  String?        @map("error_message")
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  connection BankConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@map("bank_sync_logs")
+}
+
+model ImportedTransaction {
+  id                String       @id @default(uuid())
+  userId            String       @map("user_id")
+  connectionId      String       @map("connection_id")
+  provider          BankProvider
+  externalId        String       @map("external_id")
+  occurredAt        DateTime     @map("occurred_at")
+  amount            Decimal      @db.Decimal(10, 2)
+  currency          String       @default("RUB")
+  description       String
+  merchant          String?
+  accountExternalId String?      @map("account_external_id")
+  raw               Json
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection BankConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, externalId])
+  @@map("imported_transactions")
 }

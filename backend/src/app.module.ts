@@ -9,6 +9,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { ForecastModule } from './forecast/forecast.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { IntegrationModule } from './integration/integration.module';
+import { BankIntegrationModule } from './bank-integration/bank-integration.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { IntegrationModule } from './integration/integration.module';
     ForecastModule,
     NotificationsModule,
     IntegrationModule,
+    BankIntegrationModule,
   ],
 })
 export class AppModule {}
