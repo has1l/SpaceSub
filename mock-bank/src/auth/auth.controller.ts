@@ -16,10 +16,12 @@ export class AuthController {
   }
 
   @Get('yandex/callback')
-  @ApiOperation({ summary: 'Yandex OAuth callback — returns JWT' })
+  @ApiOperation({ summary: 'Yandex OAuth callback — redirects to frontend with token' })
   @ApiQuery({ name: 'code', required: true })
   async yandexCallback(@Query('code') code: string, @Res() res: Response) {
-    const result = await this.authService.handleYandexCallback(code);
-    return res.status(HttpStatus.OK).json(result);
+    const { accessToken } = await this.authService.handleYandexCallback(code);
+    return res.redirect(
+      `http://localhost:5173/auth/callback?token=${accessToken}`,
+    );
   }
 }

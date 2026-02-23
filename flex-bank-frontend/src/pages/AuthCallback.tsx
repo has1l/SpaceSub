@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import api from '../services/api';
 import Spinner from '../components/Spinner';
 
 export default function AuthCallback() {
@@ -11,21 +10,13 @@ export default function AuthCallback() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const code = searchParams.get('code');
-    if (!code) {
-      setError('No authorization code received');
-      return;
+    const token = searchParams.get('token');
+    if (token) {
+      setToken(token);
+      navigate('/dashboard', { replace: true });
+    } else {
+      setError('No token received');
     }
-
-    api
-      .get(`/auth/yandex/callback?code=${code}`)
-      .then((res) => {
-        setToken(res.data.accessToken);
-        navigate('/dashboard', { replace: true });
-      })
-      .catch(() => {
-        setError('Authorization failed. Please try again.');
-      });
   }, [searchParams, setToken, navigate]);
 
   if (error) {
