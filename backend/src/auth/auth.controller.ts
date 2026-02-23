@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Query, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
@@ -20,6 +20,8 @@ export class AuthController {
   @ApiQuery({ name: 'code', required: true })
   async yandexCallback(@Query('code') code: string, @Res() res: Response) {
     const result = await this.authService.handleYandexCallback(code);
-    return res.status(HttpStatus.OK).json(result);
+    return res.redirect(
+      `http://localhost:5173/auth/callback?token=${result.accessToken}`,
+    );
   }
 }
