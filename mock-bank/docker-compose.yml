@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mockbank-db
+    environment:
+      POSTGRES_USER: mockbank
+      POSTGRES_PASSWORD: mockbank
+      POSTGRES_DB: mockbank
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mockbank']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: mockbank-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://mockbank:mockbank@postgres:5432/mockbank?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET}
+      YANDEX_REDIRECT_URI: ${YANDEX_REDIRECT_URI}
+      PORT: 3001
+    ports:
+      - '3001:3001'
+
+volumes:
+  pgdata:
