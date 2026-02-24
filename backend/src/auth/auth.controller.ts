@@ -1,4 +1,10 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Res,
+  BadRequestException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
@@ -13,19 +19,30 @@ export class AuthController {
   ) {}
 
   @Get('yandex')
-  @ApiOperation({ summary: 'Redirect to Yandex OAuth' })
-  async yandexAuth(@Res() res: Response) {
-    const url = await this.authService.getYandexAuthUrl();
+  @ApiOperation({ summary: 'Redirect to Yandex OAuth (with state + PKCE)' })
+  yandexAuth(@Res() res: Response) {
+    const url = this.authService.getYandexAuthUrl();
     return res.redirect(url);
   }
 
   @Get('yandex/callback')
-  @ApiOperation({ summary: 'Yandex OAuth callback' })
+  @ApiOperation({ summary: 'Yandex OAuth callback — validates state, redirects to frontend' })
   @ApiQuery({ name: 'code', required: true })
-  async yandexCallback(@Query('code') code: string, @Res() res: Response) {
+  @ApiQuery({ name: 'state', required: true })
+  async yandexCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Res() res: Response,
+  ) {
+    try {
+      this.authService.validateState(state);
+    } catch {
+      throw new BadRequestException('Invalid OAuth state');
+    }
+
     const result = await this.authService.handleYandexCallback(code);
     const frontendUrl =
-      this.configService.get('FRONTEND_URL') || 'http://localhost:5174';
+      this.configService.get('FRONTEND_URL') || 'http://spacesub.localhost:5174';
     return res.redirect(
       `${frontendUrl}/auth/callback?token=${result.accessToken}`,
     );

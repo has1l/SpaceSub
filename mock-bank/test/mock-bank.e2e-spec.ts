@@ -66,11 +66,34 @@ describe('Mock Bank API (e2e)', () => {
       expect(location).not.toContain('spacesub.localhost');
     });
 
-    it('OAuth URL should include prompt=select_account', async () => {
+    it('OAuth URL should include state with flexbank_ prefix', async () => {
       const res = await request(app.getHttpServer())
         .get('/auth/yandex')
         .expect(302);
-      expect(res.headers.location).toContain('prompt=select_account');
+      const url = new URL(res.headers.location);
+      const state = url.searchParams.get('state');
+      expect(state).toMatch(/^flexbank_/);
+    });
+
+    it('OAuth URL should include force_confirm and prompt=select_account', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/auth/yandex')
+        .expect(302);
+      const location = res.headers.location;
+      expect(location).toContain('force_confirm=true');
+      expect(location).toContain('prompt=select_account');
+    });
+
+    it('GET /auth/yandex/callback without state should return 400', async () => {
+      await request(app.getHttpServer())
+        .get('/auth/yandex/callback?code=test-code')
+        .expect(400);
+    });
+
+    it('GET /auth/yandex/callback with spacesub state should return 400', async () => {
+      await request(app.getHttpServer())
+        .get('/auth/yandex/callback?code=test-code&state=spacesub_wrong')
+        .expect(400);
     });
 
     it('should reject unauthorized requests', async () => {

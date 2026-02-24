@@ -1,7 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { OAuthStateStore } from './oauth-state.store';
 
 interface YandexUserInfo {
   id: string;
@@ -11,16 +12,43 @@ interface YandexUserInfo {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
     private prisma: PrismaService,
+    private oauthStateStore: OAuthStateStore,
   ) {}
 
   getYandexAuthUrl(): string {
     const clientId = this.configService.get('YANDEX_CLIENT_ID');
     const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');
-    return `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&prompt=select_account`;
+    const state = this.oauthStateStore.generate();
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: 'login:email login:info',
+      state,
+      force_confirm: 'true',
+      prompt: 'select_account',
+    });
+
+    const url = `https://oauth.yandex.ru/authorize?${params.toString()}`;
+
+    this.logger.debug(
+      `OAuth redirect: client_id=${clientId}, redirect_uri=${redirectUri}, state=${state}`,
+    );
+
+    return url;
+  }
+
+  validateState(state: string | undefined): void {
+    if (!this.oauthStateStore.validate(state)) {
+      throw new UnauthorizedException('Invalid or expired OAuth state');
+    }
   }
 
   async handleYandexCallback(code: string) {
@@ -29,7 +57,10 @@ export class AuthService {
 
     const user = await this.prisma.user.upsert({
       where: { yandexId: userInfo.id },
-      update: { email: userInfo.default_email, name: userInfo.display_name || userInfo.default_email },
+      update: {
+        email: userInfo.default_email,
+        name: userInfo.display_name || userInfo.default_email,
+      },
       create: {
         yandexId: userInfo.id,
         email: userInfo.default_email,
@@ -59,15 +90,19 @@ export class AuthService {
       }),
     });
 
-    if (!response.ok) throw new UnauthorizedException('Failed to exchange Yandex auth code');
+    if (!response.ok)
+      throw new UnauthorizedException('Failed to exchange Yandex auth code');
     return response.json();
   }
 
-  private async getYandexUserInfo(accessToken: string): Promise<YandexUserInfo> {
+  private async getYandexUserInfo(
+    accessToken: string,
+  ): Promise<YandexUserInfo> {
     const response = await fetch('https://login.yandex.ru/info?format=json', {
       headers: { Authorization: `OAuth ${accessToken}` },
     });
-    if (!response.ok) throw new UnauthorizedException('Failed to get Yandex user info');
+    if (!response.ok)
+      throw new UnauthorizedException('Failed to get Yandex user info');
     return response.json();
   }
 }
