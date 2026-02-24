@@ -55,8 +55,14 @@ export function Dashboard() {
     setSyncing(connectionId);
     setSyncResult(null);
     try {
-      await api.post("/bank-integration/flex/sync", {});
-      setSyncResult("Синхронизация завершена");
+      const { data } = await api.post<{
+        ok: boolean;
+        imported: number;
+        accounts: number;
+      }>("/bank-integration/flex/sync", {});
+      setSyncResult(
+        `Синхронизация завершена: импортировано ${data.imported} транзакций из ${data.accounts} счетов`,
+      );
       await fetchConnections();
     } catch {
       setSyncResult("Ошибка синхронизации");

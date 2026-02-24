@@ -1,12 +1,16 @@
-import { Controller, Get, Query, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Query, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private configService: ConfigService,
+  ) {}
 
   @Get('yandex')
   @ApiOperation({ summary: 'Redirect to Yandex OAuth' })
@@ -20,8 +24,8 @@ export class AuthController {
   @ApiQuery({ name: 'code', required: true })
   async yandexCallback(@Query('code') code: string, @Res() res: Response) {
     const { accessToken } = await this.authService.handleYandexCallback(code);
-    return res.redirect(
-      `http://localhost:5173/auth/callback?token=${accessToken}`,
-    );
+    const frontendUrl =
+      this.configService.get('FRONTEND_URL') || 'http://localhost:5173';
+    return res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
   }
 }

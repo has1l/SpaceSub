@@ -47,14 +47,14 @@ export class BankIntegrationController {
 
   @Post('flex/sync')
   @ApiOperation({
-    summary: 'Sync transactions from Flex Bank (stub)',
+    summary: 'Sync transactions from Flex Bank',
     description:
-      'Step 1 stub — creates a sync log but does not fetch real data. Real sync in step 3.',
+      'Fetches accounts and transactions from Flex Bank API, imports into SpaceSub.',
   })
   async syncFlex(
     @Request() req: { user: { id: string } },
     @Body() _dto: SyncFlexDto,
   ) {
-    return this.bankIntegrationService.syncStub(req.user.id);
+    return this.bankIntegrationService.syncFlex(req.user.id);
   }
 }

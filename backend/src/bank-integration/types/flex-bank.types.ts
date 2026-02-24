@@ -1,7 +1,8 @@
-/** Flex Bank API response types — will be used in step 2/3 for real sync */
+/** Flex Bank API v1 response types */
 
 export interface FlexBankAccount {
   id: string;
+  externalId: string;
   name: string;
   currency: string;
   balance: number;
@@ -9,17 +10,13 @@ export interface FlexBankAccount {
 
 export interface FlexBankTransaction {
   id: string;
-  accountId: string;
-  date: string;
+  externalId: string;
+  accountExternalId: string;
+  postedAt: string;
   amount: number;
   currency: string;
   description: string;
-}
-
-export interface FlexBankAccountsResponse {
-  accounts: FlexBankAccount[];
-}
-
-export interface FlexBankTransactionsResponse {
-  transactions: FlexBankTransaction[];
+  type: 'DEBIT' | 'CREDIT';
+  merchant: string | null;
+  mcc: string | null;
 }

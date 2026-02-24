@@ -36,6 +36,35 @@ export function ConnectFlex() {
         Введите токен доступа, чтобы вывести спутник на орбиту
       </p>
 
+      <div className="glass rounded-xl p-4 mb-6 text-sm text-gray-400 border border-white/5">
+        <p className="mb-2">
+          Токен Flex Bank — это JWT из Flex Bank (mock-bank).
+          Войдите в Flex Bank, затем скопируйте значение{" "}
+          <code className="text-purple-300 bg-white/5 px-1 rounded">
+            flexbank_token
+          </code>{" "}
+          из localStorage браузера.
+        </p>
+        <div className="flex gap-3 mt-3">
+          <a
+            href="http://localhost:5173"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-purple-400 hover:text-purple-300 underline text-xs"
+          >
+            Flex Bank UI
+          </a>
+          <a
+            href="http://localhost:3001/api/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline text-xs"
+          >
+            Flex Bank API Docs
+          </a>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="glass rounded-2xl p-6 glow-purple">
         <label className="block text-sm text-gray-400 mb-2" htmlFor="token">
           Access Token

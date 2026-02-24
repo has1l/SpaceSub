@@ -153,4 +153,56 @@ describe('Mock Bank API (e2e)', () => {
         .expect(400);
     });
   });
+
+  describe('API v1 (Bank Integration)', () => {
+    it('GET /api/v1/accounts — requires auth', async () => {
+      await request(app.getHttpServer()).get('/api/v1/accounts').expect(401);
+    });
+
+    it('GET /api/v1/accounts — returns bank-style DTOs', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/accounts')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(res.body.length).toBeGreaterThanOrEqual(1);
+      expect(res.body[0]).toHaveProperty('externalId');
+      expect(res.body[0]).toHaveProperty('name');
+      expect(res.body[0]).toHaveProperty('currency');
+      expect(res.body[0]).toHaveProperty('balance');
+    });
+
+    it('GET /api/v1/accounts/:id/transactions — returns bank-style DTOs', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/accounts/${accountId}/transactions`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(res.body.length).toBeGreaterThanOrEqual(1);
+      expect(res.body[0]).toHaveProperty('externalId');
+      expect(res.body[0]).toHaveProperty('accountExternalId');
+      expect(res.body[0]).toHaveProperty('postedAt');
+      expect(res.body[0]).toHaveProperty('type');
+      expect(res.body[0].type).toBe('DEBIT');
+      expect(typeof res.body[0].amount).toBe('number');
+    });
+
+    it('GET /api/v1/accounts/:id/transactions — date filtering', async () => {
+      const res = await request(app.getHttpServer())
+        .get(
+          `/api/v1/accounts/${accountId}/transactions?from=2026-01-01&to=2026-01-31`,
+        )
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(res.body.length).toBe(1);
+    });
+
+    it('GET /api/v1/accounts/:id/transactions — 404 for wrong account', async () => {
+      await request(app.getHttpServer())
+        .get('/api/v1/accounts/nonexistent/transactions')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404);
+    });
+  });
 });
