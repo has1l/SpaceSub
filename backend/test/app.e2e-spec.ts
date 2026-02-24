@@ -25,4 +25,20 @@ describe('App (e2e)', () => {
       .expect(302);
     expect(res.headers.location).toContain('oauth.yandex.ru');
   });
+
+  it('OAuth redirect_uri should use spacesub.localhost domain', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/auth/yandex')
+      .expect(302);
+    const location = res.headers.location;
+    expect(location).toContain('spacesub.localhost');
+    expect(location).not.toContain('flexbank.localhost');
+  });
+
+  it('OAuth URL should include prompt=select_account', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/auth/yandex')
+      .expect(302);
+    expect(res.headers.location).toContain('prompt=select_account');
+  });
 });

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "http://spacesub.localhost:3000";
 const TOKEN_KEY = "spacesub_token";
 
 const api = axios.create({

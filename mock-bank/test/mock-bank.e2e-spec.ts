@@ -57,6 +57,22 @@ describe('Mock Bank API (e2e)', () => {
       expect(res.headers.location).toContain('oauth.yandex.ru');
     });
 
+    it('OAuth redirect_uri should use flexbank.localhost domain', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/auth/yandex')
+        .expect(302);
+      const location = res.headers.location;
+      expect(location).toContain('flexbank.localhost');
+      expect(location).not.toContain('spacesub.localhost');
+    });
+
+    it('OAuth URL should include prompt=select_account', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/auth/yandex')
+        .expect(302);
+      expect(res.headers.location).toContain('prompt=select_account');
+    });
+
     it('should reject unauthorized requests', async () => {
       await request(app.getHttpServer()).get('/accounts').expect(401);
     });

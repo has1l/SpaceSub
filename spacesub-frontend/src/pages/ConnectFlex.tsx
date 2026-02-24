@@ -47,7 +47,7 @@ export function ConnectFlex() {
         </p>
         <div className="flex gap-3 mt-3">
           <a
-            href="http://localhost:5173"
+            href="http://flexbank.localhost:5173"
             target="_blank"
             rel="noopener noreferrer"
             className="text-purple-400 hover:text-purple-300 underline text-xs"
@@ -55,7 +55,7 @@ export function ConnectFlex() {
             Flex Bank UI
           </a>
           <a
-            href="http://localhost:3001/api/docs"
+            href="http://flexbank.localhost:3001/api/docs"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-400 hover:text-blue-300 underline text-xs"

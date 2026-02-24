@@ -56,8 +56,11 @@ DATABASE_URL="postgresql://spacesub:spacesub@localhost:5432/spacesub?schema=publ
 JWT_SECRET="your-secret-key"
 YANDEX_CLIENT_ID="your-yandex-client-id"
 YANDEX_CLIENT_SECRET="your-yandex-client-secret"
-YANDEX_REDIRECT_URI="http://localhost:3000/auth/yandex/callback"
+YANDEX_REDIRECT_URI="http://spacesub.localhost:3000/auth/yandex/callback"
 PORT=3000
+FRONTEND_URL=http://spacesub.localhost:5174
+FLEX_BANK_BASE_URL=http://localhost:3001
+FLEX_BANK_TIMEOUT_MS=8000
 ```
 
 ### 3. Настройка базы данных
@@ -126,7 +129,7 @@ docker compose up -d
 После запуска сервера документация доступна по адресу:
 
 ```
-http://localhost:3000/api/docs
+http://spacesub.localhost:3000/api/docs
 ```
 
 ## Структура проекта

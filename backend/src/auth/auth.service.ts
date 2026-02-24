@@ -21,7 +21,7 @@ export class AuthService {
   async getYandexAuthUrl(): Promise<string> {
     const clientId = this.configService.get('YANDEX_CLIENT_ID');
     const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');
-    return `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    return `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&prompt=select_account`;
   }
 
   async handleYandexCallback(code: string) {

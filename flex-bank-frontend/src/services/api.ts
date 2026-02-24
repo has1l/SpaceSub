@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:3001';
+const API_BASE = 'http://flexbank.localhost:3001';
 
 const api = axios.create({
   baseURL: API_BASE,
