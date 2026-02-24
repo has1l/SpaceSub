@@ -28,7 +28,9 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3001;
   await app.listen(port);
-  console.log(`Mock Bank API running on http://localhost:${port}`);
-  console.log(`Swagger docs: http://localhost:${port}/api/docs`);
+  console.log(`Mock Bank (Flex Bank) API running on http://flexbank.localhost:${port}`);
+  console.log(`Swagger docs: http://flexbank.localhost:${port}/api/docs`);
+  console.log(`  FRONTEND_URL        = ${process.env.FRONTEND_URL ?? '(not set)'}`);
+  console.log(`  YANDEX_REDIRECT_URI = ${process.env.YANDEX_REDIRECT_URI ?? '(not set)'}`);
 }
 bootstrap();

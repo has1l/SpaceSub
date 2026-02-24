@@ -28,7 +28,10 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.log(`SpaceSub API running on http://localhost:${port}`);
-  console.log(`Swagger docs: http://localhost:${port}/api/docs`);
+  console.log(`SpaceSub API running on http://spacesub.localhost:${port}`);
+  console.log(`Swagger docs: http://spacesub.localhost:${port}/api/docs`);
+  console.log(`  FRONTEND_URL        = ${process.env.FRONTEND_URL ?? '(not set)'}`);
+  console.log(`  YANDEX_REDIRECT_URI = ${process.env.YANDEX_REDIRECT_URI ?? '(not set)'}`);
+  console.log(`  FLEX_BANK_BASE_URL  = ${process.env.FLEX_BANK_BASE_URL ?? '(not set)'}`);
 }
 bootstrap();

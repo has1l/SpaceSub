@@ -4,6 +4,7 @@ import {
   Query,
   Res,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
@@ -13,6 +14,8 @@ import { AuthService } from './auth.service';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger('AuthController[flexbank]');
+
   constructor(
     private authService: AuthService,
     private configService: ConfigService,
@@ -43,6 +46,8 @@ export class AuthController {
     const { accessToken } = await this.authService.handleYandexCallback(code);
     const frontendUrl =
       this.configService.get('FRONTEND_URL') || 'http://flexbank.localhost:5173';
-    return res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
+    const redirectTo = `${frontendUrl}/auth/callback?token=${accessToken}`;
+    this.logger.log(`OAuth callback redirect → ${frontendUrl}`);
+    return res.redirect(redirectTo);
   }
 }

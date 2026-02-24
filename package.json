@@ -1,0 +1,15 @@
+{
+  "name": "spacesub-monorepo",
+  "private": true,
+  "scripts": {
+    "dev:all": "concurrently -n bank-api,space-api,flex-ui,space-ui -c blue,green,cyan,magenta \"cd mock-bank && npm run start:dev\" \"cd backend && npm run start:dev\" \"cd flex-bank-frontend && npm run dev\" \"cd spacesub-frontend && npm run dev\"",
+    "dev:frontends": "concurrently -n flex-ui,space-ui -c cyan,magenta \"cd flex-bank-frontend && npm run dev\" \"cd spacesub-frontend && npm run dev\"",
+    "dev:backends": "concurrently -n bank-api,space-api -c blue,green \"cd mock-bank && npm run start:dev\" \"cd backend && npm run start:dev\"",
+    "build:all": "cd backend && npm run build && cd ../mock-bank && npm run build && cd ../flex-bank-frontend && npm run build && cd ../spacesub-frontend && npm run build",
+    "test:all": "cd backend && npm test && cd ../mock-bank && npm test",
+    "test:e2e": "cd backend && npx jest --config test/jest-e2e.json && cd ../mock-bank && npx jest --config test/jest-e2e.json"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
