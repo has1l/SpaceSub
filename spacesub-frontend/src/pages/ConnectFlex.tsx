@@ -1,28 +1,24 @@
-import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import api from "../services/api";
 
 export function ConnectFlex() {
-  const navigate = useNavigate();
-  const [accessToken, setAccessToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!accessToken.trim()) return;
+  // Check for OAuth error in URL
+  const params = new URLSearchParams(window.location.search);
+  const oauthError = params.get("error");
 
+  const handleConnect = async () => {
     setLoading(true);
     setError(null);
-
     try {
-      await api.post("/bank-integration/flex/connect", {
-        accessToken: accessToken.trim(),
-      });
-      navigate("/dashboard");
+      const { data } = await api.get<{ url: string }>(
+        "/bank-integration/flex/oauth",
+      );
+      window.location.href = data.url;
     } catch {
-      setError("Не удалось подключить банк. Проверьте токен.");
-    } finally {
+      setError("Не удалось инициировать подключение банка.");
       setLoading(false);
     }
   };
@@ -33,58 +29,26 @@ export function ConnectFlex() {
         Подключить Flex Bank
       </h1>
       <p className="text-gray-500 text-sm mb-8">
-        Введите токен доступа, чтобы вывести спутник на орбиту
+        Авторизуйтесь через Яндекс, чтобы связать банковский аккаунт со
+        SpaceSub. Токен банка будет зашифрован и сохранён на сервере.
       </p>
 
-      <div className="glass rounded-xl p-4 mb-6 text-sm text-gray-400 border border-white/5">
-        <p className="mb-2">
-          Токен Flex Bank — это JWT из Flex Bank (mock-bank).
-          Войдите в Flex Bank, затем скопируйте значение{" "}
-          <code className="text-purple-300 bg-white/5 px-1 rounded">
-            flexbank_token
-          </code>{" "}
-          из localStorage браузера.
-        </p>
-        <div className="flex gap-3 mt-3">
-          <a
-            href="http://flexbank.localhost:5173"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-purple-400 hover:text-purple-300 underline text-xs"
-          >
-            Flex Bank UI
-          </a>
-          <a
-            href="http://flexbank.localhost:3001/api/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 underline text-xs"
-          >
-            Flex Bank API Docs
-          </a>
+      {(error || oauthError) && (
+        <div className="glass rounded-xl p-4 mb-6 border border-red-500/30 text-red-400 text-sm">
+          {error || "Не удалось подключить банк. Попробуйте снова."}
         </div>
-      </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="glass rounded-2xl p-6 glow-purple">
-        <label className="block text-sm text-gray-400 mb-2" htmlFor="token">
-          Access Token
-        </label>
-        <input
-          id="token"
-          type="text"
-          value={accessToken}
-          onChange={(e) => setAccessToken(e.target.value)}
-          placeholder="Вставьте токен Flex Bank"
-          className="w-full rounded-xl px-4 py-3 text-sm mb-5"
-        />
-
-        {error && (
-          <p className="text-red-400 text-sm mb-4">{error}</p>
-        )}
+      <div className="glass rounded-2xl p-8 glow-purple text-center">
+        <div className="text-5xl mb-4">🏦</div>
+        <p className="text-gray-400 text-sm mb-6">
+          После нажатия вы будете перенаправлены на Яндекс для авторизации в Flex
+          Bank. Затем вернётесь на панель управления.
+        </p>
 
         <button
-          type="submit"
-          disabled={loading || !accessToken.trim()}
+          onClick={handleConnect}
+          disabled={loading}
           className="w-full py-3 px-6 rounded-xl font-semibold text-white
                      bg-gradient-to-r from-purple-600 to-blue-600
                      hover:from-purple-500 hover:to-blue-500
@@ -94,9 +58,9 @@ export function ConnectFlex() {
                      disabled:hover:scale-100
                      cursor-pointer"
         >
-          {loading ? "Запуск..." : "Запустить в орбиту"}
+          {loading ? "Перенаправление..." : "Подключить через Яндекс"}
         </button>
-      </form>
+      </div>
     </div>
   );
 }

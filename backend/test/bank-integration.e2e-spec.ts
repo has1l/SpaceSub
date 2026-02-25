@@ -100,4 +100,56 @@ describe('Bank Integration (e2e)', () => {
       .send({})
       .expect(400);
   });
+
+  // ── Bank OAuth endpoints ──────────────────────────────
+
+  it('GET /bank-integration/flex/oauth — 401 without token', () => {
+    return request(app.getHttpServer())
+      .get('/bank-integration/flex/oauth')
+      .expect(401);
+  });
+
+  it('GET /bank-integration/flex/oauth — returns Yandex OAuth URL', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/bank-integration/flex/oauth')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(res.body).toHaveProperty('url');
+    expect(res.body.url).toContain('https://oauth.yandex.ru/authorize');
+    expect(res.body.url).toContain('state=flexoauth_');
+    expect(res.body.url).toContain('force_confirm=true');
+    expect(res.body.url).toContain('prompt=select_account');
+    expect(res.body.url).toContain('redirect_uri=');
+    expect(res.body.url).toContain('bank-integration%2Fflex%2Fcallback');
+  });
+
+  it('GET /bank-integration/flex/callback — rejects missing state', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/bank-integration/flex/callback?code=test-code')
+      .expect(400);
+
+    expect(res.body.message).toContain('Missing code or state');
+  });
+
+  it('GET /bank-integration/flex/callback — rejects invalid state', async () => {
+    const res = await request(app.getHttpServer())
+      .get(
+        '/bank-integration/flex/callback?code=test-code&state=invalid-state',
+      )
+      .expect(302);
+
+    // Should redirect to frontend with error
+    expect(res.headers.location).toContain('error=oauth_failed');
+  });
+
+  it('GET /bank-integration/flex/callback — rejects spacesub state prefix', async () => {
+    const res = await request(app.getHttpServer())
+      .get(
+        '/bank-integration/flex/callback?code=test-code&state=spacesub_fake-uuid',
+      )
+      .expect(302);
+
+    expect(res.headers.location).toContain('error=oauth_failed');
+  });
 });

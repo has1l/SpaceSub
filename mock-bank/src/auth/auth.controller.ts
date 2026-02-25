@@ -1,6 +1,8 @@
 import {
   Controller,
   Get,
+  Post,
+  Body,
   Query,
   Res,
   BadRequestException,
@@ -10,6 +12,7 @@ import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
+import { TokenExchangeDto } from './dto/token-exchange.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -49,5 +52,15 @@ export class AuthController {
     const redirectTo = `${frontendUrl}/auth/callback?token=${accessToken}`;
     this.logger.log(`OAuth callback redirect → ${frontendUrl}`);
     return res.redirect(redirectTo);
+  }
+
+  @Post('token-exchange')
+  @ApiOperation({
+    summary: 'Exchange Yandex access token for Flex Bank JWT',
+    description:
+      'Server-to-server endpoint: accepts a valid Yandex OAuth token, upserts the user, returns a Flex Bank JWT.',
+  })
+  async tokenExchange(@Body() dto: TokenExchangeDto) {
+    return this.authService.exchangeYandexToken(dto.yandexAccessToken);
   }
 }

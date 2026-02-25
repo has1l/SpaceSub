@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BankIntegrationService } from './bank-integration.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { FlexBankClient } from './clients/flex-bank.client';
+import { TokenEncryptionService } from './services/token-encryption.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('BankIntegrationService', () => {
@@ -27,6 +28,8 @@ describe('BankIntegrationService', () => {
     provider: 'FLEX',
     status: 'CONNECTED',
     accessToken: 'secret-token',
+    encryptedAccessToken: null,
+    tokenFingerprint: null,
     refreshToken: 'secret-refresh',
     expiresAt: null,
     lastSyncAt: null,
@@ -55,11 +58,18 @@ describe('BankIntegrationService', () => {
       getTransactions: jest.fn().mockResolvedValue([]),
     };
 
+    const mockTokenEncryption = {
+      encrypt: jest.fn((v: string) => `encrypted:${v}`),
+      decrypt: jest.fn((v: string) => v.replace('encrypted:', '')),
+      fingerprint: jest.fn((v: string) => `fp:${v}`),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BankIntegrationService,
         { provide: PrismaService, useValue: prisma },
         { provide: FlexBankClient, useValue: flexClient },
+        { provide: TokenEncryptionService, useValue: mockTokenEncryption },
       ],
     }).compile();
 

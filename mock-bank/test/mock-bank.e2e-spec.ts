@@ -193,6 +193,22 @@ describe('Mock Bank API (e2e)', () => {
     });
   });
 
+  describe('Token Exchange', () => {
+    it('POST /auth/token-exchange — rejects missing body', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/token-exchange')
+        .send({})
+        .expect(400);
+    });
+
+    it('POST /auth/token-exchange — rejects empty string', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/token-exchange')
+        .send({ yandexAccessToken: '' })
+        .expect(400);
+    });
+  });
+
   describe('API v1 (Bank Integration)', () => {
     it('GET /api/v1/accounts — requires auth', async () => {
       await request(app.getHttpServer()).get('/api/v1/accounts').expect(401);

@@ -36,6 +36,9 @@ export function Dashboard() {
   const [syncing, setSyncing] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
+  // Check if we just connected a bank
+  const [bankJustConnected, setBankJustConnected] = useState(false);
+
   const fetchConnections = useCallback(async () => {
     try {
       const { data } = await api.get<BankConnection[]>(
@@ -48,6 +51,12 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("bank_connected") === "true") {
+      setBankJustConnected(true);
+      // Clean URL without reload
+      window.history.replaceState({}, "", "/dashboard");
+    }
     fetchConnections();
   }, [fetchConnections]);
 
@@ -99,6 +108,13 @@ export function Dashboard() {
           Подключить орбиту (Flex&nbsp;Bank)
         </Link>
       </div>
+
+      {/* Bank connected success banner */}
+      {bankJustConnected && (
+        <div className="glass rounded-xl px-4 py-3 mb-6 text-sm text-green-300 border border-green-500/20">
+          Flex Bank успешно подключён! Теперь вы можете синхронизировать транзакции.
+        </div>
+      )}
 
       {/* Sync feedback */}
       {syncResult && (

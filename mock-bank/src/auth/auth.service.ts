@@ -95,6 +95,28 @@ export class AuthService {
     return response.json();
   }
 
+  async exchangeYandexToken(yandexAccessToken: string) {
+    this.logger.log('Token exchange: validating Yandex access token');
+    const userInfo = await this.getYandexUserInfo(yandexAccessToken);
+
+    const user = await this.prisma.user.upsert({
+      where: { yandexId: userInfo.id },
+      update: {
+        email: userInfo.default_email,
+        name: userInfo.display_name || userInfo.default_email,
+      },
+      create: {
+        yandexId: userInfo.id,
+        email: userInfo.default_email,
+        name: userInfo.display_name || userInfo.default_email,
+      },
+    });
+
+    const payload = { sub: user.id, email: user.email };
+    this.logger.log(`Token exchange: issued JWT for user ${user.email}`);
+    return { accessToken: this.jwtService.sign(payload) };
+  }
+
   private async getYandexUserInfo(
     accessToken: string,
   ): Promise<YandexUserInfo> {

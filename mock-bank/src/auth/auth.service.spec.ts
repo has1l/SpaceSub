@@ -60,6 +60,56 @@ describe('AuthService (flexbank)', () => {
     });
   });
 
+  describe('exchangeYandexToken', () => {
+    it('should call getYandexUserInfo, upsert user, and return JWT', async () => {
+      // Mock fetch globally
+      const mockFetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            id: 'yandex-123',
+            default_email: 'test@ya.ru',
+            display_name: 'Test User',
+          }),
+      });
+      global.fetch = mockFetch;
+
+      const prismaWithUpsert = {
+        user: {
+          upsert: jest.fn().mockResolvedValue({
+            id: 'user-uuid',
+            email: 'test@ya.ru',
+          }),
+        },
+      };
+      const jwtSign = jest.fn(() => 'flex-jwt-token');
+
+      const mod = await Test.createTestingModule({
+        providers: [
+          AuthService,
+          { provide: JwtService, useValue: { sign: jwtSign } },
+          { provide: ConfigService, useValue: configService },
+          { provide: PrismaService, useValue: prismaWithUpsert },
+          OAuthStateStore,
+        ],
+      }).compile();
+
+      const svc = mod.get<AuthService>(AuthService);
+      const result = await svc.exchangeYandexToken('yandex-access-token');
+
+      expect(result).toEqual({ accessToken: 'flex-jwt-token' });
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://login.yandex.ru/info?format=json',
+        expect.objectContaining({
+          headers: { Authorization: 'OAuth yandex-access-token' },
+        }),
+      );
+      expect(prismaWithUpsert.user.upsert).toHaveBeenCalled();
+
+      mod.get<OAuthStateStore>(OAuthStateStore).onModuleDestroy();
+    });
+  });
+
   describe('validateState', () => {
     it('should not throw for valid state', () => {
       const url = service.getYandexAuthUrl();

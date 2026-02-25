@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConnectFlexDto } from './dto/connect-flex.dto';
 import { BankProvider, Prisma } from '@prisma/client';
 import { FlexBankClient } from './clients/flex-bank.client';
+import { TokenEncryptionService } from './services/token-encryption.service';
 import type { FlexBankTransaction } from './types/flex-bank.types';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class BankIntegrationService {
   constructor(
     private prisma: PrismaService,
     private flexBankClient: FlexBankClient,
+    private tokenEncryption: TokenEncryptionService,
   ) {}
 
   async upsertConnection(userId: string, dto: ConnectFlexDto) {
@@ -66,7 +68,14 @@ export class BankIntegrationService {
 
   async syncFlex(userId: string) {
     const connection = await this.getConnection(userId, BankProvider.FLEX);
-    const token = connection.accessToken;
+
+    // Prefer encrypted token, fall back to plaintext for backward compatibility
+    let token: string;
+    if (connection.encryptedAccessToken) {
+      token = this.tokenEncryption.decrypt(connection.encryptedAccessToken);
+    } else {
+      token = connection.accessToken;
+    }
 
     try {
       // 1. Fetch accounts from Flex Bank

@@ -1,10 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use(helmet());
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -14,7 +17,12 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors();
+  app.enableCors({
+    origin: [
+      'http://spacesub.localhost:5174',
+    ],
+    credentials: true,
+  });
 
   const config = new DocumentBuilder()
     .setTitle('SpaceSub API')
