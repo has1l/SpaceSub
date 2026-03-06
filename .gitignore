@@ -5,10 +5,11 @@ node_modules/
 dist/
 build/
 
-# Environment
+# Environment — NEVER commit secrets
 .env
 .env.local
-.env.*.local
+.env.*
+!.env.example
 
 # IDE
 .idea/
@@ -20,7 +21,7 @@ build/
 .DS_Store
 Thumbs.db
 
-# Prisma
+# Prisma generated client
 generated/prisma/
 
 # Logs
@@ -35,3 +36,10 @@ coverage/
 # Temp
 tmp/
 temp/
+
+# ngrok
+ngrok.yml
+*.ngrok*
+
+# Claude Code memory
+.claude/

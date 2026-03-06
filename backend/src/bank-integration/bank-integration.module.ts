@@ -5,6 +5,8 @@ import { FlexBankClient } from './clients/flex-bank.client';
 import { BankOAuthService } from './services/bank-oauth.service';
 import { BankOAuthStateStore } from './bank-oauth-state.store';
 import { TokenEncryptionService } from './services/token-encryption.service';
+import { SyncSchedulerService } from './services/sync-scheduler.service';
+import { SubscriptionAnalyzerService } from './services/subscription-analyzer.service';
 
 @Module({
   controllers: [BankIntegrationController],
@@ -14,7 +16,9 @@ import { TokenEncryptionService } from './services/token-encryption.service';
     BankOAuthService,
     BankOAuthStateStore,
     TokenEncryptionService,
+    SyncSchedulerService,
+    SubscriptionAnalyzerService,
   ],
-  exports: [BankIntegrationService],
+  exports: [BankIntegrationService, SubscriptionAnalyzerService],
 })
 export class BankIntegrationModule {}

@@ -1,10 +1,19 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConnectFlexDto } from './dto/connect-flex.dto';
 import { BankProvider, Prisma } from '@prisma/client';
 import { FlexBankClient } from './clients/flex-bank.client';
 import { TokenEncryptionService } from './services/token-encryption.service';
+import { SubscriptionAnalyzerService } from './services/subscription-analyzer.service';
 import type { FlexBankTransaction } from './types/flex-bank.types';
+import { createHash } from 'crypto';
 
 @Injectable()
 export class BankIntegrationService {
@@ -14,6 +23,8 @@ export class BankIntegrationService {
     private prisma: PrismaService,
     private flexBankClient: FlexBankClient,
     private tokenEncryption: TokenEncryptionService,
+    private configService: ConfigService,
+    private subscriptionAnalyzer: SubscriptionAnalyzerService,
   ) {}
 
   async upsertConnection(userId: string, dto: ConnectFlexDto) {
@@ -144,6 +155,23 @@ export class BankIntegrationService {
         `Flex sync complete: ${totalImported} new transactions from ${accounts.length} accounts`,
       );
 
+      // 5. Run subscription analysis after successful import
+      this.logger.log(`Analyzing subscriptions for user: ${userId}`);
+      try {
+        const detected =
+          await this.subscriptionAnalyzer.analyzeForUser(userId);
+        const deactivated =
+          await this.subscriptionAnalyzer.markInactiveSubscriptions(userId);
+        this.logger.log(
+          `Subscription analysis complete: detected=${detected} deactivated=${deactivated} for user=${userId}`,
+        );
+      } catch (analyzerError) {
+        this.logger.error(
+          `Subscription analysis failed for user=${userId}: ${analyzerError instanceof Error ? analyzerError.message : 'Unknown error'}`,
+        );
+        // Don't fail the sync if analyzer fails — transactions are already saved
+      }
+
       return {
         ok: true,
         provider: 'FLEX',
@@ -176,6 +204,62 @@ export class BankIntegrationService {
 
       throw error;
     }
+  }
+
+  async connectByCode(userId: string, code: string) {
+    const codeHash = createHash('sha256').update(code).digest('hex');
+
+    // Call Flex Bank's redeem endpoint (server-to-server)
+    const baseUrl =
+      this.configService.get('FLEX_BANK_BASE_URL') || 'http://localhost:3001';
+
+    const response = await fetch(`${baseUrl}/connection-code/redeem`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codeHash }),
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const msg = (body as any)?.message || 'Invalid connection code';
+      this.logger.warn(`Code redeem failed: ${response.status} — ${msg}`);
+
+      if (response.status === 403) {
+        throw new ForbiddenException(msg);
+      }
+      throw new UnauthorizedException(msg);
+    }
+
+    const { accessToken: flexJwt } = (await response.json()) as {
+      accessToken: string;
+    };
+
+    // Encrypt the Flex Bank JWT with SpaceSub's key
+    const encrypted = this.tokenEncryption.encrypt(flexJwt);
+    const fingerprint = this.tokenEncryption.fingerprint(flexJwt);
+
+    const connection = await this.prisma.bankConnection.upsert({
+      where: {
+        userId_provider: { userId, provider: BankProvider.FLEX },
+      },
+      update: {
+        accessToken: '[code-connected]',
+        encryptedAccessToken: encrypted,
+        tokenFingerprint: fingerprint,
+        status: 'CONNECTED',
+      },
+      create: {
+        userId,
+        provider: BankProvider.FLEX,
+        accessToken: '[code-connected]',
+        encryptedAccessToken: encrypted,
+        tokenFingerprint: fingerprint,
+        status: 'CONNECTED',
+      },
+    });
+
+    this.logger.log(`Flex Bank connected via code for user ${userId}`);
+    return this.toSafeDto(connection);
   }
 
   toSafeDto(connection: {

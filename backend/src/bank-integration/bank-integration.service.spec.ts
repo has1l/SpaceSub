@@ -1,9 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { BankIntegrationService } from './bank-integration.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { FlexBankClient } from './clients/flex-bank.client';
 import { TokenEncryptionService } from './services/token-encryption.service';
-import { NotFoundException } from '@nestjs/common';
+import { SubscriptionAnalyzerService } from './services/subscription-analyzer.service';
+import {
+  NotFoundException,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { createHash } from 'crypto';
+
+// Mock global fetch
+const mockFetch = jest.fn();
+(global as any).fetch = mockFetch;
 
 describe('BankIntegrationService', () => {
   let service: BankIntegrationService;
@@ -20,6 +31,10 @@ describe('BankIntegrationService', () => {
   let flexClient: {
     getAccounts: jest.Mock;
     getTransactions: jest.Mock;
+  };
+  let subscriptionAnalyzer: {
+    analyzeForUser: jest.Mock;
+    markInactiveSubscriptions: jest.Mock;
   };
 
   const mockConnection = {
@@ -58,6 +73,11 @@ describe('BankIntegrationService', () => {
       getTransactions: jest.fn().mockResolvedValue([]),
     };
 
+    subscriptionAnalyzer = {
+      analyzeForUser: jest.fn().mockResolvedValue(0),
+      markInactiveSubscriptions: jest.fn().mockResolvedValue(0),
+    };
+
     const mockTokenEncryption = {
       encrypt: jest.fn((v: string) => `encrypted:${v}`),
       decrypt: jest.fn((v: string) => v.replace('encrypted:', '')),
@@ -70,6 +90,19 @@ describe('BankIntegrationService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: FlexBankClient, useValue: flexClient },
         { provide: TokenEncryptionService, useValue: mockTokenEncryption },
+        {
+          provide: SubscriptionAnalyzerService,
+          useValue: subscriptionAnalyzer,
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string) => {
+              if (key === 'FLEX_BANK_BASE_URL') return 'http://localhost:3001';
+              return undefined;
+            },
+          },
+        },
       ],
     }).compile();
 
@@ -274,6 +307,144 @@ describe('BankIntegrationService', () => {
       await expect(service.syncFlex('user-1')).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('should call subscriptionAnalyzer.analyzeForUser after successful sync', async () => {
+      flexClient.getAccounts.mockResolvedValue(mockAccounts);
+      flexClient.getTransactions.mockResolvedValue(mockTransactions);
+      prisma.importedTransaction.createMany.mockResolvedValue({ count: 2 });
+
+      await service.syncFlex('user-1');
+
+      expect(subscriptionAnalyzer.analyzeForUser).toHaveBeenCalledTimes(1);
+      expect(subscriptionAnalyzer.analyzeForUser).toHaveBeenCalledWith(
+        'user-1',
+      );
+      expect(
+        subscriptionAnalyzer.markInactiveSubscriptions,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        subscriptionAnalyzer.markInactiveSubscriptions,
+      ).toHaveBeenCalledWith('user-1');
+    });
+
+    it('should not fail sync if analyzer throws', async () => {
+      flexClient.getAccounts.mockResolvedValue(mockAccounts);
+      flexClient.getTransactions.mockResolvedValue(mockTransactions);
+      prisma.importedTransaction.createMany.mockResolvedValue({ count: 2 });
+      subscriptionAnalyzer.analyzeForUser.mockRejectedValue(
+        new Error('Analyzer DB error'),
+      );
+
+      // Sync should still succeed even if analyzer fails
+      const result = await service.syncFlex('user-1');
+      expect(result.ok).toBe(true);
+      expect(result.imported).toBe(2);
+    });
+
+    it('should not call analyzer if sync fails (FlexBank API error)', async () => {
+      flexClient.getAccounts.mockRejectedValue(new Error('Network error'));
+
+      await expect(service.syncFlex('user-1')).rejects.toThrow(
+        'Network error',
+      );
+
+      expect(subscriptionAnalyzer.analyzeForUser).not.toHaveBeenCalled();
+      expect(
+        subscriptionAnalyzer.markInactiveSubscriptions,
+      ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('connectByCode', () => {
+    beforeEach(() => {
+      mockFetch.mockReset();
+    });
+
+    it('should hash code with SHA-256 and call Flex Bank redeem', async () => {
+      const code = 'FB-ABC123';
+      const expectedHash = createHash('sha256').update(code).digest('hex');
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ accessToken: 'flex-jwt' }),
+      });
+
+      await service.connectByCode('user-1', code);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3001/connection-code/redeem',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ codeHash: expectedHash }),
+        }),
+      );
+    });
+
+    it('should encrypt received JWT and store in DB', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ accessToken: 'flex-jwt-token' }),
+      });
+
+      await service.connectByCode('user-1', 'FB-XYZ789');
+
+      const call = prisma.bankConnection.upsert.mock.calls[0][0] as any;
+      expect(call.update.accessToken).toBe('[code-connected]');
+      expect(call.update.encryptedAccessToken).toBe('encrypted:flex-jwt-token');
+      expect(call.update.tokenFingerprint).toBe('fp:flex-jwt-token');
+      expect(call.update.status).toBe('CONNECTED');
+    });
+
+    it('should return safe DTO without tokens', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ accessToken: 'flex-jwt' }),
+      });
+
+      const result = await service.connectByCode('user-1', 'FB-ABC123');
+
+      expect(result).toHaveProperty('id');
+      expect(result).toHaveProperty('provider');
+      expect(result).toHaveProperty('status');
+      expect(result).not.toHaveProperty('accessToken');
+      expect(result).not.toHaveProperty('encryptedAccessToken');
+    });
+
+    it('should throw UnauthorizedException for invalid code', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({ message: 'Invalid connection code' }),
+      });
+
+      await expect(
+        service.connectByCode('user-1', 'FB-WRONG1'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw ForbiddenException when code is blocked (403)', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: async () => ({ message: 'Too many attempts. Code is blocked.' }),
+      });
+
+      await expect(
+        service.connectByCode('user-1', 'FB-BLOCK1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw UnauthorizedException for other errors', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({}),
+      });
+
+      await expect(
+        service.connectByCode('user-1', 'FB-BADREQ'),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 

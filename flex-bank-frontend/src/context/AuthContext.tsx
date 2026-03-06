@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setToken(null);
-    window.location.href = '/';
+    window.location.href = '/bank/';
   };
 
   useEffect(() => {

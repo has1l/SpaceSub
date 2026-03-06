@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Spinner from '../components/Spinner';
+import CosmicBackground from '../components/CosmicBackground';
 
 export default function AuthCallback() {
   const [searchParams] = useSearchParams();
@@ -15,17 +16,19 @@ export default function AuthCallback() {
       setToken(token);
       navigate('/dashboard', { replace: true });
     } else {
-      setError('No token received');
+      setError('Токен не получен');
     }
   }, [searchParams, setToken, navigate]);
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">{error}</p>
-          <a href="/" className="text-blue-400 hover:text-blue-300">
-            Back to login
+      <div className="min-h-screen flex items-center justify-center relative" style={{ background: 'var(--color-void)' }}>
+        <CosmicBackground />
+        <div className="text-center relative z-10">
+          <p className="text-aurora-red mb-4">{error}</p>
+          <a href="/bank/" className="text-accent-blue hover:text-accent-cyan transition-colors"
+             style={{ fontFamily: 'var(--font-body)' }}>
+            Вернуться ко входу
           </a>
         </div>
       </div>
@@ -33,10 +36,10 @@ export default function AuthCallback() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <div className="text-center">
-        <Spinner />
-        <p className="text-gray-400 mt-4">Авторизация...</p>
+    <div className="min-h-screen flex items-center justify-center relative" style={{ background: 'var(--color-void)' }}>
+      <CosmicBackground />
+      <div className="text-center relative z-10">
+        <Spinner text="Авторизация..." />
       </div>
     </div>
   );

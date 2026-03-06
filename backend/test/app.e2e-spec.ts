@@ -12,6 +12,7 @@ describe('App — OAuth (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
   });
 
@@ -21,23 +22,24 @@ describe('App — OAuth (e2e)', () => {
 
   it('GET /auth/yandex should redirect to Yandex OAuth', async () => {
     const res = await request(app.getHttpServer())
-      .get('/auth/yandex')
+      .get('/api/auth/yandex')
       .expect(302);
     expect(res.headers.location).toContain('oauth.yandex.ru');
   });
 
-  it('OAuth redirect_uri should use spacesub.localhost domain', async () => {
+  it('OAuth redirect_uri should use gateway host', async () => {
     const res = await request(app.getHttpServer())
-      .get('/auth/yandex')
+      .get('/api/auth/yandex')
       .expect(302);
     const location = res.headers.location;
-    expect(location).toContain('spacesub.localhost');
+    expect(location).toContain('localhost');
+    expect(location).toContain('%2Fapi%2Fauth%2Fyandex%2Fcallback');
     expect(location).not.toContain('flexbank.localhost');
   });
 
   it('OAuth URL should include state with spacesub_ prefix', async () => {
     const res = await request(app.getHttpServer())
-      .get('/auth/yandex')
+      .get('/api/auth/yandex')
       .expect(302);
     const url = new URL(res.headers.location);
     const state = url.searchParams.get('state');
@@ -46,7 +48,7 @@ describe('App — OAuth (e2e)', () => {
 
   it('OAuth URL should include force_confirm and prompt=select_account', async () => {
     const res = await request(app.getHttpServer())
-      .get('/auth/yandex')
+      .get('/api/auth/yandex')
       .expect(302);
     const location = res.headers.location;
     expect(location).toContain('force_confirm=true');
@@ -55,26 +57,26 @@ describe('App — OAuth (e2e)', () => {
 
   it('OAuth URL should include scope', async () => {
     const res = await request(app.getHttpServer())
-      .get('/auth/yandex')
+      .get('/api/auth/yandex')
       .expect(302);
     expect(res.headers.location).toContain('scope=');
   });
 
   it('GET /auth/yandex/callback without state should return 400', async () => {
     await request(app.getHttpServer())
-      .get('/auth/yandex/callback?code=test-code')
+      .get('/api/auth/yandex/callback?code=test-code')
       .expect(400);
   });
 
   it('GET /auth/yandex/callback with invalid state should return 400', async () => {
     await request(app.getHttpServer())
-      .get('/auth/yandex/callback?code=test-code&state=flexbank_wrong')
+      .get('/api/auth/yandex/callback?code=test-code&state=flexbank_wrong')
       .expect(400);
   });
 
   it('each /auth/yandex call should generate unique state', async () => {
-    const res1 = await request(app.getHttpServer()).get('/auth/yandex');
-    const res2 = await request(app.getHttpServer()).get('/auth/yandex');
+    const res1 = await request(app.getHttpServer()).get('/api/auth/yandex');
+    const res2 = await request(app.getHttpServer()).get('/api/auth/yandex');
     const state1 = new URL(res1.headers.location).searchParams.get('state');
     const state2 = new URL(res2.headers.location).searchParams.get('state');
     expect(state1).not.toBe(state2);

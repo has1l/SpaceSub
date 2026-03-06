@@ -1,6 +1,391 @@
 @import "tailwindcss";
 
+@theme {
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --color-void: #050510;
+  --color-void-deep: #030308;
+  --color-nebula-dark: #0A0A1B;
+  --color-stellar-surface: #0F0F24;
+  --color-stellar-elevated: #151533;
+  --color-stellar-hover: #1C1C42;
+
+  --color-cosmic-border: rgba(79, 124, 255, 0.08);
+  --color-cosmic-border-active: rgba(79, 124, 255, 0.2);
+
+  --color-accent-blue: #4F7CFF;
+  --color-accent-violet: #7B61FF;
+  --color-accent-cyan: #38BDF8;
+  --color-aurora-green: #00E5A0;
+  --color-aurora-red: #FF5C7A;
+  --color-aurora-amber: #FFB547;
+
+  --color-text-stellar: #E8EAFF;
+  --color-text-nebula: #8B8FC7;
+  --color-text-void: #4A4E7A;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  background-color: var(--color-void);
+  color: var(--color-text-stellar);
+  font-family: var(--font-body);
+  overflow-x: hidden;
 }
+
+/* ─── Starfield Background ─── */
+.starfield {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.starfield::before,
+.starfield::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.starfield::before {
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 25% 50%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 40% 15%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 55% 65%, rgba(255, 255, 255, 0.25), transparent),
+    radial-gradient(1px 1px at 70% 30%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1.5px 1.5px at 85% 75%, rgba(255, 255, 255, 0.45), transparent),
+    radial-gradient(1px 1px at 15% 80%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 90% 10%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 60% 90%, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1.5px 1.5px at 35% 45%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 5% 55%, rgba(255, 255, 255, 0.25), transparent),
+    radial-gradient(1px 1px at 80% 40%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 45% 85%, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 95% 60%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1.5px 1.5px at 20% 35%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 65% 5%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 50% 50%, rgba(255, 255, 255, 0.15), transparent),
+    radial-gradient(1px 1px at 30% 70%, rgba(255, 255, 255, 0.3), transparent);
+  animation: drift-stars 120s linear infinite;
+}
+
+.starfield::after {
+  background-image:
+    radial-gradient(1px 1px at 12% 35%, rgba(79, 124, 255, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 38% 72%, rgba(123, 97, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 62% 18%, rgba(56, 189, 248, 0.5), transparent),
+    radial-gradient(1px 1px at 78% 55%, rgba(79, 124, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 92% 88%, rgba(123, 97, 255, 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 48% 42%, rgba(56, 189, 248, 0.4), transparent);
+  animation: drift-stars 180s linear infinite reverse;
+}
+
+@keyframes drift-stars {
+  from { transform: translateY(0); }
+  to { transform: translateY(-40px); }
+}
+
+/* ─── Nebula Gradient Orbs ─── */
+.nebula-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 0;
+  animation: nebula-pulse 12s ease-in-out infinite alternate;
+}
+
+.nebula-orb-1 {
+  width: 600px;
+  height: 600px;
+  top: -15%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(79, 124, 255, 0.08) 0%, transparent 70%);
+}
+
+.nebula-orb-2 {
+  width: 500px;
+  height: 500px;
+  bottom: -10%;
+  right: -8%;
+  background: radial-gradient(circle, rgba(123, 97, 255, 0.06) 0%, transparent 70%);
+  animation-delay: -6s;
+}
+
+.nebula-orb-3 {
+  width: 400px;
+  height: 400px;
+  top: 40%;
+  left: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.04) 0%, transparent 70%);
+  animation-delay: -3s;
+}
+
+@keyframes nebula-pulse {
+  0% { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.1); }
+}
+
+/* ─── Cosmic Glass Card ─── */
+.cosmic-card {
+  background: linear-gradient(
+    135deg,
+    rgba(10, 10, 27, 0.85) 0%,
+    rgba(15, 15, 36, 0.65) 100%
+  );
+  border: 1px solid rgba(79, 124, 255, 0.08);
+  backdrop-filter: blur(24px);
+  border-radius: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.cosmic-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(79, 124, 255, 0.15) 30%,
+    rgba(123, 97, 255, 0.2) 50%,
+    rgba(79, 124, 255, 0.15) 70%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.cosmic-card-hover {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cosmic-card-hover:hover {
+  border-color: rgba(79, 124, 255, 0.18);
+  box-shadow:
+    0 8px 32px rgba(79, 124, 255, 0.06),
+    0 0 0 1px rgba(79, 124, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transform: translateY(-3px);
+}
+
+/* ─── Gradient Text ─── */
+.gradient-text-cosmic {
+  background: linear-gradient(135deg, #4F7CFF 0%, #7B61FF 40%, #38BDF8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-aurora {
+  background: linear-gradient(135deg, #00E5A0 0%, #38BDF8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Buttons ─── */
+.btn-stellar {
+  background: linear-gradient(135deg, #4F7CFF 0%, #7B61FF 100%);
+  border: none;
+  color: white;
+  font-family: var(--font-body);
+  font-weight: 600;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.01em;
+}
+
+.btn-stellar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+
+.btn-stellar:hover {
+  box-shadow:
+    0 4px 24px rgba(79, 124, 255, 0.3),
+    0 0 0 1px rgba(79, 124, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.btn-stellar:hover::before {
+  opacity: 1;
+}
+
+.btn-stellar:active {
+  transform: translateY(0);
+}
+
+/* ─── Input Fields ─── */
+.input-cosmic {
+  background: rgba(15, 15, 36, 0.8);
+  border: 1px solid rgba(79, 124, 255, 0.08);
+  border-radius: 0.75rem;
+  color: var(--color-text-stellar);
+  font-family: var(--font-body);
+  transition: all 0.3s ease;
+}
+
+.input-cosmic:focus {
+  outline: none;
+  border-color: rgba(79, 124, 255, 0.3);
+  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.08);
+}
+
+.input-cosmic::placeholder {
+  color: var(--color-text-void);
+}
+
+/* ─── Glow Effects ─── */
+.glow-stellar {
+  box-shadow:
+    0 0 40px rgba(79, 124, 255, 0.08),
+    0 0 80px rgba(79, 124, 255, 0.04);
+}
+
+/* ─── Orbital Ring ─── */
+.orbital-ring {
+  position: absolute;
+  border: 1px solid rgba(79, 124, 255, 0.1);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: orbit-spin 20s linear infinite;
+}
+
+.orbital-ring::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: rgba(79, 124, 255, 0.6);
+  border-radius: 50%;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 0 8px rgba(79, 124, 255, 0.4);
+}
+
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(79, 124, 255, 0.15);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 124, 255, 0.25);
+}
+
+/* ─── Cursor Glow ─── */
+.cursor-glow {
+  position: fixed;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  background: radial-gradient(
+    circle,
+    rgba(79, 124, 255, 0.06) 0%,
+    rgba(123, 97, 255, 0.03) 30%,
+    transparent 70%
+  );
+  transform: translate(-50%, -50%);
+  transition: opacity 0.3s ease;
+}
+
+/* ─── Shimmer Loading ─── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(15, 15, 36, 0.5) 25%,
+    rgba(79, 124, 255, 0.05) 50%,
+    rgba(15, 15, 36, 0.5) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* ─── Floating Animation ─── */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* ─── Pulse Glow ─── */
+@keyframes pulse-glow-stellar {
+  0%, 100% {
+    box-shadow:
+      0 0 20px rgba(79, 124, 255, 0.15),
+      0 0 60px rgba(79, 124, 255, 0.05);
+  }
+  50% {
+    box-shadow:
+      0 0 40px rgba(79, 124, 255, 0.25),
+      0 0 80px rgba(123, 97, 255, 0.1);
+  }
+}
+
+.animate-pulse-glow-stellar {
+  animation: pulse-glow-stellar 4s ease-in-out infinite;
+}
+
+/* ─── Scan Line ─── */
+@keyframes scan-line {
+  0% { top: -2px; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: calc(100% + 2px); opacity: 0; }
+}
+
+/* ─── Category Badge Colors ─── */
+.badge-subscriptions { background: rgba(123, 97, 255, 0.12); color: #9B8AFF; }
+.badge-supermarkets { background: rgba(0, 229, 160, 0.12); color: #00E5A0; }
+.badge-transfers { background: rgba(79, 124, 255, 0.12); color: #4F7CFF; }
+.badge-digital { background: rgba(56, 189, 248, 0.12); color: #38BDF8; }
+.badge-investments { background: rgba(255, 181, 71, 0.12); color: #FFB547; }
+.badge-transport { background: rgba(56, 189, 248, 0.12); color: #38BDF8; }
+.badge-restaurants { background: rgba(255, 92, 122, 0.12); color: #FF5C7A; }
+.badge-health { background: rgba(0, 229, 160, 0.12); color: #00E5A0; }
+.badge-other { background: rgba(139, 143, 199, 0.12); color: #8B8FC7; }

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
-import { Spinner } from "../components/Spinner";
+import { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { Spinner } from '../components/Spinner';
+import { Starfield } from '../components/Starfield';
 
 export function AuthCallback() {
   const [searchParams] = useSearchParams();
@@ -10,23 +11,25 @@ export function AuthCallback() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = searchParams.get("token");
+    const token = searchParams.get('token');
     if (token) {
       setToken(token);
-      navigate("/dashboard", { replace: true });
+      navigate('/dashboard', { replace: true });
     } else {
-      setError("Токен не получен. Попробуйте войти снова.");
+      setError('Токен не получен. Попробуйте войти снова.');
     }
   }, [searchParams, setToken, navigate]);
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="glass rounded-2xl p-8 max-w-sm text-center">
-          <p className="text-red-400 mb-4">{error}</p>
+      <div className="min-h-screen flex items-center justify-center relative">
+        <Starfield />
+        <div className="station-panel p-8 max-w-sm text-center relative z-10">
+          <p className="text-sm mb-4" style={{ color: 'var(--signal-danger)' }}>{error}</p>
           <a
             href="/"
-            className="text-purple-400 hover:text-purple-300 underline text-sm"
+            className="text-sm font-medium transition-colors duration-300"
+            style={{ color: 'var(--signal-primary)' }}
           >
             Вернуться на главную
           </a>
@@ -35,5 +38,12 @@ export function AuthCallback() {
     );
   }
 
-  return <Spinner className="min-h-screen" />;
+  return (
+    <div className="min-h-screen flex items-center justify-center relative">
+      <Starfield />
+      <div className="relative z-10">
+        <Spinner text="Установка связи..." />
+      </div>
+    </div>
+  );
 }

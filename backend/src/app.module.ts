@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import * as Joi from 'joi';
@@ -13,6 +14,7 @@ import { ForecastModule } from './forecast/forecast.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { IntegrationModule } from './integration/integration.module';
 import { BankIntegrationModule } from './bank-integration/bank-integration.module';
+import { DetectedSubscriptionsModule } from './detected-subscriptions/detected-subscriptions.module';
 
 @Module({
   imports: [
@@ -24,7 +26,7 @@ import { BankIntegrationModule } from './bank-integration/bank-integration.modul
         YANDEX_CLIENT_ID: Joi.string().required(),
         YANDEX_CLIENT_SECRET: Joi.string().required(),
         YANDEX_REDIRECT_URI: Joi.string().required(),
-        FRONTEND_URL: Joi.string().default('http://spacesub.localhost:5174'),
+        FRONTEND_URL: Joi.string().default('http://localhost:5174'),
         FLEX_BANK_BASE_URL: Joi.string().default('http://localhost:3001'),
         FLEX_BANK_TIMEOUT_MS: Joi.number().default(8000),
         FLEX_BANK_OAUTH_CLIENT_ID: Joi.string().required(),
@@ -34,6 +36,7 @@ import { BankIntegrationModule } from './bank-integration/bank-integration.modul
         PORT: Joi.number().default(3000),
       }),
     }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 30 }]),
     PrismaModule,
     AuthModule,
@@ -45,6 +48,7 @@ import { BankIntegrationModule } from './bank-integration/bank-integration.modul
     NotificationsModule,
     IntegrationModule,
     BankIntegrationModule,
+    DetectedSubscriptionsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

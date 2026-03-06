@@ -1,19 +1,33 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { TransactionType } from '@prisma/client';
 
 @Injectable()
 export class TransactionsService {
   constructor(private prisma: PrismaService) {}
 
   async create(accountId: string, dto: CreateTransactionDto) {
+    const type = dto.type || (dto.amount >= 0 ? TransactionType.INCOME : TransactionType.EXPENSE);
+
+    // Enforce sign convention: EXPENSE → negative, INCOME → positive
+    let amount = dto.amount;
+    if (type === TransactionType.EXPENSE && amount > 0) {
+      amount = -amount;
+    } else if (type === TransactionType.INCOME && amount < 0) {
+      amount = -amount;
+    }
+
     return this.prisma.transaction.create({
       data: {
         accountId,
         date: new Date(dto.date),
-        amount: dto.amount,
+        amount,
         currency: dto.currency || 'RUB',
         description: dto.description,
+        merchant: dto.merchant || null,
+        type,
+        category: dto.category || 'OTHER',
       },
     });
   }

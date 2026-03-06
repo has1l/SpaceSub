@@ -6,6 +6,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { AuthCallback } from "./pages/AuthCallback";
 import { Dashboard } from "./pages/Dashboard";
 import { ConnectFlex } from "./pages/ConnectFlex";
+import { SubscriptionsPage } from "./pages/SubscriptionsPage";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
             {/* Protected */}
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/subscriptions" element={<SubscriptionsPage />} />
               <Route path="/connect-flex" element={<ConnectFlex />} />
             </Route>
           </Route>

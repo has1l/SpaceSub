@@ -19,13 +19,31 @@ model User {
   @@map("users")
 }
 
+enum TransactionType {
+  EXPENSE
+  INCOME
+  TRANSFER
+}
+
+enum TransactionCategory {
+  SUBSCRIPTIONS
+  SUPERMARKETS
+  TRANSFERS
+  DIGITAL_SERVICES
+  INVESTMENTS
+  TRANSPORT
+  RESTAURANTS
+  HEALTH
+  OTHER
+}
+
 model Account {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  name      String
-  currency  String   @default("RUB")
-  balance   Float    @default(0)
-  createdAt DateTime @default(now()) @map("created_at")
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  name           String
+  currency       String   @default("RUB")
+  initialBalance Float    @default(0) @map("initial_balance")
+  createdAt      DateTime @default(now()) @map("created_at")
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
@@ -34,15 +52,32 @@ model Account {
 }
 
 model Transaction {
-  id          String   @id @default(uuid())
-  accountId   String   @map("account_id")
+  id          String              @id @default(uuid())
+  accountId   String              @map("account_id")
   date        DateTime
   amount      Float
-  currency    String   @default("RUB")
+  currency    String              @default("RUB")
   description String
-  createdAt   DateTime @default(now()) @map("created_at")
+  merchant    String?
+  type        TransactionType     @default(EXPENSE)
+  category    TransactionCategory @default(OTHER)
+  createdAt   DateTime            @default(now()) @map("created_at")
 
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
+  @@index([accountId, date])
   @@map("transactions")
+}
+
+model ConnectionCode {
+  id             String   @id @default(uuid())
+  codeHash       String   @unique @map("code_hash")
+  encryptedToken String   @map("encrypted_token")
+  expiresAt      DateTime @map("expires_at")
+  used           Boolean  @default(false)
+  attempts       Int      @default(0)
+  flexUserId     String   @map("flex_user_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("connection_codes")
 }

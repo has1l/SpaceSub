@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const API_BASE = "http://spacesub.localhost:3000";
+// All API calls go through the Vite proxy: /api/* → localhost:3000
+// This works identically on localhost and through ngrok.
+const API_BASE = "/api";
+
 const TOKEN_KEY = "spacesub_token";
 
 const api = axios.create({

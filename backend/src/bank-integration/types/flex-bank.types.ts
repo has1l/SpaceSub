@@ -18,5 +18,6 @@ export interface FlexBankTransaction {
   description: string;
   type: 'DEBIT' | 'CREDIT';
   merchant: string | null;
+  category: string | null;
   mcc: string | null;
 }

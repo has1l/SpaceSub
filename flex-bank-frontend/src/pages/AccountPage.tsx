@@ -1,8 +1,37 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import api from '../services/api';
-import type { Account, Transaction } from '../types';
+import type { Account, Transaction, TransactionCategory } from '../types';
+import { CATEGORY_LABELS, CATEGORY_ICONS } from '../types';
 import Spinner from '../components/Spinner';
+
+const CATEGORY_OPTIONS: { value: string; label: string }[] = [
+  { value: 'OTHER', label: 'Другое' },
+  { value: 'SUBSCRIPTIONS', label: 'Подписки' },
+  { value: 'SUPERMARKETS', label: 'Супермаркеты' },
+  { value: 'TRANSFERS', label: 'Переводы' },
+  { value: 'DIGITAL_SERVICES', label: 'Цифровые сервисы' },
+  { value: 'INVESTMENTS', label: 'Инвестиции' },
+  { value: 'TRANSPORT', label: 'Транспорт' },
+  { value: 'RESTAURANTS', label: 'Рестораны' },
+  { value: 'HEALTH', label: 'Здоровье' },
+];
+
+const TYPE_OPTIONS = [
+  { value: 'EXPENSE', label: 'Расход' },
+  { value: 'INCOME', label: 'Доход' },
+  { value: 'TRANSFER', label: 'Перевод' },
+];
+
+const stagger = {
+  animate: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
+};
+
+const fadeUp = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } },
+};
 
 export default function AccountPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,12 +47,15 @@ export default function AccountPage() {
     amount: '',
     currency: 'RUB',
     description: '',
+    merchant: '',
+    type: 'EXPENSE',
+    category: 'OTHER',
   });
 
   const fetchData = async () => {
     try {
       const [accRes, txRes] = await Promise.all([
-        api.get(`/accounts`),
+        api.get('/accounts'),
         api.get(`/accounts/${id}/transactions`, {
           params: { ...(from && { from }), ...(to && { to }) },
         }),
@@ -49,12 +81,18 @@ export default function AccountPage() {
         amount: Number(form.amount),
         currency: form.currency,
         description: form.description,
+        merchant: form.merchant || undefined,
+        type: form.type,
+        category: form.category,
       });
       setForm({
         date: new Date().toISOString().split('T')[0],
         amount: '',
         currency: 'RUB',
         description: '',
+        merchant: '',
+        type: 'EXPENSE',
+        category: 'OTHER',
       });
       setShowForm(false);
       setLoading(true);
@@ -73,12 +111,12 @@ export default function AccountPage() {
     return amount < 0 ? `−${formatted}` : `+${formatted}`;
   };
 
-  if (loading) return <Spinner />;
+  if (loading) return <Spinner text="Загрузка счёта..." />;
   if (!account) {
     return (
       <div className="text-center py-16">
-        <p className="text-gray-500">Счёт не найден</p>
-        <Link to="/dashboard" className="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block">
+        <p className="text-text-nebula">Счёт не найден</p>
+        <Link to="/dashboard" className="text-accent-blue hover:text-accent-cyan text-sm mt-2 inline-block transition-colors">
           Назад к счетам
         </Link>
       </div>
@@ -86,16 +124,24 @@ export default function AccountPage() {
   }
 
   return (
-    <div>
-      <Link to="/dashboard" className="text-gray-500 hover:text-gray-300 text-sm mb-6 inline-block transition-colors">
-        ← Назад к счетам
-      </Link>
+    <motion.div variants={stagger} initial="initial" animate="animate">
+      <motion.div variants={fadeUp}>
+        <Link to="/dashboard" className="text-text-void hover:text-text-nebula text-sm mb-6 inline-flex items-center gap-1.5 transition-colors"
+              style={{ fontFamily: 'var(--font-body)' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Назад к счетам
+        </Link>
+      </motion.div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-8">
-        <div className="flex items-center justify-between">
+      {/* Account card */}
+      <motion.div variants={fadeUp} className="cosmic-card p-6 mb-8 glow-stellar relative overflow-hidden">
+        <div className="orbital-ring" style={{ width: 150, height: 150, top: -35, right: -35, opacity: 0.3 }} />
+        <div className="flex items-center justify-between relative z-10">
           <div>
-            <p className="text-gray-400 text-sm mb-1">{account.name}</p>
-            <p className="text-3xl font-bold text-white">
+            <p className="text-text-nebula text-sm mb-1" style={{ fontFamily: 'var(--font-body)' }}>{account.name}</p>
+            <p className="text-3xl font-bold text-text-stellar" style={{ fontFamily: 'var(--font-display)' }}>
               {new Intl.NumberFormat('ru-RU', {
                 style: 'currency',
                 currency: account.currency,
@@ -103,131 +149,174 @@ export default function AccountPage() {
               }).format(account.balance)}
             </p>
           </div>
-          <span className="text-sm text-gray-500 bg-gray-800 px-3 py-1.5 rounded-lg">
+          <span className="text-sm font-semibold px-3 py-1.5 rounded-lg"
+                style={{
+                  background: 'rgba(79, 124, 255, 0.1)',
+                  color: '#4F7CFF',
+                  fontFamily: 'var(--font-mono)',
+                }}>
             {account.currency}
           </span>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <h2 className="text-xl font-semibold text-white">Транзакции</h2>
+      {/* Transactions header */}
+      <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <h2 className="text-xl font-semibold text-text-stellar" style={{ fontFamily: 'var(--font-display)' }}>
+          Транзакции
+        </h2>
         <div className="flex flex-wrap items-center gap-3">
           <input
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none"
-            placeholder="От"
+            className="input-cosmic rounded-lg px-3 py-2 text-sm"
           />
           <input
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none"
-            placeholder="До"
+            className="input-cosmic rounded-lg px-3 py-2 text-sm"
           />
-          <button
+          <motion.button
             onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+            className="btn-stellar px-4 py-2 rounded-lg text-sm"
+            whileTap={{ scale: 0.98 }}
           >
             {showForm ? 'Отмена' : '+ Транзакция'}
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
 
+      {/* Create transaction form */}
       {showForm && (
-        <form
+        <motion.form
           onSubmit={handleCreate}
-          className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6"
+          className="cosmic-card p-6 mb-6"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
         >
-          <h3 className="text-lg font-semibold text-white mb-4">Новая транзакция</h3>
+          <h3 className="text-lg font-semibold text-text-stellar mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+            Новая транзакция
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'ДАТА', type: 'date', key: 'date', required: true },
+              { label: 'СУММА', type: 'number', key: 'amount', placeholder: '-799', required: true },
+            ].map((field) => (
+              <div key={field.key}>
+                <label className="block text-text-void text-xs tracking-[0.1em] mb-1.5"
+                       style={{ fontFamily: 'var(--font-mono)' }}>
+                  {field.label}
+                </label>
+                <input
+                  type={field.type}
+                  step={field.type === 'number' ? '0.01' : undefined}
+                  value={form[field.key as keyof typeof form]}
+                  onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                  placeholder={field.placeholder}
+                  required={field.required}
+                  className="w-full input-cosmic px-4 py-2.5 text-sm"
+                />
+              </div>
+            ))}
             <div>
-              <label className="block text-gray-400 text-sm mb-1.5">Дата</label>
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                required
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm focus:border-blue-500 focus:outline-none"
-              />
+              <label className="block text-text-void text-xs tracking-[0.1em] mb-1.5"
+                     style={{ fontFamily: 'var(--font-mono)' }}>ТИП</label>
+              <select value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                className="w-full input-cosmic px-4 py-2.5 text-sm">
+                {TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </div>
             <div>
-              <label className="block text-gray-400 text-sm mb-1.5">Сумма</label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                placeholder="-799"
-                required
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm focus:border-blue-500 focus:outline-none"
-              />
+              <label className="block text-text-void text-xs tracking-[0.1em] mb-1.5"
+                     style={{ fontFamily: 'var(--font-mono)' }}>КАТЕГОРИЯ</label>
+              <select value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className="w-full input-cosmic px-4 py-2.5 text-sm">
+                {CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </div>
             <div>
-              <label className="block text-gray-400 text-sm mb-1.5">Валюта</label>
-              <select
-                value={form.currency}
+              <label className="block text-text-void text-xs tracking-[0.1em] mb-1.5"
+                     style={{ fontFamily: 'var(--font-mono)' }}>ОПИСАНИЕ</label>
+              <input type="text" value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="NETFLIX.COM" required
+                className="w-full input-cosmic px-4 py-2.5 text-sm" />
+            </div>
+            <div>
+              <label className="block text-text-void text-xs tracking-[0.1em] mb-1.5"
+                     style={{ fontFamily: 'var(--font-mono)' }}>МЕРЧАНТ</label>
+              <input type="text" value={form.merchant}
+                onChange={(e) => setForm({ ...form, merchant: e.target.value })} placeholder="Netflix"
+                className="w-full input-cosmic px-4 py-2.5 text-sm" />
+            </div>
+            <div>
+              <label className="block text-text-void text-xs tracking-[0.1em] mb-1.5"
+                     style={{ fontFamily: 'var(--font-mono)' }}>ВАЛЮТА</label>
+              <select value={form.currency}
                 onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm focus:border-blue-500 focus:outline-none"
-              >
+                className="w-full input-cosmic px-4 py-2.5 text-sm">
                 <option value="RUB">RUB</option>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
               </select>
             </div>
-            <div>
-              <label className="block text-gray-400 text-sm mb-1.5">Описание</label>
-              <input
-                type="text"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="NETFLIX.COM"
-                required
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm focus:border-blue-500 focus:outline-none"
-              />
-            </div>
           </div>
-          <button
+          <motion.button
             type="submit"
             disabled={creating || !form.amount || !form.description}
-            className="mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+            className="mt-4 btn-stellar px-6 py-2.5 text-sm rounded-lg disabled:opacity-40"
+            whileTap={{ scale: 0.98 }}
           >
             {creating ? 'Создание...' : 'Создать'}
-          </button>
-        </form>
+          </motion.button>
+        </motion.form>
       )}
 
+      {/* Transaction list */}
       {transactions.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">Нет транзакций</p>
-        </div>
+        <motion.div variants={fadeUp} className="cosmic-card p-12 text-center">
+          <p className="text-text-nebula" style={{ fontFamily: 'var(--font-body)' }}>Нет транзакций</p>
+        </motion.div>
       ) : (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-800">
-                <th className="text-left text-gray-500 text-xs font-medium px-6 py-3">Дата</th>
-                <th className="text-left text-gray-500 text-xs font-medium px-6 py-3">Описание</th>
-                <th className="text-right text-gray-500 text-xs font-medium px-6 py-3">Сумма</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((tx) => (
-                <tr key={tx.id} className="border-b border-gray-800/50 last:border-0 hover:bg-gray-800/30 transition-colors">
-                  <td className="px-6 py-4 text-gray-400 text-sm">
-                    {new Date(tx.date).toLocaleDateString('ru-RU')}
-                  </td>
-                  <td className="px-6 py-4 text-white text-sm">{tx.description}</td>
-                  <td className={`px-6 py-4 text-sm text-right font-medium ${tx.amount < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                    {formatAmount(tx.amount, tx.currency)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <motion.div variants={fadeUp} className="cosmic-card overflow-hidden">
+          {transactions.map((tx, i) => {
+            const cat = tx.category as TransactionCategory;
+            return (
+              <motion.div
+                key={tx.id}
+                className="px-5 py-4 flex items-center gap-4 transition-all duration-300 group"
+                style={{
+                  borderBottom: i < transactions.length - 1 ? '1px solid rgba(79, 124, 255, 0.04)' : 'none',
+                }}
+                whileHover={{ backgroundColor: 'rgba(79, 124, 255, 0.03)' }}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
+                     style={{ background: 'rgba(79, 124, 255, 0.08)' }}>
+                  {CATEGORY_ICONS[cat] || '📦'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-text-stellar text-sm font-medium truncate">
+                    {tx.merchant || tx.description}
+                  </p>
+                  <p className="text-text-void text-xs mt-0.5" style={{ fontFamily: 'var(--font-mono)' }}>
+                    {new Date(tx.date).toLocaleDateString('ru-RU')} · {CATEGORY_LABELS[cat] || cat}
+                  </p>
+                </div>
+                <div className={`text-sm font-semibold flex-shrink-0 ${
+                  tx.amount < 0 ? 'text-aurora-red' : 'text-aurora-green'
+                }`}
+                style={{ fontFamily: 'var(--font-mono)' }}>
+                  {formatAmount(tx.amount, tx.currency)}
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

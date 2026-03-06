@@ -17,6 +17,7 @@ describe('Transactions & Suggestions (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
     );
@@ -49,7 +50,7 @@ describe('Transactions & Suggestions (e2e)', () => {
   describe('POST /transactions/import', () => {
     it('should import transactions and return suggestions', async () => {
       const res = await request(app.getHttpServer())
-        .post('/transactions/import')
+        .post('/api/transactions/import')
         .set('Authorization', `Bearer ${token}`)
         .send({
           transactions: [
@@ -73,7 +74,7 @@ describe('Transactions & Suggestions (e2e)', () => {
 
     it('should reject empty transactions array', async () => {
       await request(app.getHttpServer())
-        .post('/transactions/import')
+        .post('/api/transactions/import')
         .set('Authorization', `Bearer ${token}`)
         .send({ transactions: [] })
         .expect(400);
@@ -81,7 +82,7 @@ describe('Transactions & Suggestions (e2e)', () => {
 
     it('should reject without auth', async () => {
       await request(app.getHttpServer())
-        .post('/transactions/import')
+        .post('/api/transactions/import')
         .send({ transactions: [{ amount: 100, date: '2025-01-01T00:00:00.000Z', description: 'X' }] })
         .expect(401);
     });
@@ -90,7 +91,7 @@ describe('Transactions & Suggestions (e2e)', () => {
   describe('POST /transactions/analyze', () => {
     it('should return suggestions for existing transactions', async () => {
       const res = await request(app.getHttpServer())
-        .post('/transactions/analyze')
+        .post('/api/transactions/analyze')
         .set('Authorization', `Bearer ${token}`)
         .expect(201);
 
@@ -108,7 +109,7 @@ describe('Transactions & Suggestions (e2e)', () => {
   describe('GET /subscriptions/suggestions', () => {
     it('should return suggestions', async () => {
       const res = await request(app.getHttpServer())
-        .get('/subscriptions/suggestions')
+        .get('/api/subscriptions/suggestions')
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
@@ -121,7 +122,7 @@ describe('Transactions & Suggestions (e2e)', () => {
     it('should create subscription from suggestion', async () => {
       // First get suggestions to get a valid ID
       const suggestionsRes = await request(app.getHttpServer())
-        .get('/subscriptions/suggestions')
+        .get('/api/subscriptions/suggestions')
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
@@ -129,7 +130,7 @@ describe('Transactions & Suggestions (e2e)', () => {
       const txCount = suggestionsRes.body[0].transactionCount;
 
       const res = await request(app.getHttpServer())
-        .post(`/subscriptions/suggestions/${suggestionId}/confirm`)
+        .post(`/api/subscriptions/suggestions/${suggestionId}/confirm`)
         .set('Authorization', `Bearer ${token}`)
         .expect(201);
 
@@ -141,14 +142,14 @@ describe('Transactions & Suggestions (e2e)', () => {
 
     it('should return 404 for invalid suggestion ID', async () => {
       await request(app.getHttpServer())
-        .post('/subscriptions/suggestions/nonexistent-id/confirm')
+        .post('/api/subscriptions/suggestions/nonexistent-id/confirm')
         .set('Authorization', `Bearer ${token}`)
         .expect(404);
     });
 
     it('should not show confirmed suggestion anymore', async () => {
       const res = await request(app.getHttpServer())
-        .get('/subscriptions/suggestions')
+        .get('/api/subscriptions/suggestions')
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 

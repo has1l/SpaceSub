@@ -30,8 +30,8 @@ describe('TransactionsService', () => {
   });
 
   describe('create', () => {
-    it('should create a transaction', async () => {
-      const tx = { id: '1', accountId: 'a1', amount: -799, description: 'NETFLIX' };
+    it('should create a transaction with negative amount for expense', async () => {
+      const tx = { id: '1', accountId: 'a1', amount: -799, description: 'NETFLIX', type: 'EXPENSE' };
       prisma.transaction.create.mockResolvedValue(tx);
 
       const result = await service.create('a1', {
@@ -40,6 +40,68 @@ describe('TransactionsService', () => {
         description: 'NETFLIX',
       });
       expect(result).toEqual(tx);
+      expect(prisma.transaction.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ amount: -799, type: 'EXPENSE' }),
+      });
+    });
+
+    it('should auto-convert positive amount to negative for EXPENSE type', async () => {
+      prisma.transaction.create.mockResolvedValue({ id: '1' });
+
+      await service.create('a1', {
+        date: '2026-01-15T00:00:00.000Z',
+        amount: 799,
+        description: 'NETFLIX',
+        type: 'EXPENSE',
+      });
+      expect(prisma.transaction.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ amount: -799 }),
+      });
+    });
+
+    it('should auto-convert negative amount to positive for INCOME type', async () => {
+      prisma.transaction.create.mockResolvedValue({ id: '1' });
+
+      await service.create('a1', {
+        date: '2026-01-15T00:00:00.000Z',
+        amount: -5000,
+        description: 'Salary',
+        type: 'INCOME',
+      });
+      expect(prisma.transaction.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ amount: 5000, type: 'INCOME' }),
+      });
+    });
+
+    it('should infer INCOME type for positive amount without explicit type', async () => {
+      prisma.transaction.create.mockResolvedValue({ id: '1' });
+
+      await service.create('a1', {
+        date: '2026-01-15T00:00:00.000Z',
+        amount: 50000,
+        description: 'Salary',
+      });
+      expect(prisma.transaction.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ amount: 50000, type: 'INCOME' }),
+      });
+    });
+
+    it('should pass merchant and category', async () => {
+      prisma.transaction.create.mockResolvedValue({ id: '1' });
+
+      await service.create('a1', {
+        date: '2026-01-15T00:00:00.000Z',
+        amount: -799,
+        description: 'NETFLIX.COM',
+        merchant: 'Netflix',
+        category: 'SUBSCRIPTIONS',
+      });
+      expect(prisma.transaction.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          merchant: 'Netflix',
+          category: 'SUBSCRIPTIONS',
+        }),
+      });
     });
   });
 

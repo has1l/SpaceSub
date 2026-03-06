@@ -16,7 +16,7 @@ describe('AuthService (flexbank)', () => {
         const map: Record<string, string> = {
           YANDEX_CLIENT_ID: 'flexbank-client-id',
           YANDEX_REDIRECT_URI:
-            'http://flexbank.localhost:3001/auth/yandex/callback',
+            'http://localhost:5174/bank-api/auth/yandex/callback',
         };
         return map[key];
       }),
@@ -52,7 +52,8 @@ describe('AuthService (flexbank)', () => {
       expect(url).toContain('https://oauth.yandex.ru/authorize');
       expect(url).toContain('client_id=flexbank-client-id');
       expect(url).toContain('redirect_uri=');
-      expect(url).toContain('flexbank.localhost');
+      expect(url).toContain('localhost%3A5174');
+      expect(url).toContain('bank-api');
       expect(url).toContain('state=flexbank_');
       expect(url).toContain('force_confirm=true');
       expect(url).toContain('prompt=select_account');

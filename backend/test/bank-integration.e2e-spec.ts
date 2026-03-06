@@ -17,6 +17,7 @@ describe('Bank Integration (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -50,16 +51,16 @@ describe('Bank Integration (e2e)', () => {
     await app.close();
   });
 
-  it('POST /bank-integration/flex/connect — 401 without token', () => {
+  it('POST /api/bank-integration/flex/connect — 401 without token', () => {
     return request(app.getHttpServer())
-      .post('/bank-integration/flex/connect')
+      .post('/api/bank-integration/flex/connect')
       .send({ accessToken: 'tok' })
       .expect(401);
   });
 
-  it('POST /bank-integration/flex/connect — creates connection', async () => {
+  it('POST /api/bank-integration/flex/connect — creates connection', async () => {
     const res = await request(app.getHttpServer())
-      .post('/bank-integration/flex/connect')
+      .post('/api/bank-integration/flex/connect')
       .set('Authorization', `Bearer ${token}`)
       .send({ accessToken: 'my-access-token' })
       .expect(201);
@@ -71,9 +72,9 @@ describe('Bank Integration (e2e)', () => {
     expect(res.body).not.toHaveProperty('refreshToken');
   });
 
-  it('GET /bank-integration/connections — returns connections', async () => {
+  it('GET /api/bank-integration/connections — returns connections', async () => {
     const res = await request(app.getHttpServer())
-      .get('/bank-integration/connections')
+      .get('/api/bank-integration/connections')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
@@ -82,10 +83,10 @@ describe('Bank Integration (e2e)', () => {
     expect(res.body[0]).not.toHaveProperty('accessToken');
   });
 
-  it('POST /bank-integration/flex/sync — fails gracefully when Flex Bank is unreachable', async () => {
+  it('POST /api/bank-integration/flex/sync — fails gracefully when Flex Bank is unreachable', async () => {
     // Real sync requires mock-bank to be running; without it we expect an error
     const res = await request(app.getHttpServer())
-      .post('/bank-integration/flex/sync')
+      .post('/api/bank-integration/flex/sync')
       .set('Authorization', `Bearer ${token}`)
       .send({})
       .expect(500);
@@ -93,9 +94,9 @@ describe('Bank Integration (e2e)', () => {
     expect(res.body).toHaveProperty('statusCode', 500);
   });
 
-  it('POST /bank-integration/flex/connect — validation rejects empty body', () => {
+  it('POST /api/bank-integration/flex/connect — validation rejects empty body', () => {
     return request(app.getHttpServer())
-      .post('/bank-integration/flex/connect')
+      .post('/api/bank-integration/flex/connect')
       .set('Authorization', `Bearer ${token}`)
       .send({})
       .expect(400);
@@ -103,15 +104,15 @@ describe('Bank Integration (e2e)', () => {
 
   // ── Bank OAuth endpoints ──────────────────────────────
 
-  it('GET /bank-integration/flex/oauth — 401 without token', () => {
+  it('GET /api/bank-integration/flex/oauth — 401 without token', () => {
     return request(app.getHttpServer())
-      .get('/bank-integration/flex/oauth')
+      .get('/api/bank-integration/flex/oauth')
       .expect(401);
   });
 
-  it('GET /bank-integration/flex/oauth — returns Yandex OAuth URL', async () => {
+  it('GET /api/bank-integration/flex/oauth — returns Yandex OAuth URL', async () => {
     const res = await request(app.getHttpServer())
-      .get('/bank-integration/flex/oauth')
+      .get('/api/bank-integration/flex/oauth')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
@@ -124,18 +125,18 @@ describe('Bank Integration (e2e)', () => {
     expect(res.body.url).toContain('bank-integration%2Fflex%2Fcallback');
   });
 
-  it('GET /bank-integration/flex/callback — rejects missing state', async () => {
+  it('GET /api/bank-integration/flex/callback — rejects missing state', async () => {
     const res = await request(app.getHttpServer())
-      .get('/bank-integration/flex/callback?code=test-code')
+      .get('/api/bank-integration/flex/callback?code=test-code')
       .expect(400);
 
     expect(res.body.message).toContain('Missing code or state');
   });
 
-  it('GET /bank-integration/flex/callback — rejects invalid state', async () => {
+  it('GET /api/bank-integration/flex/callback — rejects invalid state', async () => {
     const res = await request(app.getHttpServer())
       .get(
-        '/bank-integration/flex/callback?code=test-code&state=invalid-state',
+        '/api/bank-integration/flex/callback?code=test-code&state=invalid-state',
       )
       .expect(302);
 
@@ -143,13 +144,58 @@ describe('Bank Integration (e2e)', () => {
     expect(res.headers.location).toContain('error=oauth_failed');
   });
 
-  it('GET /bank-integration/flex/callback — rejects spacesub state prefix', async () => {
+  it('GET /api/bank-integration/flex/callback — rejects spacesub state prefix', async () => {
     const res = await request(app.getHttpServer())
       .get(
-        '/bank-integration/flex/callback?code=test-code&state=spacesub_fake-uuid',
+        '/api/bank-integration/flex/callback?code=test-code&state=spacesub_fake-uuid',
       )
       .expect(302);
 
     expect(res.headers.location).toContain('error=oauth_failed');
+  });
+
+  // ── Connect by code ──────────────────────────────────
+
+  it('POST /api/bank-integration/flex/connect-by-code — 401 without token', () => {
+    return request(app.getHttpServer())
+      .post('/api/bank-integration/flex/connect-by-code')
+      .send({ code: 'FB-ABC123' })
+      .expect(401);
+  });
+
+  it('POST /api/bank-integration/flex/connect-by-code — 400 for invalid code format', async () => {
+    await request(app.getHttpServer())
+      .post('/api/bank-integration/flex/connect-by-code')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ code: 'INVALID' })
+      .expect(400);
+  });
+
+  it('POST /api/bank-integration/flex/connect-by-code — 400 for empty body', async () => {
+    await request(app.getHttpServer())
+      .post('/api/bank-integration/flex/connect-by-code')
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+      .expect(400);
+  });
+
+  it('POST /api/bank-integration/flex/connect-by-code — 400 for code too short', async () => {
+    await request(app.getHttpServer())
+      .post('/api/bank-integration/flex/connect-by-code')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ code: 'FB-AB' })
+      .expect(400);
+  });
+
+  it('POST /api/bank-integration/flex/connect-by-code — fails gracefully for invalid code', async () => {
+    // With mock-bank not running, the fetch to /connection-code/redeem will fail
+    // Service wraps connection errors as UnauthorizedException or 500
+    const res = await request(app.getHttpServer())
+      .post('/api/bank-integration/flex/connect-by-code')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ code: 'FB-ABC123' });
+
+    // Should fail, but not crash the server
+    expect([401, 500]).toContain(res.status);
   });
 });

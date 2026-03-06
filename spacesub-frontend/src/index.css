@@ -1,32 +1,58 @@
 @import "tailwindcss";
 
-/* ===== Space palette ===== */
+/* ═══════════════════════════════════════════════════════
+   SpaceSub — Satellite Control Center Theme
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Design Tokens ── */
 :root {
-  --space-900: #05020f;
-  --space-800: #0c0620;
-  --space-700: #150d33;
-  --neon-purple: #a855f7;
-  --neon-blue: #3b82f6;
-  --glass-bg: rgba(255, 255, 255, 0.04);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  /* Deep space palette — darker, cooler than Flex Bank */
+  --void: #020810;
+  --deep: #06101e;
+  --nebula: #0c1a2e;
+  --hull: #132440;
+
+  /* Signal colors — teal/green satellite hue, distinct from Flex Bank's blue/violet */
+  --signal-primary: #00d4aa;
+  --signal-secondary: #0ea5e9;
+  --signal-warn: #f59e0b;
+  --signal-danger: #ef4444;
+  --signal-dim: #1e3a5f;
+
+  /* Typography */
+  --font-display: 'Exo 2', system-ui, sans-serif;
+  --font-body: 'Manrope', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Menlo', monospace;
+
+  /* Glass */
+  --glass-bg: rgba(6, 16, 30, 0.7);
+  --glass-border: rgba(0, 212, 170, 0.08);
+  --glass-border-hover: rgba(0, 212, 170, 0.18);
 }
 
-/* ===== Base ===== */
+/* ── Base ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: linear-gradient(145deg, var(--space-900), var(--space-800), var(--space-700));
-  color: #e2e8f0;
+  font-family: var(--font-body);
+  background: var(--void);
+  color: #c8d6e5;
   min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   min-height: 100vh;
+  position: relative;
 }
 
-/* ===== Starfield ===== */
-.starfield {
+/* ── Starfield (layered, denser than Flex Bank) ── */
+.starfield-deep {
   position: fixed;
   inset: 0;
   overflow: hidden;
@@ -34,92 +60,327 @@ body {
   z-index: 0;
 }
 
-.starfield::before,
-.starfield::after {
+/* Layer 1: Distant dim stars */
+.starfield-deep::before {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  background-image:
+    radial-gradient(0.8px 0.8px at 7% 14%, rgba(200,214,229,0.35) 50%, transparent 50%),
+    radial-gradient(0.6px 0.6px at 19% 67%, rgba(200,214,229,0.25) 50%, transparent 50%),
+    radial-gradient(0.8px 0.8px at 33% 22%, rgba(200,214,229,0.3) 50%, transparent 50%),
+    radial-gradient(0.5px 0.5px at 47% 83%, rgba(200,214,229,0.2) 50%, transparent 50%),
+    radial-gradient(0.7px 0.7px at 61% 9%, rgba(200,214,229,0.35) 50%, transparent 50%),
+    radial-gradient(0.6px 0.6px at 78% 54%, rgba(200,214,229,0.25) 50%, transparent 50%),
+    radial-gradient(0.8px 0.8px at 92% 38%, rgba(200,214,229,0.3) 50%, transparent 50%),
+    radial-gradient(0.5px 0.5px at 14% 91%, rgba(200,214,229,0.2) 50%, transparent 50%),
+    radial-gradient(0.7px 0.7px at 56% 45%, rgba(200,214,229,0.28) 50%, transparent 50%),
+    radial-gradient(0.6px 0.6px at 84% 76%, rgba(200,214,229,0.22) 50%, transparent 50%),
+    radial-gradient(0.5px 0.5px at 41% 62%, rgba(200,214,229,0.18) 50%, transparent 50%),
+    radial-gradient(0.8px 0.8px at 3% 48%, rgba(200,214,229,0.32) 50%, transparent 50%);
+  animation: starfield-drift 140s linear infinite;
+}
+
+/* Layer 2: Teal signal stars */
+.starfield-deep::after {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  background-image:
+    radial-gradient(1px 1px at 12% 30%, rgba(0,212,170,0.4) 50%, transparent 50%),
+    radial-gradient(0.8px 0.8px at 38% 72%, rgba(14,165,233,0.35) 50%, transparent 50%),
+    radial-gradient(1.2px 1.2px at 65% 18%, rgba(0,212,170,0.45) 50%, transparent 50%),
+    radial-gradient(0.8px 0.8px at 85% 55%, rgba(14,165,233,0.3) 50%, transparent 50%),
+    radial-gradient(1px 1px at 22% 85%, rgba(0,212,170,0.35) 50%, transparent 50%),
+    radial-gradient(0.7px 0.7px at 73% 42%, rgba(14,165,233,0.25) 50%, transparent 50%),
+    radial-gradient(1px 1px at 50% 8%, rgba(0,212,170,0.3) 50%, transparent 50%);
+  animation: starfield-drift 180s linear infinite reverse;
+}
+
+@keyframes starfield-drift {
+  from { transform: translateY(0) translateX(0); }
+  to { transform: translateY(-40px) translateX(10px); }
+}
+
+/* ── Grid overlay (satellite tracking aesthetic) ── */
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.025;
+  background-image:
+    linear-gradient(rgba(0,212,170,0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,170,0.5) 1px, transparent 1px);
+  background-size: 80px 80px;
+}
+
+/* ── Station Panel (card) ── */
+.station-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+.station-panel:hover {
+  border-color: var(--glass-border-hover);
+}
+
+.station-panel-glow {
+  box-shadow:
+    0 0 20px rgba(0, 212, 170, 0.06),
+    0 0 60px rgba(0, 212, 170, 0.03),
+    inset 0 1px 0 rgba(0, 212, 170, 0.05);
+}
+
+.station-panel-glow:hover {
+  box-shadow:
+    0 0 30px rgba(0, 212, 170, 0.1),
+    0 0 80px rgba(0, 212, 170, 0.05),
+    inset 0 1px 0 rgba(0, 212, 170, 0.08);
+}
+
+/* ── Satellite orbit ring ── */
+.orbit-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 212, 170, 0.06);
+  pointer-events: none;
+}
+
+.orbit-ring-animated {
+  animation: orbit-pulse 8s ease-in-out infinite;
+}
+
+@keyframes orbit-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.02); }
+}
+
+/* ── Scan line ── */
+.scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,212,170,0.3), transparent);
+  animation: scan-sweep 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes scan-sweep {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ── Primary button ── */
+.btn-signal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--void);
+  background: linear-gradient(135deg, var(--signal-primary), #00b893);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 20px rgba(0, 212, 170, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-signal::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image:
-    radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.6) 50%, transparent 50%),
-    radial-gradient(1px 1px at 30% 65%, rgba(255,255,255,0.5) 50%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 55% 15%, rgba(255,255,255,0.7) 50%, transparent 50%),
-    radial-gradient(1px 1px at 70% 80%, rgba(255,255,255,0.4) 50%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 85% 35%, rgba(255,255,255,0.6) 50%, transparent 50%),
-    radial-gradient(1px 1px at 15% 90%, rgba(255,255,255,0.3) 50%, transparent 50%),
-    radial-gradient(1px 1px at 40% 40%, rgba(255,255,255,0.5) 50%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 92% 60%, rgba(255,255,255,0.6) 50%, transparent 50%),
-    radial-gradient(1px 1px at 60% 50%, rgba(255,255,255,0.4) 50%, transparent 50%),
-    radial-gradient(1px 1px at 25% 10%, rgba(255,255,255,0.5) 50%, transparent 50%);
-  background-size: 100% 100%;
-  animation: drift 90s linear infinite;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
-.starfield::after {
-  background-image:
-    radial-gradient(1px 1px at 5% 55%, rgba(168,85,247,0.4) 50%, transparent 50%),
-    radial-gradient(1px 1px at 45% 85%, rgba(59,130,246,0.3) 50%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 75% 10%, rgba(168,85,247,0.5) 50%, transparent 50%),
-    radial-gradient(1px 1px at 20% 75%, rgba(59,130,246,0.4) 50%, transparent 50%),
-    radial-gradient(1px 1px at 95% 45%, rgba(168,85,247,0.3) 50%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 50% 30%, rgba(59,130,246,0.5) 50%, transparent 50%),
-    radial-gradient(1px 1px at 65% 70%, rgba(168,85,247,0.4) 50%, transparent 50%);
-  animation: drift 120s linear infinite reverse;
+.btn-signal:hover::after {
+  opacity: 1;
 }
 
-@keyframes drift {
-  from { transform: translateY(0); }
-  to   { transform: translateY(-30px); }
+.btn-signal:hover {
+  box-shadow: 0 0 30px rgba(0, 212, 170, 0.35);
+  transform: translateY(-1px);
 }
 
-/* ===== Glass card ===== */
-.glass {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+.btn-signal:active {
+  transform: translateY(0);
 }
 
-/* ===== Neon glow ===== */
-.glow-purple {
-  box-shadow:
-    0 0 15px rgba(168, 85, 247, 0.15),
-    0 0 30px rgba(168, 85, 247, 0.08);
+.btn-signal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
-.glow-blue {
-  box-shadow:
-    0 0 15px rgba(59, 130, 246, 0.15),
-    0 0 30px rgba(59, 130, 246, 0.08);
+/* ── Ghost button ── */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border: 1px solid rgba(0, 212, 170, 0.2);
+  border-radius: 12px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--signal-primary);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.glow-purple-strong {
-  box-shadow:
-    0 0 20px rgba(168, 85, 247, 0.3),
-    0 0 40px rgba(168, 85, 247, 0.15);
+.btn-ghost:hover {
+  background: rgba(0, 212, 170, 0.06);
+  border-color: rgba(0, 212, 170, 0.35);
+  box-shadow: 0 0 20px rgba(0, 212, 170, 0.08);
 }
 
-/* ===== Input styling ===== */
-input[type="text"],
-input[type="password"] {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
-  transition: border-color 0.2s, box-shadow 0.2s;
+.btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-input[type="text"]:focus,
-input[type="password"]:focus {
+/* ── Input ── */
+.input-station {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid rgba(0, 212, 170, 0.1);
+  border-radius: 12px;
+  background: rgba(6, 16, 30, 0.6);
+  color: #c8d6e5;
+  font-family: var(--font-body);
+  font-size: 14px;
+  transition: border-color 0.3s, box-shadow 0.3s;
   outline: none;
-  border-color: var(--neon-purple);
-  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
 }
 
-/* ===== Pulse animation for status dots ===== */
-@keyframes pulse-glow {
+.input-station::placeholder {
+  color: rgba(200, 214, 229, 0.25);
+}
+
+.input-station:focus {
+  border-color: rgba(0, 212, 170, 0.4);
+  box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.08);
+}
+
+/* ── Status indicator ── */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot-active {
+  background: var(--signal-primary);
+  box-shadow: 0 0 8px rgba(0, 212, 170, 0.6);
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+
+.status-dot-warn {
+  background: var(--signal-warn);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+
+.status-dot-danger {
+  background: var(--signal-danger);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.status-dot-dim {
+  background: rgba(200, 214, 229, 0.3);
+}
+
+@keyframes dot-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.4; }
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+/* ── Badge ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge-active {
+  background: rgba(0, 212, 170, 0.1);
+  color: var(--signal-primary);
+  border: 1px solid rgba(0, 212, 170, 0.15);
+}
+
+.badge-warn {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--signal-warn);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+.badge-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--signal-danger);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+.badge-dim {
+  background: rgba(200, 214, 229, 0.05);
+  color: rgba(200, 214, 229, 0.5);
+  border: 1px solid rgba(200, 214, 229, 0.08);
+}
+
+/* ── Gradient text ── */
+.text-gradient-signal {
+  background: linear-gradient(135deg, var(--signal-primary), var(--signal-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 170, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 170, 0.3);
+}
+
+/* ── Selection ── */
+::selection {
+  background: rgba(0, 212, 170, 0.25);
+  color: #fff;
 }

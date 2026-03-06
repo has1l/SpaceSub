@@ -16,13 +16,14 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  subscriptions        Subscription[]
-  transactions         Transaction[]
-  notificationSettings NotificationSettings?
-  notifications        Notification[]
-  oauthTokens          OAuthToken[]
-  bankConnections      BankConnection[]
-  importedTransactions ImportedTransaction[]
+  subscriptions          Subscription[]
+  detectedSubscriptions  DetectedSubscription[]
+  transactions           Transaction[]
+  notificationSettings   NotificationSettings?
+  notifications          Notification[]
+  oauthTokens            OAuthToken[]
+  bankConnections        BankConnection[]
+  importedTransactions   ImportedTransaction[]
 
   @@map("users")
 }
@@ -198,5 +199,35 @@ model ImportedTransaction {
   connection BankConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@unique([connectionId, externalId])
+  @@index([userId, occurredAt])
+  @@index([userId, description])
   @@map("imported_transactions")
+}
+
+// ──────────────────────────────────────────
+// Auto-detected Subscriptions
+// ──────────────────────────────────────────
+
+model DetectedSubscription {
+  id                  String       @id @default(uuid())
+  userId              String       @map("user_id")
+  merchant            String
+  normalizedMerchant  String       @map("normalized_merchant")
+  amount              Decimal      @db.Decimal(10, 2)
+  currency            String       @default("RUB")
+  periodType          BillingCycle @map("period_type")
+  lastChargeDate      DateTime     @map("last_charge_date")
+  nextExpectedCharge  DateTime     @map("next_expected_charge")
+  isActive            Boolean      @default(true) @map("is_active")
+  confidence          Float        @default(0)
+  transactionCount    Int          @default(0) @map("transaction_count")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, normalizedMerchant, amount, currency])
+  @@index([userId, isActive])
+  @@index([nextExpectedCharge])
+  @@map("detected_subscriptions")
 }

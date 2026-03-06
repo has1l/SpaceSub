@@ -65,7 +65,8 @@ export class ApiV1Controller {
       currency: t.currency,
       description: t.description,
       type: t.amount < 0 ? ('DEBIT' as const) : ('CREDIT' as const),
-      merchant: null,
+      merchant: t.merchant || null,
+      category: t.category,
       mcc: null,
     }));
   }

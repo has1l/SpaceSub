@@ -22,6 +22,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BankIntegrationService } from './bank-integration.service';
 import { BankOAuthService } from './services/bank-oauth.service';
 import { ConnectFlexDto } from './dto/connect-flex.dto';
+import { ConnectByCodeDto } from './dto/connect-by-code.dto';
 import { SyncFlexDto } from './dto/sync-flex.dto';
 
 @ApiTags('Bank Integration')
@@ -75,15 +76,32 @@ export class BankIntegrationController {
       );
       const frontendUrl =
         this.configService.get('FRONTEND_URL') ||
-        'http://spacesub.localhost:5174';
+        'http://localhost:5174';
       return res.redirect(`${frontendUrl}/connect-flex?error=oauth_failed`);
     }
 
     const frontendUrl =
       this.configService.get('FRONTEND_URL') ||
-      'http://spacesub.localhost:5174';
+      'http://localhost:5174';
     this.logger.log(`Flex OAuth complete, redirecting to ${frontendUrl}`);
     return res.redirect(`${frontendUrl}/dashboard?bank_connected=true`);
+  }
+
+  // ── Connect by code ────────────────────────────────────────
+
+  @Post('flex/connect-by-code')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Connect Flex Bank via one-time code',
+    description:
+      'Accepts a one-time connection code (FB-XXXXXX) generated in Flex Bank. The code is validated server-to-server. No JWT is ever transmitted through the browser.',
+  })
+  async connectByCode(
+    @Request() req: { user: { id: string } },
+    @Body() dto: ConnectByCodeDto,
+  ) {
+    return this.bankIntegrationService.connectByCode(req.user.id, dto.code);
   }
 
   // ── Manual connect (legacy) ───────────────────────────────

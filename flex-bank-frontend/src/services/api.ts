@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE = 'http://flexbank.localhost:3001';
+// All API calls go through the gateway proxy: /bank-api/* → localhost:3001
+// Works identically on localhost and through ngrok.
+const API_BASE = '/bank-api';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -20,7 +22,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('flexbank_token');
-      window.location.href = '/';
+      window.location.href = '/bank/';
     }
     return Promise.reject(error);
   },

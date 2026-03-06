@@ -16,7 +16,7 @@ describe('BankOAuthService', () => {
         FLEX_BANK_OAUTH_CLIENT_ID: 'test-client-id',
         FLEX_BANK_OAUTH_CLIENT_SECRET: 'test-client-secret',
         FLEX_BANK_OAUTH_REDIRECT_URI:
-          'http://spacesub.localhost:3000/bank-integration/flex/callback',
+          'http://localhost:5174/api/bank-integration/flex/callback',
         FLEX_BANK_BASE_URL: 'http://localhost:3001',
         TOKEN_ENCRYPTION_KEY:
           'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
@@ -59,7 +59,7 @@ describe('BankOAuthService', () => {
       expect(url).toContain(
         'redirect_uri=' +
           encodeURIComponent(
-            'http://spacesub.localhost:3000/bank-integration/flex/callback',
+            'http://localhost:5174/api/bank-integration/flex/callback',
           ),
       );
       expect(url).toContain('state=flexoauth_');

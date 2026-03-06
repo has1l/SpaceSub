@@ -48,7 +48,7 @@ export class AuthController {
 
     const { accessToken } = await this.authService.handleYandexCallback(code);
     const frontendUrl =
-      this.configService.get('FRONTEND_URL') || 'http://flexbank.localhost:5173';
+      this.configService.get('FRONTEND_URL') || 'http://localhost:5174/bank';
     const redirectTo = `${frontendUrl}/auth/callback?token=${accessToken}`;
     this.logger.log(`OAuth callback redirect → ${frontendUrl}`);
     return res.redirect(redirectTo);

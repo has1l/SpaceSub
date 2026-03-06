@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AccountsService } from './accounts.service';
@@ -15,6 +15,15 @@ export class AccountsController {
   @ApiOperation({ summary: 'Get all accounts of current user' })
   findAll(@Request() req: { user: { id: string } }) {
     return this.accountsService.findAllByUser(req.user.id);
+  }
+
+  @Get(':id/summary')
+  @ApiOperation({ summary: 'Get account summary with income/expense breakdown' })
+  getSummary(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    return this.accountsService.getAccountSummary(id, req.user.id);
   }
 
   @Post()
