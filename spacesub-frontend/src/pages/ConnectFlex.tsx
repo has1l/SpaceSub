@@ -59,7 +59,7 @@ export function ConnectFlex() {
 
   return (
     <motion.div
-      className="max-w-lg mx-auto px-4 py-14"
+      className="max-w-lg mx-auto px-4 py-6 md:py-14"
       variants={stagger}
       initial="initial"
       animate="animate"
@@ -119,7 +119,7 @@ export function ConnectFlex() {
       {/* Method 1: Connection Code */}
       <motion.div
         variants={fadeUp}
-        className="station-panel station-panel-glow p-7 mb-5 relative overflow-hidden"
+        className="station-panel station-panel-glow p-5 md:p-7 mb-5 relative overflow-hidden"
       >
         <OrbitDecoration className="opacity-20" />
 
@@ -186,7 +186,7 @@ export function ConnectFlex() {
       {/* Method 2: OAuth */}
       <motion.div
         variants={fadeUp}
-        className="station-panel p-7 text-center relative overflow-hidden"
+        className="station-panel p-5 md:p-7 text-center relative overflow-hidden"
       >
         <div className="relative z-10">
           <div className="flex items-center justify-center gap-2 mb-1">

@@ -22,7 +22,23 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   app.enableCors({
-    origin: true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      const allowed = [
+        'http://localhost:5174',
+        'http://localhost:5173',
+        process.env.FRONTEND_URL,
+      ].filter(Boolean);
+      // Allow any *.vercel.app deployment preview
+      if (
+        allowed.includes(origin) ||
+        /\.vercel\.app$/.test(origin)
+      ) {
+        return callback(null, true);
+      }
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
     credentials: true,
   });
 

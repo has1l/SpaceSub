@@ -12,7 +12,8 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: true,
     hmr: {
-      host: undefined,
+      // Through LocalTunnel (HTTPS port 443), WebSocket must target port 443.
+      clientPort: 443,
     },
   },
 })

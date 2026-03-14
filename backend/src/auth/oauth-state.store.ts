@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 
 interface StateEntry {
   createdAt: number;
+  platform?: string;
 }
 
 const STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -20,30 +21,30 @@ export class OAuthStateStore {
     this.cleanupTimer = setInterval(() => this.cleanup(), CLEANUP_INTERVAL_MS);
   }
 
-  generate(): string {
+  generate(platform?: string): string {
     const state = `${this.prefix}_${randomUUID()}`;
-    this.states.set(state, { createdAt: Date.now() });
-    this.logger.debug(`OAuth state generated: ${state}`);
+    this.states.set(state, { createdAt: Date.now(), platform });
+    this.logger.debug(`OAuth state generated: ${state}, platform=${platform ?? 'web'}`);
     return state;
   }
 
-  validate(state: string | undefined): boolean {
+  validate(state: string | undefined): { valid: boolean; platform?: string } {
     if (!state) {
       this.logger.warn('OAuth callback: state missing');
-      return false;
+      return { valid: false };
     }
 
     if (!state.startsWith(`${this.prefix}_`)) {
       this.logger.warn(
         `OAuth callback: state prefix mismatch — expected "${this.prefix}_", got "${state.substring(0, 20)}..."`,
       );
-      return false;
+      return { valid: false };
     }
 
     const entry = this.states.get(state);
     if (!entry) {
       this.logger.warn(`OAuth callback: state not found in store — ${state}`);
-      return false;
+      return { valid: false };
     }
 
     // Consume state (one-time use)
@@ -51,11 +52,11 @@ export class OAuthStateStore {
 
     if (Date.now() - entry.createdAt > STATE_TTL_MS) {
       this.logger.warn(`OAuth callback: state expired — ${state}`);
-      return false;
+      return { valid: false };
     }
 
     this.logger.debug(`OAuth state validated: ${state}`);
-    return true;
+    return { valid: true, platform: entry.platform };
   }
 
   private cleanup() {

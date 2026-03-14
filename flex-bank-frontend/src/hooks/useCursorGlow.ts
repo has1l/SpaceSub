@@ -4,6 +4,11 @@ export function useCursorGlow() {
   const glowRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    // Skip on touch devices — no mouse cursor, saves GPU and battery
+    const isTouch =
+      'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (isTouch) return;
+
     const glow = document.createElement('div');
     glow.className = 'cursor-glow';
     glow.style.opacity = '0';

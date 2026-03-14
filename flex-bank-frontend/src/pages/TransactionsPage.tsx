@@ -57,7 +57,7 @@ export default function TransactionsPage() {
       </motion.h1>
 
       {transactions.length === 0 ? (
-        <motion.div variants={fadeUp} className="cosmic-card p-16 text-center">
+        <motion.div variants={fadeUp} className="cosmic-card p-8 md:p-16 text-center">
           <EmptyTransactionsIllustration />
           <p className="text-text-nebula text-lg mt-6" style={{ fontFamily: 'var(--font-display)' }}>
             Нет операций
@@ -80,7 +80,7 @@ export default function TransactionsPage() {
                   return (
                     <motion.div
                       key={tx.id}
-                      className="px-5 py-4 flex items-center gap-4 transition-all duration-300 group"
+                      className="px-4 py-3.5 md:px-5 md:py-4 flex items-center gap-4 transition-all duration-300 group"
                       style={{
                         borderBottom: i < txs.length - 1 ? '1px solid rgba(79, 124, 255, 0.04)' : 'none',
                       }}

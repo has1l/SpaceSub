@@ -5,14 +5,17 @@ import {
   Body,
   Query,
   Res,
+  Request,
+  UseGuards,
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { TokenExchangeDto } from './dto/token-exchange.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -47,10 +50,14 @@ export class AuthController {
     }
 
     const { accessToken } = await this.authService.handleYandexCallback(code);
-    const frontendUrl =
-      this.configService.get('FRONTEND_URL') || 'http://localhost:5174/bank';
-    const redirectTo = `${frontendUrl}/auth/callback?token=${accessToken}`;
-    this.logger.log(`OAuth callback redirect → ${frontendUrl}`);
+
+    // Derive the external origin from YANDEX_REDIRECT_URI — this is the real
+    // URL the browser used, not the proxied localhost:3001 host.
+    const callbackUri = this.configService.get('YANDEX_REDIRECT_URI') || '';
+    const origin = callbackUri ? new URL(callbackUri).origin : 'http://localhost:5174';
+    const redirectTo = `${origin}/bank/auth/callback?token=${accessToken}`;
+
+    this.logger.log(`OAuth callback redirect → ${redirectTo} [pid=${process.pid}]`);
     return res.redirect(redirectTo);
   }
 
@@ -62,5 +69,20 @@ export class AuthController {
   })
   async tokenExchange(@Body() dto: TokenExchangeDto) {
     return this.authService.exchangeYandexToken(dto.yandexAccessToken);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Debug: return current user identity from JWT' })
+  async me(@Request() req: { user: { id: string; email: string } }) {
+    const user = await this.authService.resolveUser({ sub: req.user.id, email: req.user.email });
+    this.logger.log(
+      `[AUTH] /auth/me: jwtSub=${req.user.id}, resolved=${user ? `dbId=${user.id}, yandexId=${user.yandexId}` : 'NOT FOUND'}`,
+    );
+    return {
+      jwt: { sub: req.user.id, email: req.user.email },
+      user,
+    };
   }
 }

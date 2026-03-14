@@ -5,7 +5,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OAuthStateStore } from './oauth-state.store';
 
 interface YandexUserInfo {
-  id: string;
+  id: string | number;
+  login?: string;
   default_email: string;
   display_name?: string;
 }
@@ -55,22 +56,17 @@ export class AuthService {
     const tokenData = await this.exchangeCodeForToken(code);
     const userInfo = await this.getYandexUserInfo(tokenData.access_token);
 
-    const user = await this.prisma.user.upsert({
-      where: { yandexId: userInfo.id },
-      update: {
-        email: userInfo.default_email,
-        name: userInfo.display_name || userInfo.default_email,
-      },
-      create: {
-        yandexId: userInfo.id,
-        email: userInfo.default_email,
-        name: userInfo.display_name || userInfo.default_email,
-      },
-    });
+    const user = await this.findOrCreateUser(userInfo, 'OAuth callback');
 
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, yandexId: user.yandexId };
+    const accessToken = this.jwtService.sign(payload);
+
+    this.logger.log(
+      `[AUTH] JWT issued: sub=${user.id}, email=${user.email}, yandexId=${user.yandexId}`,
+    );
+
     return {
-      accessToken: this.jwtService.sign(payload),
+      accessToken,
       user: { id: user.id, email: user.email, name: user.name },
     };
   }
@@ -99,22 +95,83 @@ export class AuthService {
     this.logger.log('Token exchange: validating Yandex access token');
     const userInfo = await this.getYandexUserInfo(yandexAccessToken);
 
-    const user = await this.prisma.user.upsert({
-      where: { yandexId: userInfo.id },
-      update: {
-        email: userInfo.default_email,
-        name: userInfo.display_name || userInfo.default_email,
-      },
-      create: {
-        yandexId: userInfo.id,
-        email: userInfo.default_email,
-        name: userInfo.display_name || userInfo.default_email,
-      },
+    const user = await this.findOrCreateUser(userInfo, 'token exchange');
+
+    const payload = { sub: user.id, email: user.email, yandexId: user.yandexId };
+    this.logger.log(
+      `[AUTH] Token exchange JWT: sub=${user.id}, email=${user.email}, yandexId=${user.yandexId}`,
+    );
+    return { accessToken: this.jwtService.sign(payload) };
+  }
+
+  /** Resolve the current user from a JWT payload (for /auth/me). */
+  async resolveUser(jwtPayload: { sub: string; email: string }) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: jwtPayload.sub },
+      include: { accounts: { select: { id: true, name: true } } },
+    });
+    if (!user) return null;
+    return {
+      id: user.id,
+      yandexId: user.yandexId,
+      email: user.email,
+      name: user.name,
+      createdAt: user.createdAt,
+      accountCount: user.accounts.length,
+      accountIds: user.accounts.map((a) => a.id),
+    };
+  }
+
+  /**
+   * Single entry point for user lookup/creation.
+   * Canonical identity key: yandexId (coerced to string).
+   */
+  private async findOrCreateUser(userInfo: YandexUserInfo, source: string) {
+    // Coerce to string — Yandex API may return id as number in JSON
+    const yandexId = String(userInfo.id);
+    const email = userInfo.default_email;
+    const name = userInfo.display_name || email;
+
+    this.logger.log(
+      `[AUTH] Yandex profile (${source}): id=${yandexId} (raw type: ${typeof userInfo.id}), email=${email}, login=${userInfo.login ?? 'N/A'}`,
+    );
+
+    // Check if user already exists
+    const existing = await this.prisma.user.findUnique({
+      where: { yandexId },
     });
 
-    const payload = { sub: user.id, email: user.email };
-    this.logger.log(`Token exchange: issued JWT for user ${user.email}`);
-    return { accessToken: this.jwtService.sign(payload) };
+    if (existing) {
+      this.logger.log(
+        `[AUTH] Existing user found: dbId=${existing.id}, yandexId=${existing.yandexId}, email=${existing.email}`,
+      );
+      // Update profile fields in case they changed
+      const user = await this.prisma.user.update({
+        where: { yandexId },
+        data: { email, name },
+      });
+      return user;
+    }
+
+    // No existing user — check for orphan duplicates by email before creating
+    const byEmail = await this.prisma.user.findFirst({ where: { email } });
+    if (byEmail) {
+      this.logger.warn(
+        `[AUTH] User with email=${email} exists but has different yandexId: ` +
+        `existing.yandexId=${byEmail.yandexId}, new yandexId=${yandexId}. ` +
+        `This may indicate duplicate accounts. Using yandexId as canonical key.`,
+      );
+    }
+
+    const user = await this.prisma.user.create({
+      data: { yandexId, email, name },
+    });
+
+    this.logger.log(
+      `[AUTH] New user created: dbId=${user.id}, yandexId=${yandexId}, email=${email}`,
+    );
+
+    return user;
   }
 
   private async getYandexUserInfo(
@@ -125,6 +182,8 @@ export class AuthService {
     });
     if (!response.ok)
       throw new UnauthorizedException('Failed to get Yandex user info');
-    return response.json();
+    const data = await response.json();
+    this.logger.debug(`[AUTH] Raw Yandex API response keys: ${Object.keys(data).join(', ')}`);
+    return data;
   }
 }

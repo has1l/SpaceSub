@@ -37,9 +37,15 @@ coverage/
 tmp/
 temp/
 
-# ngrok
-ngrok.yml
-*.ngrok*
+# Tunnel
+*.cloudflared*
+
+# Xcode user data
+*.xcuserstate
+xcuserdata/
+
+# Vercel
+.vercel/
 
 # Claude Code memory
 .claude/

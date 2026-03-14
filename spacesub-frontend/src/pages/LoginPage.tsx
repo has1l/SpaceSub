@@ -31,7 +31,7 @@ export function LoginPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
           <motion.div
             className="orbit-ring"
-            style={{ width: 400, height: 400, marginLeft: -200, marginTop: -200 }}
+            style={{ width: 280, height: 280, marginLeft: -140, marginTop: -140 }}
             animate={{ rotate: 360 }}
             transition={{ duration: 80, repeat: Infinity, ease: 'linear' }}
           >
@@ -43,7 +43,7 @@ export function LoginPage() {
           </motion.div>
           <motion.div
             className="orbit-ring"
-            style={{ width: 300, height: 300, marginLeft: -150, marginTop: -150, opacity: 0.5 }}
+            style={{ width: 220, height: 220, marginLeft: -110, marginTop: -110, opacity: 0.5 }}
             animate={{ rotate: -360 }}
             transition={{ duration: 120, repeat: Infinity, ease: 'linear' }}
           >
@@ -55,7 +55,7 @@ export function LoginPage() {
           </motion.div>
           <div
             className="orbit-ring"
-            style={{ width: 500, height: 500, marginLeft: -250, marginTop: -250, opacity: 0.25 }}
+            style={{ width: 340, height: 340, marginLeft: -170, marginTop: -170, opacity: 0.25 }}
           />
         </div>
 
@@ -66,7 +66,7 @@ export function LoginPage() {
 
         <motion.h1
           variants={fadeUp}
-          className="text-5xl font-black tracking-tight text-gradient-signal mb-2"
+          className="text-3xl md:text-5xl font-black tracking-tight text-gradient-signal mb-2"
           style={{ fontFamily: 'var(--font-display)' }}
         >
           SpaceSub
@@ -74,7 +74,7 @@ export function LoginPage() {
 
         <motion.p
           variants={fadeUp}
-          className="text-sm tracking-widest uppercase mb-12"
+          className="text-xs md:text-sm tracking-widest uppercase mb-8 md:mb-12"
           style={{ fontFamily: 'var(--font-mono)', color: 'rgba(200,214,229,0.35)' }}
         >
           Центр мониторинга подписок
@@ -83,7 +83,7 @@ export function LoginPage() {
         {/* Login card */}
         <motion.div
           variants={fadeUp}
-          className="station-panel station-panel-glow p-8 relative overflow-hidden"
+          className="station-panel station-panel-glow p-6 md:p-8 relative overflow-hidden"
         >
           <div className="scan-line" />
 

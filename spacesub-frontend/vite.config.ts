@@ -8,27 +8,25 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5174,
     strictPort: true,
+    // Allow any Host header (required for LocalTunnel domains)
     allowedHosts: true,
-    hmr: {
-      // Client auto-detects host from page URL (works for localhost and ngrok).
-      host: undefined,
-    },
+    cors: true,
+    hmr: process.env.TUNNEL
+      ? { clientPort: 443 }  // Through LocalTunnel (HTTPS), WebSocket must use port 443
+      : true,                // Local dev — Vite auto-detects
     proxy: {
       // /api/* → SpaceSub backend (port 3000)
-      // No rewrite — backend uses globalPrefix('api'), routes match as-is
       '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
       // /bank-api/* → Flex Bank API (port 3001), strip prefix
-      // MUST appear before /bank to avoid prefix collision
       '/bank-api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/bank-api/, ''),
       },
       // /bank/* → Flex Bank frontend (port 5173)
-      // No rewrite — Flex Bank Vite serves with base: '/bank/'
       '/bank': {
         target: 'http://localhost:5173',
         changeOrigin: true,

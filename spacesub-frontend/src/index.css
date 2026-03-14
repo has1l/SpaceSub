@@ -40,14 +40,19 @@ body {
   font-family: var(--font-body);
   background: var(--void);
   color: #c8d6e5;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  -webkit-tap-highlight-color: transparent;
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
 }
 
@@ -383,4 +388,99 @@ body {
 ::selection {
   background: rgba(0, 212, 170, 0.25);
   color: #fff;
+}
+
+/* ── Responsive navigation ── */
+
+/* Desktop top nav — hidden on mobile, flex on desktop */
+.top-nav {
+  display: none;
+}
+
+/* Mobile header — flex on mobile, hidden on desktop */
+.mobile-header {
+  display: flex;
+}
+
+/* Main content padding to clear bottom nav on mobile */
+.main-with-nav {
+  padding-bottom: 5rem;
+}
+
+/* Mobile bottom nav — base styles (mobile-first: visible) */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: rgba(6, 16, 30, 0.92);
+  border-top: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Desktop overrides (≥1024px) */
+@media (min-width: 1024px) {
+  .top-nav {
+    display: flex;
+  }
+  .mobile-header {
+    display: none;
+  }
+  .bottom-nav {
+    display: none;
+  }
+  .main-with-nav {
+    padding-bottom: 0;
+  }
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-family: var(--font-body);
+  color: rgba(200, 214, 229, 0.4);
+  transition: all 0.2s ease;
+  min-width: 56px;
+  min-height: 44px;
+  justify-content: center;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-nav-item.active {
+  color: var(--signal-primary);
+  background: rgba(0, 212, 170, 0.06);
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.92);
+}
+
+/* ── Touch-friendly overrides ── */
+@media (max-width: 767px) {
+  .btn-signal {
+    min-height: 44px;
+    font-size: 15px;
+  }
+  .btn-ghost {
+    min-height: 44px;
+  }
+  .input-station {
+    min-height: 44px;
+    font-size: 16px; /* prevent iOS zoom */
+  }
+  .station-panel {
+    border-radius: 14px;
+  }
 }

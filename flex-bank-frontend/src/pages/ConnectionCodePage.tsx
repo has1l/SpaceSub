@@ -57,7 +57,7 @@ export default function ConnectionCodePage() {
 
   return (
     <motion.div
-      className="max-w-md mx-auto py-10"
+      className="max-w-md mx-auto py-6 md:py-10"
       initial="initial"
       animate="animate"
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
@@ -102,7 +102,7 @@ export default function ConnectionCodePage() {
 
       {code && (
         <motion.div
-          className="cosmic-card p-8 text-center glow-stellar relative overflow-hidden"
+          className="cosmic-card p-5 md:p-8 text-center glow-stellar relative overflow-hidden"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
@@ -116,7 +116,7 @@ export default function ConnectionCodePage() {
           </p>
 
           <motion.div
-            className="text-4xl font-black tracking-[0.25em] gradient-text-cosmic mb-6"
+            className="text-2xl md:text-4xl font-black tracking-[0.25em] gradient-text-cosmic mb-6"
             style={{ fontFamily: 'var(--font-mono)' }}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -167,7 +167,7 @@ export default function ConnectionCodePage() {
         </motion.div>
       )}
 
-      <motion.div variants={fadeUp} className="cosmic-card p-5 mt-8">
+      <motion.div variants={fadeUp} className="cosmic-card p-4 md:p-5 mt-6 md:mt-8">
         <p className="text-text-stellar text-sm font-medium mb-3" style={{ fontFamily: 'var(--font-display)' }}>
           Как использовать:
         </p>

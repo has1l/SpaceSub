@@ -87,7 +87,7 @@ function DonutChart({ data }: { data: Record<string, number> }) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox="0 0 200 200" className="w-52 h-52">
+      <svg viewBox="0 0 200 200" className="w-40 h-40 md:w-52 md:h-52">
         {segments}
         <text x={cx} y={cy - 8} textAnchor="middle" className="fill-text-void" style={{ fontSize: '9px', fontFamily: 'JetBrains Mono' }}>
           РАСХОДЫ
@@ -97,7 +97,7 @@ function DonutChart({ data }: { data: Record<string, number> }) {
         </text>
       </svg>
 
-      <div className="grid grid-cols-2 gap-x-8 gap-y-2.5 mt-6">
+      <div className="grid grid-cols-2 gap-x-4 md:gap-x-8 gap-y-2.5 mt-6">
         {entries.map(([cat, value], i) => {
           const color = CATEGORY_COLORS[cat as TransactionCategory] || '#6B7280';
           const pct = Math.round((value / total) * 100);
@@ -176,7 +176,7 @@ export default function AnalyticsPage() {
       </motion.h1>
 
       {accounts.length === 0 ? (
-        <motion.div variants={fadeUp} className="cosmic-card p-16 text-center">
+        <motion.div variants={fadeUp} className="cosmic-card p-8 md:p-16 text-center">
           <EmptyScanIllustration />
           <p className="text-text-nebula text-lg mt-6" style={{ fontFamily: 'var(--font-display)' }}>
             Нет данных для анализа
@@ -188,7 +188,7 @@ export default function AnalyticsPage() {
       ) : (
         <>
           {/* Summary cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
             {[
               { label: 'ДОХОДЫ', value: fmt(totalIncome), color: 'text-aurora-green', icon: '↑' },
               { label: 'РАСХОДЫ', value: fmt(totalExpense), color: 'text-aurora-red', icon: '↓' },
@@ -225,7 +225,7 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Donut chart */}
-          <motion.div variants={fadeUp} className="cosmic-card p-8 mb-8 glow-stellar">
+          <motion.div variants={fadeUp} className="cosmic-card p-5 md:p-8 mb-5 md:mb-8 glow-stellar">
             <h2 className="text-lg font-semibold text-text-stellar mb-6" style={{ fontFamily: 'var(--font-display)' }}>
               Расходы по категориям
             </h2>

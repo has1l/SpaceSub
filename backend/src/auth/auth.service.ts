@@ -22,10 +22,10 @@ export class AuthService {
     private oauthStateStore: OAuthStateStore,
   ) {}
 
-  getYandexAuthUrl(): string {
+  getYandexAuthUrl(platform?: string): string {
     const clientId = this.configService.get('YANDEX_CLIENT_ID');
     const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');
-    const state = this.oauthStateStore.generate();
+    const state = this.oauthStateStore.generate(platform);
 
     const params = new URLSearchParams({
       response_type: 'code',
@@ -46,10 +46,8 @@ export class AuthService {
     return url;
   }
 
-  validateState(state: string | undefined): void {
-    if (!this.oauthStateStore.validate(state)) {
-      throw new UnauthorizedException('Invalid or expired OAuth state');
-    }
+  validateState(state: string | undefined): { valid: boolean; platform?: string } {
+    return this.oauthStateStore.validate(state);
   }
 
   async handleYandexCallback(code: string) {

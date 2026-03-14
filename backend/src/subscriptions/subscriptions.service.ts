@@ -2,15 +2,24 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, type Subscription } from '@prisma/client';
 import type { SubscriptionSuggestion } from '../transactions/transactions-analysis.service';
+
+function toDto(sub: Subscription) {
+  const { billingCycle, amount, ...rest } = sub;
+  return {
+    ...rest,
+    amount: Number(amount),
+    periodType: billingCycle,
+  };
+}
 
 @Injectable()
 export class SubscriptionsService {
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateSubscriptionDto) {
-    return this.prisma.subscription.create({
+    const sub = await this.prisma.subscription.create({
       data: {
         userId,
         name: dto.name,
@@ -24,10 +33,11 @@ export class SubscriptionsService {
         logoUrl: dto.logoUrl,
       },
     });
+    return toDto(sub);
   }
 
   async createFromSuggestion(userId: string, suggestion: SubscriptionSuggestion) {
-    return this.prisma.subscription.create({
+    const sub = await this.prisma.subscription.create({
       data: {
         userId,
         name: suggestion.name,
@@ -38,13 +48,15 @@ export class SubscriptionsService {
         isActive: true,
       },
     });
+    return toDto(sub);
   }
 
   async findAllByUser(userId: string) {
-    return this.prisma.subscription.findMany({
+    const subs = await this.prisma.subscription.findMany({
       where: { userId },
       orderBy: { nextBilling: 'asc' },
     });
+    return subs.map(toDto);
   }
 
   async findOne(id: string, userId: string) {
@@ -52,12 +64,12 @@ export class SubscriptionsService {
       where: { id, userId },
     });
     if (!sub) throw new NotFoundException('Subscription not found');
-    return sub;
+    return toDto(sub);
   }
 
   async update(id: string, userId: string, dto: UpdateSubscriptionDto) {
     await this.findOne(id, userId);
-    return this.prisma.subscription.update({
+    const sub = await this.prisma.subscription.update({
       where: { id },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
@@ -75,10 +87,12 @@ export class SubscriptionsService {
         ...(dto.logoUrl !== undefined && { logoUrl: dto.logoUrl }),
       },
     });
+    return toDto(sub);
   }
 
   async remove(id: string, userId: string) {
     await this.findOne(id, userId);
-    return this.prisma.subscription.delete({ where: { id } });
+    const sub = await this.prisma.subscription.delete({ where: { id } });
+    return toDto(sub);
   }
 }

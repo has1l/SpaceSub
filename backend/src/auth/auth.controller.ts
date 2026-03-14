@@ -23,13 +23,17 @@ export class AuthController {
 
   @Get('yandex')
   @ApiOperation({ summary: 'Redirect to Yandex OAuth (with state + PKCE)' })
-  yandexAuth(@Res() res: Response) {
-    const url = this.authService.getYandexAuthUrl();
+  @ApiQuery({ name: 'platform', required: false, description: 'Client platform: "ios" for mobile redirect' })
+  yandexAuth(
+    @Query('platform') platform: string | undefined,
+    @Res() res: Response,
+  ) {
+    const url = this.authService.getYandexAuthUrl(platform);
     return res.redirect(url);
   }
 
   @Get('yandex/callback')
-  @ApiOperation({ summary: 'Yandex OAuth callback — validates state, redirects to frontend' })
+  @ApiOperation({ summary: 'Yandex OAuth callback — validates state, redirects to frontend or mobile' })
   @ApiQuery({ name: 'code', required: true })
   @ApiQuery({ name: 'state', required: true })
   async yandexCallback(
@@ -37,13 +41,19 @@ export class AuthController {
     @Query('state') state: string,
     @Res() res: Response,
   ) {
-    try {
-      this.authService.validateState(state);
-    } catch {
+    const stateResult = this.authService.validateState(state);
+    if (!stateResult.valid) {
       throw new BadRequestException('Invalid OAuth state');
     }
 
     const result = await this.authService.handleYandexCallback(code);
+
+    if (stateResult.platform === 'ios') {
+      const redirectTo = `spacesub://auth/callback?token=${result.accessToken}`;
+      this.logger.log(`OAuth callback redirect → iOS app (spacesub://)`);
+      return res.redirect(redirectTo);
+    }
+
     const frontendUrl =
       this.configService.get('FRONTEND_URL') || 'http://localhost:5174';
     const redirectTo = `${frontendUrl}/auth/callback?token=${result.accessToken}`;

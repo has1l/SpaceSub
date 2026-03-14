@@ -33,15 +33,26 @@
 
 html {
   scroll-behavior: smooth;
+  /* Keep overflow-x clipping on html, NOT body — on iOS Safari, overflow on body
+     changes the scroll root and breaks position:fixed compositing */
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
+  /* svh = small viewport height (fixed, doesn't change when iOS address bar hides).
+     dvh causes a layout reflow when the address bar slides away, which triggers
+     iOS Safari to rebuild compositing layers — that rebuilding is what causes
+     the dark overlay bug on real devices. */
+  min-height: 100svh;
   background-color: var(--color-void);
   color: var(--color-text-stellar);
   font-family: var(--font-body);
-  overflow-x: hidden;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ─── Starfield Background ─── */
@@ -49,8 +60,13 @@ body {
   position: fixed;
   inset: 0;
   pointer-events: none;
+  /* z-index: 0 ensures it stays below all content (main has z-10, bottom-nav z-50) */
   z-index: 0;
-  overflow: hidden;
+  /* Do NOT use overflow: hidden here — on iOS Safari, position:fixed + inset:0 +
+     overflow:hidden causes this element to be promoted as an opaque GPU compositing
+     layer. After the address bar hides (compositing rebuild), that layer ends up
+     above page content, creating the dark overlay. The drift animation only moves
+     40px, which is acceptable without the clip. */
 }
 
 .starfield::before,
@@ -389,3 +405,108 @@ body {
 .badge-restaurants { background: rgba(255, 92, 122, 0.12); color: #FF5C7A; }
 .badge-health { background: rgba(0, 229, 160, 0.12); color: #00E5A0; }
 .badge-other { background: rgba(139, 143, 199, 0.12); color: #8B8FC7; }
+
+/* ─── Responsive Navigation ─── */
+
+/* Desktop top nav — hidden on mobile (mobile-first) */
+.top-nav {
+  display: none;
+}
+
+/* Mobile header — visible on mobile */
+.mobile-header {
+  display: flex;
+}
+
+/* Main content — bottom padding for mobile bottom nav */
+.main-content {
+  padding-bottom: 6rem;
+}
+
+/* Mobile bottom nav — base styles (mobile-first: visible) */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: rgba(5, 5, 16, 0.92);
+  border-top: 1px solid rgba(79, 124, 255, 0.06);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+}
+
+/* Desktop overrides (≥1024px) */
+@media (min-width: 1024px) {
+  .top-nav {
+    display: block;
+  }
+  .mobile-header {
+    display: none;
+  }
+  .bottom-nav {
+    display: none;
+  }
+  .main-content {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-family: var(--font-body);
+  color: var(--color-text-void);
+  transition: all 0.2s ease;
+  min-width: 56px;
+  min-height: 44px;
+  justify-content: center;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-nav-item.active {
+  color: var(--color-accent-blue);
+  background: rgba(79, 124, 255, 0.08);
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.92);
+}
+
+/* ─── Touch-friendly overrides ─── */
+@media (max-width: 767px) {
+  .btn-stellar {
+    min-height: 44px;
+    font-size: 15px;
+  }
+  .input-cosmic {
+    min-height: 44px;
+    font-size: 16px; /* prevent iOS zoom */
+  }
+  .cosmic-card {
+    border-radius: 14px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .starfield,
+  .nebula-orb {
+    display: none;
+  }
+  .bottom-nav {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}

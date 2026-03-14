@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 
 interface AuthContextType {
   token: string | null;
@@ -15,29 +15,40 @@ export const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setTokenState] = useState<string | null>(
-    localStorage.getItem('flexbank_token'),
-  );
+  const [token, setTokenState] = useState<string | null>(null);
 
-  const setToken = (newToken: string | null) => {
+  const setToken = useCallback((newToken: string | null) => {
     setTokenState(newToken);
     if (newToken) {
       localStorage.setItem('flexbank_token', newToken);
     } else {
       localStorage.removeItem('flexbank_token');
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setToken(null);
     window.location.href = '/bank/';
-  };
+  }, [setToken]);
 
   useEffect(() => {
+    // Load token after mount (more reliable on mobile browsers after OAuth redirects)
     const stored = localStorage.getItem('flexbank_token');
-    if (stored !== token) {
+    if (stored) {
       setTokenState(stored);
     }
+
+    // Keep context synced if localStorage changes
+    const handleStorage = () => {
+      const updated = localStorage.getItem('flexbank_token');
+      setTokenState(updated);
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   return (

@@ -110,12 +110,12 @@ function SummaryBlock({ summary }: { summary: SubscriptionSummary }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
       {cards.map((card, i) => (
         <motion.div
           key={card.label}
           variants={fadeUp}
-          className="station-panel p-5 group relative overflow-hidden"
+          className="station-panel p-4 md:p-5 group relative overflow-hidden"
         >
           {/* Top accent line */}
           <div
@@ -133,7 +133,7 @@ function SummaryBlock({ summary }: { summary: SubscriptionSummary }) {
             </span>
           </div>
           <motion.p
-            className="text-xl font-bold"
+            className="text-lg md:text-xl font-bold"
             style={{ fontFamily: 'var(--font-display)', color: card.color }}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -392,7 +392,7 @@ export function SubscriptionsPage() {
 
   return (
     <motion.div
-      className="max-w-5xl mx-auto px-4 py-10"
+      className="max-w-5xl mx-auto px-4 py-4 md:py-10"
       variants={stagger}
       initial="initial"
       animate="animate"
@@ -400,7 +400,7 @@ export function SubscriptionsPage() {
       {/* Header */}
       <motion.div variants={fadeUp} className="mb-8">
         <h1
-          className="text-3xl font-extrabold text-gradient-signal mb-1"
+          className="text-2xl md:text-3xl font-extrabold text-gradient-signal mb-1"
           style={{ fontFamily: 'var(--font-display)' }}
         >
           Обнаруженные подписки
@@ -435,7 +435,7 @@ export function SubscriptionsPage() {
       {sortedActive.length === 0 ? (
         <motion.div
           variants={fadeUp}
-          className="station-panel station-panel-glow p-16 text-center relative overflow-hidden"
+          className="station-panel station-panel-glow p-8 md:p-16 text-center relative overflow-hidden"
         >
           <OrbitDecoration className="opacity-30" />
 

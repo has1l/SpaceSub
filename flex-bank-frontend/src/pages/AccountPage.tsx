@@ -136,12 +136,12 @@ export default function AccountPage() {
       </motion.div>
 
       {/* Account card */}
-      <motion.div variants={fadeUp} className="cosmic-card p-6 mb-8 glow-stellar relative overflow-hidden">
+      <motion.div variants={fadeUp} className="cosmic-card p-5 md:p-6 mb-5 md:mb-8 glow-stellar relative overflow-hidden">
         <div className="orbital-ring" style={{ width: 150, height: 150, top: -35, right: -35, opacity: 0.3 }} />
         <div className="flex items-center justify-between relative z-10">
           <div>
             <p className="text-text-nebula text-sm mb-1" style={{ fontFamily: 'var(--font-body)' }}>{account.name}</p>
-            <p className="text-3xl font-bold text-text-stellar" style={{ fontFamily: 'var(--font-display)' }}>
+            <p className="text-2xl md:text-3xl font-bold text-text-stellar" style={{ fontFamily: 'var(--font-display)' }}>
               {new Intl.NumberFormat('ru-RU', {
                 style: 'currency',
                 currency: account.currency,
@@ -165,7 +165,7 @@ export default function AccountPage() {
         <h2 className="text-xl font-semibold text-text-stellar" style={{ fontFamily: 'var(--font-display)' }}>
           Транзакции
         </h2>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <input
             type="date"
             value={from}
@@ -192,7 +192,7 @@ export default function AccountPage() {
       {showForm && (
         <motion.form
           onSubmit={handleCreate}
-          className="cosmic-card p-6 mb-6"
+          className="cosmic-card p-4 md:p-6 mb-4 md:mb-6"
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
@@ -288,7 +288,7 @@ export default function AccountPage() {
             return (
               <motion.div
                 key={tx.id}
-                className="px-5 py-4 flex items-center gap-4 transition-all duration-300 group"
+                className="px-4 py-3.5 md:px-5 md:py-4 flex items-center gap-4 transition-all duration-300 group"
                 style={{
                   borderBottom: i < transactions.length - 1 ? '1px solid rgba(79, 124, 255, 0.04)' : 'none',
                 }}

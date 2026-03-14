@@ -92,16 +92,16 @@ export function Dashboard() {
 
   return (
     <motion.div
-      className="max-w-5xl mx-auto px-4 py-10"
+      className="max-w-5xl mx-auto px-4 py-4 md:py-10"
       variants={stagger}
       initial="initial"
       animate="animate"
     >
       {/* Header */}
-      <motion.div variants={fadeUp} className="flex items-start justify-between mb-10">
+      <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-6 md:mb-10">
         <div>
           <h1
-            className="text-3xl font-extrabold text-gradient-signal mb-1"
+            className="text-2xl md:text-3xl font-extrabold text-gradient-signal mb-1"
             style={{ fontFamily: 'var(--font-display)' }}
           >
             Центр управления
@@ -182,7 +182,7 @@ export function Dashboard() {
       {connections.length === 0 && (
         <motion.div
           variants={fadeUp}
-          className="station-panel station-panel-glow p-16 text-center relative overflow-hidden"
+          className="station-panel station-panel-glow p-8 md:p-16 text-center relative overflow-hidden"
         >
           <OrbitDecoration className="opacity-40" />
 
@@ -233,7 +233,7 @@ export function Dashboard() {
             <motion.div
               key={conn.id}
               variants={fadeUp}
-              className="station-panel station-panel-glow p-6 relative overflow-hidden group"
+              className="station-panel station-panel-glow p-4 md:p-6 relative overflow-hidden group"
             >
               {/* Scan line on hover */}
               <div

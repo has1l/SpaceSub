@@ -1,8 +1,10 @@
 import axios from "axios";
 
-// All API calls go through the Vite proxy: /api/* → localhost:3000
-// This works identically on localhost and through ngrok.
-const API_BASE = "/api";
+// In development, Vite proxies /api/* → localhost:3000 (see vite.config.ts).
+// In production (Vercel), either:
+//   1. vercel.json rewrites /api/* to the deployed backend (same-origin, no CORS)
+//   2. VITE_API_URL points directly to the backend (cross-origin, requires CORS)
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 const TOKEN_KEY = "spacesub_token";
 

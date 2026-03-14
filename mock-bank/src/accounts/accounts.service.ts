@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 
 @Injectable()
 export class AccountsService {
+  private readonly logger = new Logger('AccountsService');
+
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateAccountDto) {
@@ -18,6 +20,7 @@ export class AccountsService {
   }
 
   async findAllByUser(userId: string) {
+    this.logger.log(`[QUERY] findAllByUser: WHERE user_id='${userId}'`);
     const accounts = await this.prisma.account.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -27,6 +30,7 @@ export class AccountsService {
         },
       },
     });
+    this.logger.log(`[QUERY] Raw result: ${accounts.length} rows — IDs: [${accounts.map(a => a.id).join(', ')}]`);
 
     return accounts.map((acc) => {
       const txSum = acc.transactions.reduce((sum, t) => sum + t.amount, 0);

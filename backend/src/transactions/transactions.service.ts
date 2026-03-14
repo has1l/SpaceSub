@@ -1,7 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImportTransactionsDto } from './dto/import-transactions.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, type Transaction } from '@prisma/client';
+
+function toDto(tx: Transaction) {
+  return {
+    ...tx,
+    amount: Number(tx.amount),
+  };
+}
 
 @Injectable()
 export class TransactionsService {
@@ -22,10 +29,11 @@ export class TransactionsService {
   }
 
   async findAllByUser(userId: string) {
-    return this.prisma.transaction.findMany({
+    const txs = await this.prisma.transaction.findMany({
       where: { userId },
       orderBy: { transactionDate: 'desc' },
     });
+    return txs.map(toDto);
   }
 
   async linkToSubscription(transactionIds: string[], subscriptionId: string) {
