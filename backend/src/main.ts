@@ -52,9 +52,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  console.log(`SpaceSub API running on http://localhost:${port}`);
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`SpaceSub API listening on 0.0.0.0:${port}`);
   console.log(`Swagger docs: http://localhost:${port}/api/docs`);
   console.log(`  FRONTEND_URL        = ${process.env.FRONTEND_URL ?? '(not set)'}`);
   console.log(`  YANDEX_REDIRECT_URI = ${process.env.YANDEX_REDIRECT_URI ?? '(not set)'}`);
