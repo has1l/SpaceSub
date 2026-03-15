@@ -1,6 +1,7 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
 import { UsersService } from '../users/users.service';
 import { OAuthStateStore } from './oauth-state.store';
 
@@ -78,48 +79,43 @@ export class AuthService {
     const clientId = this.configService.get('YANDEX_CLIENT_ID');
     const clientSecret = this.configService.get('YANDEX_CLIENT_SECRET');
 
-    const body = new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      client_id: clientId,
-      client_secret: clientSecret,
-    });
-
     this.logger.log(`Exchanging Yandex auth code: client_id=${clientId}`);
 
-    let response: Response;
     try {
-      response = await fetch('https://oauth.yandex.ru/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+      const response = await axios.post(
+        'https://oauth.yandex.ru/token',
+        new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+        }).toString(),
+        {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          timeout: 15000,
         },
-        body,
-        signal: AbortSignal.timeout(15_000),
-      });
-    } catch (error) {
-      this.logger.error(
-        `Yandex token exchange failed: ${error instanceof Error ? error.message : error}`,
       );
-      throw new UnauthorizedException('Yandex token exchange request failed');
-    }
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => '(unreadable)');
-      this.logger.error(
-        `Yandex token exchange HTTP ${response.status}, body: ${text}`,
-      );
-      try {
-        const errorJson = JSON.parse(text);
+      this.logger.log('Yandex token exchange successful');
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
         this.logger.error(
-          `Yandex error: error=${errorJson.error}, error_description=${errorJson.error_description}`,
+          `Yandex token exchange HTTP ${error.response.status}, body: ${JSON.stringify(error.response.data)}`,
         );
-      } catch {}
+        const data = error.response.data;
+        if (data?.error) {
+          this.logger.error(
+            `Yandex error: error=${data.error}, error_description=${data.error_description}`,
+          );
+        }
+      } else {
+        this.logger.error(
+          `Yandex token exchange failed: ${error instanceof Error ? error.message : error}`,
+        );
+      }
       throw new UnauthorizedException('Failed to exchange Yandex auth code');
     }
-
-    this.logger.log('Yandex token exchange successful');
-    return response.json();
   }
 
   private async getYandexUserInfo(accessToken: string): Promise<YandexUserInfo> {
