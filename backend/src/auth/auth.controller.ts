@@ -52,13 +52,8 @@ export class AuthController {
       result = await this.authService.handleYandexCallback(code, callbackTime);
     } catch (error) {
       if (error instanceof OAuthCodeExpiredException) {
-        // Code expired — restart the OAuth flow transparently.
-        // Peek at state to preserve platform for the redirect.
-        const stateResult = this.authService.validateState(state);
-        const platform = stateResult.platform;
-        const retryUrl = `/api/auth/yandex${platform ? `?platform=${platform}` : ''}`;
-        this.logger.warn(`OAuth code expired, restarting → ${retryUrl}`);
-        return res.redirect(retryUrl);
+        this.logger.warn('OAuth code expired — restarting OAuth flow');
+        return res.redirect('/api/auth/yandex');
       }
       throw error;
     }
