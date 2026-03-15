@@ -75,19 +75,37 @@ export class AuthService {
     const clientId = this.configService.get('YANDEX_CLIENT_ID');
     const clientSecret = this.configService.get('YANDEX_CLIENT_SECRET');
 
-    const response = await fetch('https://oauth.yandex.ru/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-      }),
-    });
+    this.logger.log(`Exchanging Yandex auth code: client_id=${clientId}`);
 
-    if (!response.ok)
+    let response: Response;
+    try {
+      response = await fetch('https://oauth.yandex.ru/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+        }),
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch (error) {
+      this.logger.error(
+        `Yandex token exchange network error: ${error instanceof Error ? error.message : error}`,
+      );
+      throw new UnauthorizedException('Yandex token exchange request failed');
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '(unreadable)');
+      this.logger.error(
+        `Yandex token exchange HTTP ${response.status}: ${text}`,
+      );
       throw new UnauthorizedException('Failed to exchange Yandex auth code');
+    }
+
+    this.logger.log('Yandex token exchange successful');
     return response.json();
   }
 
@@ -177,11 +195,25 @@ export class AuthService {
   private async getYandexUserInfo(
     accessToken: string,
   ): Promise<YandexUserInfo> {
-    const response = await fetch('https://login.yandex.ru/info?format=json', {
-      headers: { Authorization: `OAuth ${accessToken}` },
-    });
-    if (!response.ok)
+    let response: Response;
+    try {
+      response = await fetch('https://login.yandex.ru/info?format=json', {
+        headers: { Authorization: `OAuth ${accessToken}` },
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch (error) {
+      this.logger.error(
+        `Yandex user info network error: ${error instanceof Error ? error.message : error}`,
+      );
+      throw new UnauthorizedException('Yandex user info request failed');
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '(unreadable)');
+      this.logger.error(`Yandex user info HTTP ${response.status}: ${text}`);
       throw new UnauthorizedException('Failed to get Yandex user info');
+    }
+
     const data = await response.json();
     this.logger.debug(`[AUTH] Raw Yandex API response keys: ${Object.keys(data).join(', ')}`);
     return data;
