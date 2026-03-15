@@ -78,8 +78,8 @@ export class AuthService {
     return this.oauthStateStore.validate(state);
   }
 
-  async handleYandexCallback(code: string) {
-    const tokenData = await this.exchangeCodeForToken(code);
+  async handleYandexCallback(code: string, callbackTime?: number) {
+    const tokenData = await this.exchangeCodeForToken(code, callbackTime);
     const userInfo = await this.getYandexUserInfo(tokenData.access_token);
     const user = await this.usersService.upsertByYandexId({
       yandexId: userInfo.id,
@@ -102,7 +102,13 @@ export class AuthService {
     };
   }
 
-  private async exchangeCodeForToken(code: string) {
+  private async exchangeCodeForToken(code: string, callbackTime?: number) {
+    const now = Date.now();
+    console.log('TOKEN EXCHANGE START:', now);
+    if (callbackTime) {
+      console.log('CALLBACK → TOKEN EXCHANGE DELAY:', now - callbackTime, 'ms');
+    }
+
     const clientId = this.configService.get('YANDEX_CLIENT_ID');
     const clientSecret = this.configService.get('YANDEX_CLIENT_SECRET');
     const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');

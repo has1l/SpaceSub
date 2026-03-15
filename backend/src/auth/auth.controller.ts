@@ -43,10 +43,10 @@ export class AuthController {
     @Res() res: Response,
   ) {
     const callbackTime = Date.now();
-    console.log('OAUTH CALLBACK TIME:', callbackTime);
+    console.log('CALLBACK HANDLER START:', callbackTime);
 
     // Exchange the authorization code IMMEDIATELY — codes expire in seconds.
-    const result = await this.authService.handleYandexCallback(code);
+    const result = await this.authService.handleYandexCallback(code, callbackTime);
 
     const stateResult = this.authService.validateState(state);
     if (!stateResult.valid) {

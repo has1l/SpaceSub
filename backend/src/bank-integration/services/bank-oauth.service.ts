@@ -96,11 +96,11 @@ export class BankOAuthService {
 
   async handleFlexCallback(code: string, state: string): Promise<string> {
     const callbackTime = Date.now();
-    console.log('BANK OAUTH CALLBACK TIME:', callbackTime);
+    console.log('BANK CALLBACK HANDLER START:', callbackTime);
 
     // 1. Exchange code IMMEDIATELY — authorization codes expire in seconds.
     //    This MUST happen before any other work to avoid invalid_grant.
-    const yandexToken = await this.exchangeCodeForYandexToken(code);
+    const yandexToken = await this.exchangeCodeForYandexToken(code, callbackTime);
     this.logger.log('Flex OAuth: Yandex token obtained');
 
     // 2. Validate state and extract userId (cheap JWT verify, no I/O)
@@ -149,7 +149,13 @@ export class BankOAuthService {
     return userId;
   }
 
-  private async exchangeCodeForYandexToken(code: string): Promise<string> {
+  private async exchangeCodeForYandexToken(code: string, callbackTime?: number): Promise<string> {
+    const now = Date.now();
+    console.log('BANK TOKEN EXCHANGE START:', now);
+    if (callbackTime) {
+      console.log('BANK CALLBACK → TOKEN EXCHANGE DELAY:', now - callbackTime, 'ms');
+    }
+
     const clientId = this.configService.get('FLEX_BANK_OAUTH_CLIENT_ID');
     const clientSecret = this.configService.get(
       'FLEX_BANK_OAUTH_CLIENT_SECRET',
