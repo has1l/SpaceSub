@@ -79,11 +79,11 @@ export class AuthService {
     const clientSecret = this.configService.get('YANDEX_CLIENT_SECRET');
     const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');
 
+    const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
       code,
-      client_id: clientId,
-      client_secret: clientSecret,
       redirect_uri: redirectUri,
     });
 
@@ -93,9 +93,12 @@ export class AuthService {
 
     let response: Response;
     try {
-      response = await fetch('https://oauth.yandex.ru/token', {
+      response = await fetch('https://login.yandex.ru/oauth/token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Basic ${basicAuth}`,
+        },
         body,
         signal: AbortSignal.timeout(15_000),
       });
