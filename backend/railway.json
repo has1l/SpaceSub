@@ -1,7 +1,8 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS"
+    "builder": "NIXPACKS",
+    "buildCommand": "NODE_OPTIONS='--max-old-space-size=384' npm install --prefer-offline && npm run build && npm prune --omit=dev"
   },
   "deploy": {
     "startCommand": "npx prisma migrate deploy && node dist/main.js",
