@@ -13,16 +13,19 @@ import { BankOAuthStateStore } from '../bank-oauth-state.store';
 import { TokenEncryptionService } from './token-encryption.service';
 
 // ── Yandex OAuth client ──────────────────────────────────────
-// Shared retry-enabled client for calls to oauth.yandex.ru / login.yandex.ru.
 // 15s timeout to survive Railway cold starts (DNS + TLS + response).
+// ONLY network errors are retried — never HTTP 4xx (invalid_grant, etc.)
+// because authorization codes are single-use and expire in seconds.
 const yandexClient = axios.create({ timeout: 15_000 });
 axiosRetry(yandexClient, {
-  retries: 3,
-  retryDelay: (retryCount) => 2_000 * Math.pow(2, retryCount - 1),
-  retryCondition: (error) =>
-    axiosRetry.isNetworkError(error) ||
-    axiosRetry.isRetryableError(error) ||
-    error.code === 'ECONNABORTED',
+  retries: 2,
+  retryDelay: (retryCount) => retryCount * 1_000,
+  retryCondition: (error) => {
+    if (error.response) return false;
+    return (
+      axiosRetry.isNetworkError(error) || error.code === 'ECONNABORTED'
+    );
+  },
   onRetry: (retryCount, error) => {
     console.log(
       `[bank-oauth:yandex] retry #${retryCount}: ${error.code ?? 'UNKNOWN'} — ${error.message}`,
@@ -91,17 +94,18 @@ export class BankOAuthService {
   }
 
   async handleFlexCallback(code: string, state: string): Promise<string> {
-    // 1. Validate state and extract userId
+    // 1. Exchange code IMMEDIATELY — authorization codes expire in seconds.
+    //    This MUST happen before any other work to avoid invalid_grant.
+    const yandexToken = await this.exchangeCodeForYandexToken(code);
+    this.logger.log('Flex OAuth: Yandex token obtained');
+
+    // 2. Validate state and extract userId (cheap JWT verify, no I/O)
     const result = this.bankOAuthStateStore.validateWithMetadata(state);
     if (!result.valid || !result.metadata?.userId) {
       throw new UnauthorizedException('Invalid or expired bank OAuth state');
     }
     const userId = result.metadata.userId;
     this.logger.log(`Flex OAuth callback: state valid, userId=${userId}`);
-
-    // 2. Exchange code for Yandex access token (using Flex Bank's credentials)
-    const yandexToken = await this.exchangeCodeForYandexToken(code);
-    this.logger.log('Flex OAuth: Yandex token obtained');
 
     // 3. Call mock-bank token-exchange endpoint
     const flexBankJwt = await this.exchangeForFlexBankJwt(yandexToken);

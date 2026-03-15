@@ -13,19 +13,20 @@ import { OAuthStateStore } from './oauth-state.store';
 
 // Dedicated axios instance for Yandex OAuth with retry logic.
 // Timeout is 15s to survive Railway cold starts (DNS + TLS + response).
+// ONLY network errors are retried — never HTTP 4xx (invalid_grant, etc.)
+// because authorization codes are single-use and expire in seconds.
 const yandexClient = axios.create({ timeout: 15_000 });
 axiosRetry(yandexClient, {
-  retries: 3,
-  retryDelay: (retryCount) => {
-    // Fixed 2s base delay — exponential backoff is too fast for cold starts
-    // where the issue is container warmup, not server overload.
-    // Retry 1: 2s, Retry 2: 4s, Retry 3: 8s
-    return 2_000 * Math.pow(2, retryCount - 1);
+  retries: 2,
+  retryDelay: (retryCount) => retryCount * 1_000, // 1s, 2s
+  retryCondition: (error) => {
+    // Never retry if Yandex actually responded — the code is burned.
+    if (error.response) return false;
+    // Only retry true network failures (DNS, TCP reset, timeout).
+    return (
+      axiosRetry.isNetworkError(error) || error.code === 'ECONNABORTED'
+    );
   },
-  retryCondition: (error) =>
-    axiosRetry.isNetworkError(error) ||
-    axiosRetry.isRetryableError(error) ||
-    error.code === 'ECONNABORTED', // timeout
   onRetry: (retryCount, error) => {
     console.log(
       `[yandexClient] retry #${retryCount}: ${error.code ?? 'UNKNOWN'} — ${error.message}`,

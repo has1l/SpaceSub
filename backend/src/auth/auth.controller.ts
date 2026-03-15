@@ -41,17 +41,15 @@ export class AuthController {
     @Query('state') state: string,
     @Res() res: Response,
   ) {
-    console.log('=== YANDEX CALLBACK ===');
-    console.log('code:', code);
-    console.log('state length:', state?.length);
+    // Exchange the authorization code IMMEDIATELY — codes expire in seconds.
+    // State validation is cheap (JWT verify, no I/O) but runs second to
+    // guarantee the code hits Yandex before it can expire.
+    const result = await this.authService.handleYandexCallback(code);
 
     const stateResult = this.authService.validateState(state);
-    console.log('state valid:', stateResult.valid, 'platform:', stateResult.platform);
     if (!stateResult.valid) {
       throw new BadRequestException('Invalid OAuth state');
     }
-
-    const result = await this.authService.handleYandexCallback(code);
 
     if (stateResult.platform === 'ios') {
       const redirectTo = `spacesub://auth/callback?token=${result.accessToken}`;
