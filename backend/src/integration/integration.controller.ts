@@ -1,33 +1,39 @@
-import { Controller, Get, Post, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  UseGuards,
+  Request,
+  Logger,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { BankIntegrationService } from '../bank-integration/bank-integration.service';
 
 @ApiTags('Integration')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('integration')
 export class IntegrationController {
+  private readonly logger = new Logger(IntegrationController.name);
+
+  constructor(private bankIntegrationService: BankIntegrationService) {}
+
   @Get('banks')
-  @ApiOperation({ summary: 'Get connected banks (stub)' })
-  getBanks(@Request() req: { user: { id: string } }) {
-    return { message: 'Bank integration not yet implemented', userId: req.user.id };
+  @ApiOperation({ summary: 'Get connected banks' })
+  async getBanks(@Request() req: { user: { id: string } }) {
+    return this.bankIntegrationService.listConnections(req.user.id);
   }
 
-  @Post('banks/connect')
-  @ApiOperation({ summary: 'Connect a bank (stub)' })
-  connectBank(@Request() req: { user: { id: string } }) {
-    return { message: 'Bank connection not yet implemented', userId: req.user.id };
-  }
-
-  @Get('email')
-  @ApiOperation({ summary: 'Get email integration status (stub)' })
-  getEmailStatus(@Request() req: { user: { id: string } }) {
-    return { message: 'Email integration not yet implemented', userId: req.user.id };
-  }
-
-  @Post('email/connect')
-  @ApiOperation({ summary: 'Connect email (stub)' })
-  connectEmail(@Request() req: { user: { id: string } }) {
-    return { message: 'Email connection not yet implemented', userId: req.user.id };
+  @Post('banks/connect-and-sync')
+  @ApiOperation({
+    summary: 'Connect bank and sync transactions',
+    description:
+      'Requires an existing bank connection (via OAuth or connection code). ' +
+      'Triggers a full sync: fetches accounts, imports transactions, runs subscription detection.',
+  })
+  async connectAndSync(@Request() req: { user: { id: string } }) {
+    this.logger.log(`Connect-and-sync for user ${req.user.id}`);
+    return this.bankIntegrationService.syncFlex(req.user.id);
   }
 }
