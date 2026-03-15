@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["mockbank"]
 }
 
 model User {
@@ -17,12 +18,15 @@ model User {
   accounts Account[]
 
   @@map("users")
+  @@schema("mockbank")
 }
 
 enum TransactionType {
   EXPENSE
   INCOME
   TRANSFER
+
+  @@schema("mockbank")
 }
 
 enum TransactionCategory {
@@ -35,6 +39,8 @@ enum TransactionCategory {
   RESTAURANTS
   HEALTH
   OTHER
+
+  @@schema("mockbank")
 }
 
 model Account {
@@ -49,6 +55,7 @@ model Account {
   transactions Transaction[]
 
   @@map("accounts")
+  @@schema("mockbank")
 }
 
 model Transaction {
@@ -67,6 +74,7 @@ model Transaction {
 
   @@index([accountId, date])
   @@map("transactions")
+  @@schema("mockbank")
 }
 
 model ConnectionCode {
@@ -80,4 +88,5 @@ model ConnectionCode {
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@map("connection_codes")
+  @@schema("mockbank")
 }

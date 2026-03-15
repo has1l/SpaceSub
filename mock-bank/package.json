@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "prisma generate && nest build",
-    "start": "prisma migrate deploy && node dist/main",
+    "start": "node scripts/prestart.js && node dist/main",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
