@@ -1,20 +1,72 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  UnauthorizedException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
+import axiosRetry from 'axios-retry';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BankProvider } from '@prisma/client';
 import { BankOAuthStateStore } from '../bank-oauth-state.store';
 import { TokenEncryptionService } from './token-encryption.service';
 
+// ── Yandex OAuth client ──────────────────────────────────────
+// Shared retry-enabled client for calls to oauth.yandex.ru / login.yandex.ru.
+// 15s timeout to survive Railway cold starts (DNS + TLS + response).
+const yandexClient = axios.create({ timeout: 15_000 });
+axiosRetry(yandexClient, {
+  retries: 3,
+  retryDelay: (retryCount) => 2_000 * Math.pow(2, retryCount - 1),
+  retryCondition: (error) =>
+    axiosRetry.isNetworkError(error) ||
+    axiosRetry.isRetryableError(error) ||
+    error.code === 'ECONNABORTED',
+  onRetry: (retryCount, error) => {
+    console.log(
+      `[bank-oauth:yandex] retry #${retryCount}: ${error.code ?? 'UNKNOWN'} — ${error.message}`,
+    );
+  },
+});
+
+// ── Flex Bank client ─────────────────────────────────────────
+// Mock-bank on Railway may also cold-start, so this needs retries too.
+// Initialized lazily per-instance because baseURL comes from config.
+function createFlexBankClient(baseURL: string) {
+  const client = axios.create({ baseURL, timeout: 15_000 });
+  axiosRetry(client, {
+    retries: 3,
+    retryDelay: (retryCount) => 2_000 * Math.pow(2, retryCount - 1),
+    retryCondition: (error) =>
+      axiosRetry.isNetworkError(error) ||
+      axiosRetry.isRetryableError(error) ||
+      error.code === 'ECONNABORTED',
+    onRetry: (retryCount, error) => {
+      console.log(
+        `[bank-oauth:flex] retry #${retryCount}: ${error.code ?? 'UNKNOWN'} — ${error.message}`,
+      );
+    },
+  });
+  return client;
+}
+
 @Injectable()
 export class BankOAuthService {
   private readonly logger = new Logger(BankOAuthService.name);
+  private flexBankClient: ReturnType<typeof createFlexBankClient>;
 
   constructor(
     private configService: ConfigService,
     private bankOAuthStateStore: BankOAuthStateStore,
     private tokenEncryption: TokenEncryptionService,
     private prisma: PrismaService,
-  ) {}
+  ) {
+    const baseUrl =
+      this.configService.get('FLEX_BANK_BASE_URL') || 'http://localhost:3001';
+    this.flexBankClient = createFlexBankClient(baseUrl);
+    this.logger.log(`Flex Bank client → ${baseUrl}`);
+  }
 
   getFlexOAuthUrl(userId: string): string {
     const clientId = this.configService.get('FLEX_BANK_OAUTH_CLIENT_ID');
@@ -88,49 +140,80 @@ export class BankOAuthService {
     const clientSecret = this.configService.get(
       'FLEX_BANK_OAUTH_CLIENT_SECRET',
     );
+    const redirectUri = this.configService.get('FLEX_BANK_OAUTH_REDIRECT_URI');
 
-    const response = await fetch('https://oauth.yandex.ru/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-      }),
+    this.logger.log(
+      `[BANK-OAUTH:token-exchange] client_id=${clientId}, redirect_uri=${redirectUri}`,
+    );
+
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      this.logger.error(`Yandex token exchange failed: ${text}`);
-      throw new UnauthorizedException('Failed to exchange Yandex auth code');
+    try {
+      const response = await yandexClient.post(
+        'https://oauth.yandex.ru/token',
+        params,
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+      );
+      this.logger.log('[BANK-OAUTH:token-exchange] success');
+      return response.data.access_token;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        this.logger.error(
+          `[BANK-OAUTH:token-exchange] HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`,
+        );
+        if (error.response.status === 400 || error.response.status === 401) {
+          throw new UnauthorizedException(
+            `Yandex rejected token exchange: ${error.response.data?.error ?? error.response.status}`,
+          );
+        }
+      } else {
+        this.logger.error(
+          `[BANK-OAUTH:token-exchange] network error: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+      throw new InternalServerErrorException(
+        'Yandex token exchange network failure',
+      );
     }
-
-    const data = await response.json();
-    return data.access_token;
   }
 
   private async exchangeForFlexBankJwt(
     yandexAccessToken: string,
   ): Promise<string> {
-    const baseUrl =
-      this.configService.get('FLEX_BANK_BASE_URL') || 'http://localhost:3001';
+    this.logger.log('[BANK-OAUTH:flex-exchange] calling mock-bank /auth/token-exchange');
 
-    const response = await fetch(`${baseUrl}/auth/token-exchange`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ yandexAccessToken }),
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      this.logger.error(`Flex Bank token exchange failed: ${text}`);
-      throw new UnauthorizedException(
-        'Failed to exchange for Flex Bank token',
+    try {
+      const response = await this.flexBankClient.post(
+        '/auth/token-exchange',
+        { yandexAccessToken },
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+      this.logger.log('[BANK-OAUTH:flex-exchange] success');
+      return response.data.accessToken;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        this.logger.error(
+          `[BANK-OAUTH:flex-exchange] HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`,
+        );
+        if (error.response.status === 401) {
+          throw new UnauthorizedException(
+            'Flex Bank rejected the Yandex token',
+          );
+        }
+      } else {
+        this.logger.error(
+          `[BANK-OAUTH:flex-exchange] network error: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+      throw new InternalServerErrorException(
+        'Flex Bank token exchange network failure',
       );
     }
-
-    const data = await response.json();
-    return data.accessToken;
   }
 }

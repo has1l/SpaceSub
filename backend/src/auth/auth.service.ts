@@ -11,15 +11,25 @@ import axiosRetry from 'axios-retry';
 import { UsersService } from '../users/users.service';
 import { OAuthStateStore } from './oauth-state.store';
 
-// Dedicated axios instance for Yandex OAuth with retry logic
-const yandexClient = axios.create({ timeout: 8_000 });
+// Dedicated axios instance for Yandex OAuth with retry logic.
+// Timeout is 15s to survive Railway cold starts (DNS + TLS + response).
+const yandexClient = axios.create({ timeout: 15_000 });
 axiosRetry(yandexClient, {
   retries: 3,
-  retryDelay: axiosRetry.exponentialDelay,
+  retryDelay: (retryCount) => {
+    // Fixed 2s base delay — exponential backoff is too fast for cold starts
+    // where the issue is container warmup, not server overload.
+    // Retry 1: 2s, Retry 2: 4s, Retry 3: 8s
+    return 2_000 * Math.pow(2, retryCount - 1);
+  },
   retryCondition: (error) =>
-    axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error),
+    axiosRetry.isNetworkError(error) ||
+    axiosRetry.isRetryableError(error) ||
+    error.code === 'ECONNABORTED', // timeout
   onRetry: (retryCount, error) => {
-    console.log(`[yandexClient] retry #${retryCount}: ${error.message}`);
+    console.log(
+      `[yandexClient] retry #${retryCount}: ${error.code ?? 'UNKNOWN'} — ${error.message}`,
+    );
   },
 });
 
