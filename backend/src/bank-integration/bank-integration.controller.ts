@@ -24,6 +24,7 @@ import { BankOAuthService } from './services/bank-oauth.service';
 import { ConnectFlexDto } from './dto/connect-flex.dto';
 import { ConnectByCodeDto } from './dto/connect-by-code.dto';
 import { SyncFlexDto } from './dto/sync-flex.dto';
+import { OAuthCodeExpiredException } from '../auth/oauth-code-expired.exception';
 
 @ApiTags('Bank Integration')
 @Controller('bank-integration')
@@ -71,6 +72,14 @@ export class BankIntegrationController {
     try {
       await this.bankOAuthService.handleFlexCallback(code, state);
     } catch (error) {
+      if (error instanceof OAuthCodeExpiredException) {
+        // Code expired — redirect to frontend which will re-initiate the flow
+        const frontendUrl =
+          this.configService.get('FRONTEND_URL') ||
+          'http://localhost:5174';
+        this.logger.warn('Bank OAuth code expired, redirecting to retry');
+        return res.redirect(`${frontendUrl}/connect-flex?error=code_expired&retry=true`);
+      }
       this.logger.error(
         `Flex OAuth callback failed: ${error instanceof Error ? error.message : error}`,
       );

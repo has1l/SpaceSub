@@ -10,6 +10,7 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { UsersService } from '../users/users.service';
 import { OAuthStateStore } from './oauth-state.store';
+import { OAuthCodeExpiredException } from './oauth-code-expired.exception';
 
 // Dedicated axios instance for Yandex OAuth with retry logic.
 // Timeout is 15s to survive Railway cold starts (DNS + TLS + response).
@@ -145,12 +146,24 @@ export class AuthService {
       console.error('code:', error?.code);
 
       if (axios.isAxiosError(error) && error.response) {
+        const data = error.response.data;
         this.logger.error(
-          `[AUTH:token-exchange] HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`,
+          `[AUTH:token-exchange] HTTP ${error.response.status}: ${JSON.stringify(data)}`,
         );
+
+        // Expired code — let the controller restart the OAuth flow
+        if (
+          data?.error === 'invalid_grant' &&
+          typeof data?.error_description === 'string' &&
+          data.error_description.toLowerCase().includes('expired')
+        ) {
+          this.logger.warn('[AUTH:token-exchange] code expired — will restart OAuth flow');
+          throw new OAuthCodeExpiredException();
+        }
+
         if (error.response.status === 401 || error.response.status === 400) {
           throw new UnauthorizedException(
-            `Yandex rejected token exchange: ${error.response.data?.error ?? error.response.status}`,
+            `Yandex rejected token exchange: ${data?.error ?? error.response.status}`,
           );
         }
       } else {

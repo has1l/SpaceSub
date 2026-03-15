@@ -11,6 +11,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BankProvider } from '@prisma/client';
 import { BankOAuthStateStore } from '../bank-oauth-state.store';
 import { TokenEncryptionService } from './token-encryption.service';
+import { OAuthCodeExpiredException } from '../../auth/oauth-code-expired.exception';
 
 // ── Yandex OAuth client ──────────────────────────────────────
 // 15s timeout to survive Railway cold starts (DNS + TLS + response).
@@ -184,12 +185,24 @@ export class BankOAuthService {
       return response.data.access_token;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
+        const data = error.response.data;
         this.logger.error(
-          `[BANK-OAUTH:token-exchange] HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`,
+          `[BANK-OAUTH:token-exchange] HTTP ${error.response.status}: ${JSON.stringify(data)}`,
         );
+
+        // Expired code — let the controller restart the OAuth flow
+        if (
+          data?.error === 'invalid_grant' &&
+          typeof data?.error_description === 'string' &&
+          data.error_description.toLowerCase().includes('expired')
+        ) {
+          this.logger.warn('[BANK-OAUTH:token-exchange] code expired — will restart OAuth flow');
+          throw new OAuthCodeExpiredException();
+        }
+
         if (error.response.status === 400 || error.response.status === 401) {
           throw new UnauthorizedException(
-            `Yandex rejected token exchange: ${error.response.data?.error ?? error.response.status}`,
+            `Yandex rejected token exchange: ${data?.error ?? error.response.status}`,
           );
         }
       } else {

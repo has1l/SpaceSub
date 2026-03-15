@@ -10,6 +10,7 @@ import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
+import { OAuthCodeExpiredException } from './oauth-code-expired.exception';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -46,7 +47,21 @@ export class AuthController {
     console.log('CALLBACK HANDLER START:', callbackTime);
 
     // Exchange the authorization code IMMEDIATELY — codes expire in seconds.
-    const result = await this.authService.handleYandexCallback(code, callbackTime);
+    let result: Awaited<ReturnType<AuthService['handleYandexCallback']>>;
+    try {
+      result = await this.authService.handleYandexCallback(code, callbackTime);
+    } catch (error) {
+      if (error instanceof OAuthCodeExpiredException) {
+        // Code expired — restart the OAuth flow transparently.
+        // Peek at state to preserve platform for the redirect.
+        const stateResult = this.authService.validateState(state);
+        const platform = stateResult.platform;
+        const retryUrl = `/api/auth/yandex${platform ? `?platform=${platform}` : ''}`;
+        this.logger.warn(`OAuth code expired, restarting → ${retryUrl}`);
+        return res.redirect(retryUrl);
+      }
+      throw error;
+    }
 
     const stateResult = this.authService.validateState(state);
     if (!stateResult.valid) {
