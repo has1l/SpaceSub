@@ -74,8 +74,9 @@ export class AuthService {
   private async exchangeCodeForToken(code: string) {
     const clientId = this.configService.get('YANDEX_CLIENT_ID');
     const clientSecret = this.configService.get('YANDEX_CLIENT_SECRET');
+    const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');
 
-    this.logger.log(`Exchanging Yandex auth code: client_id=${clientId}`);
+    this.logger.log(`Exchanging Yandex auth code: client_id=${clientId}, redirect_uri=${redirectUri}`);
 
     let response: Response;
     try {
@@ -87,6 +88,7 @@ export class AuthService {
           code,
           client_id: clientId,
           client_secret: clientSecret,
+          redirect_uri: redirectUri,
         }),
         signal: AbortSignal.timeout(15_000),
       });
