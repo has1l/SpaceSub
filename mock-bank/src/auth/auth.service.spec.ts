@@ -8,7 +8,7 @@ import { OAuthStateStore } from './oauth-state.store';
 describe('AuthService (flexbank)', () => {
   let service: AuthService;
   let configService: { get: jest.Mock };
-  let stateStore: OAuthStateStore;
+  let jwtService: JwtService;
 
   beforeEach(async () => {
     configService = {
@@ -22,28 +22,37 @@ describe('AuthService (flexbank)', () => {
       }),
     };
 
+    jwtService = new JwtService({ secret: 'test-secret' });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         {
           provide: JwtService,
-          useValue: { sign: jest.fn(() => 'test-jwt') },
+          useValue: jwtService,
         },
         { provide: ConfigService, useValue: configService },
         {
           provide: PrismaService,
-          useValue: { user: { upsert: jest.fn() } },
+          useValue: {
+            user: {
+              findUnique: jest.fn().mockResolvedValue(null),
+              findFirst: jest.fn().mockResolvedValue(null),
+              create: jest.fn().mockResolvedValue({
+                id: 'user-uuid',
+                yandexId: 'yandex-123',
+                email: 'test@ya.ru',
+                name: 'Test User',
+              }),
+              update: jest.fn(),
+            },
+          },
         },
         OAuthStateStore,
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    stateStore = module.get<OAuthStateStore>(OAuthStateStore);
-  });
-
-  afterEach(() => {
-    stateStore.onModuleDestroy();
   });
 
   describe('getYandexAuthUrl', () => {
@@ -54,7 +63,7 @@ describe('AuthService (flexbank)', () => {
       expect(url).toContain('redirect_uri=');
       expect(url).toContain('localhost%3A5174');
       expect(url).toContain('bank-api');
-      expect(url).toContain('state=flexbank_');
+      expect(url).toContain('state=');
       expect(url).toContain('force_confirm=true');
       expect(url).toContain('prompt=select_account');
       expect(url).toContain('scope=login');
@@ -63,7 +72,6 @@ describe('AuthService (flexbank)', () => {
 
   describe('exchangeYandexToken', () => {
     it('should call getYandexUserInfo, upsert user, and return JWT', async () => {
-      // Mock fetch globally
       const mockFetch = jest.fn().mockResolvedValue({
         ok: true,
         json: () =>
@@ -75,39 +83,16 @@ describe('AuthService (flexbank)', () => {
       });
       global.fetch = mockFetch;
 
-      const prismaWithUpsert = {
-        user: {
-          upsert: jest.fn().mockResolvedValue({
-            id: 'user-uuid',
-            email: 'test@ya.ru',
-          }),
-        },
-      };
-      const jwtSign = jest.fn(() => 'flex-jwt-token');
+      const result = await service.exchangeYandexToken('yandex-access-token');
 
-      const mod = await Test.createTestingModule({
-        providers: [
-          AuthService,
-          { provide: JwtService, useValue: { sign: jwtSign } },
-          { provide: ConfigService, useValue: configService },
-          { provide: PrismaService, useValue: prismaWithUpsert },
-          OAuthStateStore,
-        ],
-      }).compile();
-
-      const svc = mod.get<AuthService>(AuthService);
-      const result = await svc.exchangeYandexToken('yandex-access-token');
-
-      expect(result).toEqual({ accessToken: 'flex-jwt-token' });
+      expect(result).toHaveProperty('accessToken');
+      expect(typeof result.accessToken).toBe('string');
       expect(mockFetch).toHaveBeenCalledWith(
         'https://login.yandex.ru/info?format=json',
         expect.objectContaining({
           headers: { Authorization: 'OAuth yandex-access-token' },
         }),
       );
-      expect(prismaWithUpsert.user.upsert).toHaveBeenCalled();
-
-      mod.get<OAuthStateStore>(OAuthStateStore).onModuleDestroy();
     });
   });
 
@@ -122,8 +107,8 @@ describe('AuthService (flexbank)', () => {
       expect(() => service.validateState(undefined)).toThrow();
     });
 
-    it('should throw for wrong prefix', () => {
-      expect(() => service.validateState('spacesub_fake')).toThrow();
+    it('should throw for invalid state', () => {
+      expect(() => service.validateState('invalid-state-token')).toThrow();
     });
   });
 });

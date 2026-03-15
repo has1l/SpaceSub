@@ -6,6 +6,7 @@ import { AccountsModule } from './accounts/accounts.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { ApiV1Module } from './api-v1/api-v1.module';
 import { ConnectionCodeModule } from './connection-code/connection-code.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -17,5 +18,6 @@ import { ConnectionCodeModule } from './connection-code/connection-code.module';
     ApiV1Module,
     ConnectionCodeModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}

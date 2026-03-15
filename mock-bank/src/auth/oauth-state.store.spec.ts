@@ -1,19 +1,19 @@
+import { JwtService } from '@nestjs/jwt';
 import { OAuthStateStore } from './oauth-state.store';
 
 describe('OAuthStateStore (flexbank)', () => {
   let store: OAuthStateStore;
+  let jwtService: JwtService;
 
   beforeEach(() => {
-    store = new OAuthStateStore();
+    jwtService = new JwtService({ secret: 'test-secret' });
+    store = new OAuthStateStore(jwtService);
   });
 
-  afterEach(() => {
-    store.onModuleDestroy();
-  });
-
-  it('should generate state with flexbank_ prefix', () => {
+  it('should generate a JWT state token', () => {
     const state = store.generate();
-    expect(state).toMatch(/^flexbank_[0-9a-f-]{36}$/);
+    expect(typeof state).toBe('string');
+    expect(state.split('.')).toHaveLength(3);
   });
 
   it('should validate a correct state', () => {
@@ -25,26 +25,42 @@ describe('OAuthStateStore (flexbank)', () => {
     expect(store.validate(undefined)).toBe(false);
   });
 
-  it('should reject state with wrong prefix (spacesub)', () => {
-    store.generate();
-    expect(store.validate('spacesub_fake-uuid')).toBe(false);
+  it('should reject empty string state', () => {
+    expect(store.validate('')).toBe(false);
   });
 
-  it('should reject unknown state (not in store)', () => {
-    expect(store.validate('flexbank_unknown-uuid')).toBe(false);
-  });
-
-  it('should reject state used twice (one-time use)', () => {
+  it('should reject tampered state', () => {
     const state = store.generate();
-    expect(store.validate(state)).toBe(true);
+    const tampered = state.slice(0, -5) + 'XXXXX';
+    expect(store.validate(tampered)).toBe(false);
+  });
+
+  it('should reject state signed with different secret', () => {
+    const otherJwt = new JwtService({ secret: 'other-secret' });
+    const otherStore = new OAuthStateStore(otherJwt);
+    const state = otherStore.generate();
     expect(store.validate(state)).toBe(false);
   });
 
   it('should reject expired state', () => {
+    const expiredState = jwtService.sign(
+      { timestamp: Date.now(), purpose: 'flexbank_oauth_state' },
+      { expiresIn: 0 },
+    );
+    expect(store.validate(expiredState)).toBe(false);
+  });
+
+  it('should reject JWT with wrong purpose', () => {
+    const badState = jwtService.sign(
+      { timestamp: Date.now(), purpose: 'wrong_purpose' },
+      { expiresIn: 300 },
+    );
+    expect(store.validate(badState)).toBe(false);
+  });
+
+  it('should allow same state to be validated multiple times (stateless)', () => {
     const state = store.generate();
-    const statesMap = (store as any).states as Map<string, { createdAt: number }>;
-    const entry = statesMap.get(state)!;
-    entry.createdAt = Date.now() - 6 * 60 * 1000;
-    expect(store.validate(state)).toBe(false);
+    expect(store.validate(state)).toBe(true);
+    expect(store.validate(state)).toBe(true);
   });
 });
