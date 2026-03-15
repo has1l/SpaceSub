@@ -89,6 +89,7 @@ export class AuthService {
           code,
           client_id: clientId,
           client_secret: clientSecret,
+          redirect_uri: this.configService.get<string>('YANDEX_REDIRECT_URI')!,
         }).toString(),
         {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
