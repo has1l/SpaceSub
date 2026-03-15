@@ -51,11 +51,10 @@ export class AuthController {
 
     const { accessToken } = await this.authService.handleYandexCallback(code);
 
-    // Derive the external origin from YANDEX_REDIRECT_URI — this is the real
-    // URL the browser used, not the proxied localhost:3001 host.
-    const callbackUri = this.configService.get('YANDEX_REDIRECT_URI') || '';
-    const origin = callbackUri ? new URL(callbackUri).origin : 'http://localhost:5174';
-    const redirectTo = `${origin}/bank/auth/callback?token=${accessToken}`;
+    const frontendUrl = this.configService.get('FRONTEND_URL') || 'http://localhost:5174';
+    // Strip trailing slash to avoid double-slash in redirect URL
+    const base = frontendUrl.replace(/\/+$/, '');
+    const redirectTo = `${base}/auth/callback?token=${accessToken}`;
 
     this.logger.log(`OAuth callback redirect → ${redirectTo} [pid=${process.pid}]`);
     return res.redirect(redirectTo);
