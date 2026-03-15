@@ -130,6 +130,13 @@ export class AuthService {
       this.logger.log('[AUTH:token-exchange] success');
       return response.data;
     } catch (error) {
+      console.error('YANDEX TOKEN ERROR');
+      console.error('status:', error?.response?.status);
+      console.error('data:', error?.response?.data);
+      console.error('headers:', error?.response?.headers);
+      console.error('message:', error?.message);
+      console.error('code:', error?.code);
+
       if (axios.isAxiosError(error) && error.response) {
         this.logger.error(
           `[AUTH:token-exchange] HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`,
