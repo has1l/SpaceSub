@@ -29,7 +29,7 @@ export class BankOAuthStateStore implements OnModuleDestroy {
 
   validateWithMetadata(
     state: string | undefined,
-  ): { valid: boolean; metadata?: Record<string, string> } {
+  ): { valid: boolean; metadata?: Record<string, string>; timestamp?: number } {
     if (!state) {
       this.logger.warn('Bank OAuth callback: state missing');
       return { valid: false };
@@ -58,7 +58,7 @@ export class BankOAuthStateStore implements OnModuleDestroy {
     }
 
     this.logger.debug(`Bank OAuth state validated: ${state}`);
-    return { valid: true, metadata: entry.metadata };
+    return { valid: true, metadata: entry.metadata, timestamp: entry.createdAt };
   }
 
   private cleanup() {

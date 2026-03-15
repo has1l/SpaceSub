@@ -26,7 +26,7 @@ export class OAuthStateStore {
     return state;
   }
 
-  validate(state: string | undefined): { valid: boolean; platform?: string } {
+  validate(state: string | undefined): { valid: boolean; platform?: string; timestamp?: number } {
     if (!state) {
       this.logger.warn('OAuth callback: state missing');
       return { valid: false };
@@ -43,7 +43,7 @@ export class OAuthStateStore {
       this.logger.debug(
         `OAuth state validated: platform=${payload.platform}`,
       );
-      return { valid: true, platform: payload.platform };
+      return { valid: true, platform: payload.platform, timestamp: payload.timestamp };
     } catch (error) {
       this.logger.warn(
         `OAuth callback: state JWT invalid — ${error instanceof Error ? error.message : error}`,

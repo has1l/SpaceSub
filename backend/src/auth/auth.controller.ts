@@ -28,6 +28,7 @@ export class AuthController {
     @Query('platform') platform: string | undefined,
     @Res() res: Response,
   ) {
+    console.log('OAUTH REDIRECT TIME:', Date.now());
     const url = this.authService.getYandexAuthUrl(platform);
     return res.redirect(url);
   }
@@ -41,14 +42,21 @@ export class AuthController {
     @Query('state') state: string,
     @Res() res: Response,
   ) {
+    const callbackTime = Date.now();
+    console.log('OAUTH CALLBACK TIME:', callbackTime);
+
     // Exchange the authorization code IMMEDIATELY — codes expire in seconds.
-    // State validation is cheap (JWT verify, no I/O) but runs second to
-    // guarantee the code hits Yandex before it can expire.
     const result = await this.authService.handleYandexCallback(code);
 
     const stateResult = this.authService.validateState(state);
     if (!stateResult.valid) {
       throw new BadRequestException('Invalid OAuth state');
+    }
+
+    if (stateResult.timestamp) {
+      const roundtripMs = callbackTime - stateResult.timestamp;
+      console.log('OAUTH ROUNDTRIP:', roundtripMs, 'ms');
+      console.log('OAUTH REDIRECT TIME:', stateResult.timestamp);
     }
 
     if (stateResult.platform === 'ios') {

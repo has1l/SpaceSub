@@ -87,6 +87,7 @@ export class BankOAuthService {
     });
 
     const url = `https://oauth.yandex.ru/authorize?${params.toString()}`;
+    console.log('BANK OAUTH REDIRECT TIME:', Date.now());
     this.logger.log(
       `Flex OAuth URL generated for user ${userId}, redirect_uri=${redirectUri}`,
     );
@@ -94,6 +95,9 @@ export class BankOAuthService {
   }
 
   async handleFlexCallback(code: string, state: string): Promise<string> {
+    const callbackTime = Date.now();
+    console.log('BANK OAUTH CALLBACK TIME:', callbackTime);
+
     // 1. Exchange code IMMEDIATELY — authorization codes expire in seconds.
     //    This MUST happen before any other work to avoid invalid_grant.
     const yandexToken = await this.exchangeCodeForYandexToken(code);
@@ -106,6 +110,12 @@ export class BankOAuthService {
     }
     const userId = result.metadata.userId;
     this.logger.log(`Flex OAuth callback: state valid, userId=${userId}`);
+
+    if (result.timestamp) {
+      const roundtripMs = callbackTime - result.timestamp;
+      console.log('BANK OAUTH ROUNDTRIP:', roundtripMs, 'ms');
+      console.log('BANK OAUTH REDIRECT TIME:', result.timestamp);
+    }
 
     // 3. Call mock-bank token-exchange endpoint
     const flexBankJwt = await this.exchangeForFlexBankJwt(yandexToken);

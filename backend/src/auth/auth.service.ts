@@ -74,7 +74,7 @@ export class AuthService {
     return `https://oauth.yandex.ru/authorize?${params.toString()}`;
   }
 
-  validateState(state: string | undefined): { valid: boolean; platform?: string } {
+  validateState(state: string | undefined): { valid: boolean; platform?: string; timestamp?: number } {
     return this.oauthStateStore.validate(state);
   }
 
