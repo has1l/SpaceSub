@@ -28,6 +28,10 @@ export class AuthService {
     const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');
     const state = this.oauthStateStore.generate(platform);
 
+    this.logger.log(
+      `[AUTH:authorize] env=YANDEX_CLIENT_ID, client_id=${clientId}, redirect_uri=${redirectUri}`,
+    );
+
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: clientId,
@@ -38,13 +42,7 @@ export class AuthService {
       prompt: 'select_account',
     });
 
-    const url = `https://oauth.yandex.ru/authorize?${params.toString()}`;
-
-    this.logger.debug(
-      `OAuth redirect: client_id=${clientId}, redirect_uri=${redirectUri}, state=${state}`,
-    );
-
-    return url;
+    return `https://oauth.yandex.ru/authorize?${params.toString()}`;
   }
 
   validateState(state: string | undefined): { valid: boolean; platform?: string } {
@@ -78,41 +76,40 @@ export class AuthService {
   private async exchangeCodeForToken(code: string) {
     const clientId = this.configService.get('YANDEX_CLIENT_ID');
     const clientSecret = this.configService.get('YANDEX_CLIENT_SECRET');
+    const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');
 
-    this.logger.log(`Exchanging Yandex auth code: client_id=${clientId}`);
+    this.logger.log(
+      `[AUTH:token-exchange] env=YANDEX_CLIENT_ID, client_id=${clientId}, redirect_uri=${redirectUri}`,
+    );
+
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+    });
 
     try {
       const response = await axios.post(
         'https://oauth.yandex.ru/token',
-        new URLSearchParams({
-          grant_type: 'authorization_code',
-          code,
-          client_id: clientId,
-          client_secret: clientSecret,
-          redirect_uri: this.configService.get<string>('YANDEX_REDIRECT_URI')!,
-        }).toString(),
+        params,
         {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          timeout: 15000,
+          timeout: 15_000,
         },
       );
 
-      this.logger.log('Yandex token exchange successful');
+      this.logger.log('[AUTH:token-exchange] Yandex token exchange successful');
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         this.logger.error(
-          `Yandex token exchange HTTP ${error.response.status}, body: ${JSON.stringify(error.response.data)}`,
+          `[AUTH:token-exchange] HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`,
         );
-        const data = error.response.data;
-        if (data?.error) {
-          this.logger.error(
-            `Yandex error: error=${data.error}, error_description=${data.error_description}`,
-          );
-        }
       } else {
         this.logger.error(
-          `Yandex token exchange failed: ${error instanceof Error ? error.message : error}`,
+          `[AUTH:token-exchange] Network error: ${error instanceof Error ? error.message : error}`,
         );
       }
       throw new UnauthorizedException('Failed to exchange Yandex auth code');
@@ -120,27 +117,23 @@ export class AuthService {
   }
 
   private async getYandexUserInfo(accessToken: string): Promise<YandexUserInfo> {
-    let response: Response;
     try {
-      response = await fetch('https://login.yandex.ru/info?format=json', {
+      const response = await axios.get('https://login.yandex.ru/info?format=json', {
         headers: { Authorization: `OAuth ${accessToken}` },
-        signal: AbortSignal.timeout(15_000),
+        timeout: 15_000,
       });
+      return response.data;
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        this.logger.error(
+          `[AUTH:user-info] HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`,
+        );
+        throw new UnauthorizedException('Failed to get Yandex user info');
+      }
       this.logger.error(
-        `Yandex user info request failed: ${error instanceof Error ? error.message : error}`,
+        `[AUTH:user-info] Network error: ${error instanceof Error ? error.message : error}`,
       );
       throw new UnauthorizedException('Yandex user info request failed');
     }
-
-    if (!response.ok) {
-      const body = await response.text().catch(() => '(unreadable)');
-      this.logger.error(
-        `Yandex user info HTTP ${response.status}: ${body}`,
-      );
-      throw new UnauthorizedException('Failed to get Yandex user info');
-    }
-
-    return response.json();
   }
 }
