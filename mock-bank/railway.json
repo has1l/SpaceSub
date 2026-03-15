@@ -2,10 +2,10 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "NODE_OPTIONS='--max-old-space-size=384' npm install --prefer-offline && npm run build && node scripts/migrate.js && npm prune --omit=dev"
+    "buildCommand": "NODE_OPTIONS='--max-old-space-size=384' npm install --prefer-offline && npm run build && npm prune --omit=dev"
   },
   "deploy": {
-    "startCommand": "npm start",
+    "startCommand": "node scripts/migrate.js && node dist/src/main.js",
     "healthcheckPath": "/health",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
