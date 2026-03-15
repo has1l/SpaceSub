@@ -77,20 +77,26 @@ export class AuthService {
   private async exchangeCodeForToken(code: string) {
     const clientId = this.configService.get('YANDEX_CLIENT_ID');
     const clientSecret = this.configService.get('YANDEX_CLIENT_SECRET');
+    const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');
 
-    this.logger.log('Exchanging Yandex auth code for token...');
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+    });
+
+    this.logger.log(
+      `Exchanging Yandex auth code: client_id=${clientId}, redirect_uri=${redirectUri}`,
+    );
 
     let response: Response;
     try {
       response = await fetch('https://oauth.yandex.ru/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          code,
-          client_id: clientId,
-          client_secret: clientSecret,
-        }),
+        body,
         signal: AbortSignal.timeout(15_000),
       });
     } catch (error) {
@@ -101,9 +107,9 @@ export class AuthService {
     }
 
     if (!response.ok) {
-      const body = await response.text().catch(() => '(unreadable)');
+      const text = await response.text().catch(() => '(unreadable)');
       this.logger.error(
-        `Yandex token exchange HTTP ${response.status}: ${body}`,
+        `Yandex token exchange HTTP ${response.status}: ${text}`,
       );
       throw new UnauthorizedException('Failed to exchange Yandex auth code');
     }
