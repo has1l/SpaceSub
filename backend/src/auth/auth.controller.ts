@@ -41,7 +41,12 @@ export class AuthController {
     @Query('state') state: string,
     @Res() res: Response,
   ) {
+    console.log('=== YANDEX CALLBACK ===');
+    console.log('code:', code);
+    console.log('state length:', state?.length);
+
     const stateResult = this.authService.validateState(state);
+    console.log('state valid:', stateResult.valid, 'platform:', stateResult.platform);
     if (!stateResult.valid) {
       throw new BadRequestException('Invalid OAuth state');
     }
