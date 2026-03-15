@@ -1,9 +1,27 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  UnauthorizedException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
 import { UsersService } from '../users/users.service';
 import { OAuthStateStore } from './oauth-state.store';
+
+// Dedicated axios instance for Yandex OAuth with retry logic
+const yandexClient = axios.create({ timeout: 8_000 });
+axiosRetry(yandexClient, {
+  retries: 3,
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: (error) =>
+    axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error),
+  onRetry: (retryCount, error) => {
+    console.log(`[yandexClient] retry #${retryCount}: ${error.message}`);
+  },
+});
 
 interface YandexUserInfo {
   id: string;
@@ -78,13 +96,9 @@ export class AuthService {
     const clientSecret = this.configService.get('YANDEX_CLIENT_SECRET');
     const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');
 
-    console.log('=== YANDEX TOKEN EXCHANGE START ===');
-    console.log('code:', code);
-    console.log('client_id:', clientId);
-    console.log('client_secret set:', !!clientSecret, 'length:', clientSecret?.length ?? 0);
-    console.log('redirect_uri:', redirectUri);
-    console.log('env YANDEX_REDIRECT_URI:', process.env.YANDEX_REDIRECT_URI);
-    console.log('env YANDEX_CLIENT_ID:', process.env.YANDEX_CLIENT_ID);
+    this.logger.log(
+      `[AUTH:token-exchange] client_id=${clientId}, redirect_uri=${redirectUri}`,
+    );
 
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -94,53 +108,59 @@ export class AuthService {
       redirect_uri: redirectUri,
     });
 
-    console.log('request body:', params.toString());
-
     try {
-      const response = await axios.post(
+      const response = await yandexClient.post(
         'https://oauth.yandex.ru/token',
         params,
         {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          timeout: 15_000,
         },
       );
 
-      console.log('=== YANDEX TOKEN SUCCESS ===');
-      console.log('response data:', JSON.stringify(response.data));
+      this.logger.log('[AUTH:token-exchange] success');
       return response.data;
     } catch (error) {
-      console.error('=== YANDEX TOKEN ERROR ===');
-      if (axios.isAxiosError(error)) {
-        console.error('status:', error.response?.status);
-        console.error('data:', JSON.stringify(error.response?.data));
-        console.error('headers:', JSON.stringify(error.response?.headers));
-        console.error('message:', error.message);
+      if (axios.isAxiosError(error) && error.response) {
+        this.logger.error(
+          `[AUTH:token-exchange] HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`,
+        );
+        if (error.response.status === 401 || error.response.status === 400) {
+          throw new UnauthorizedException(
+            `Yandex rejected token exchange: ${error.response.data?.error ?? error.response.status}`,
+          );
+        }
       } else {
-        console.error('non-axios error:', error instanceof Error ? error.message : error);
+        this.logger.error(
+          `[AUTH:token-exchange] network error: ${error instanceof Error ? error.message : error}`,
+        );
       }
-      throw new UnauthorizedException('Failed to exchange Yandex auth code');
+      throw new InternalServerErrorException('Yandex OAuth network failure');
     }
   }
 
   private async getYandexUserInfo(accessToken: string): Promise<YandexUserInfo> {
+    this.logger.log('[AUTH:user-info] fetching Yandex profile');
+
     try {
-      const response = await axios.get('https://login.yandex.ru/info?format=json', {
+      const response = await yandexClient.get('https://login.yandex.ru/info?format=json', {
         headers: { Authorization: `OAuth ${accessToken}` },
-        timeout: 15_000,
       });
+      this.logger.log('[AUTH:user-info] success');
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         this.logger.error(
           `[AUTH:user-info] HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`,
         );
-        throw new UnauthorizedException('Failed to get Yandex user info');
+        if (error.response.status === 401 || error.response.status === 403) {
+          throw new UnauthorizedException('Yandex rejected access token');
+        }
+      } else {
+        this.logger.error(
+          `[AUTH:user-info] network error: ${error instanceof Error ? error.message : error}`,
+        );
       }
-      this.logger.error(
-        `[AUTH:user-info] Network error: ${error instanceof Error ? error.message : error}`,
-      );
-      throw new UnauthorizedException('Yandex user info request failed');
+      throw new InternalServerErrorException('Yandex user info request failed');
     }
   }
 }
