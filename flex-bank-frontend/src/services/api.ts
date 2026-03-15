@@ -1,8 +1,9 @@
 import axios from 'axios';
 
-// All API calls go through the gateway proxy: /bank-api/* → localhost:3001
-// Works identically on localhost and through LocalTunnel.
-const API_BASE = `${window.location.origin}/bank-api`;
+// In development, Vite proxies /bank-api/* → localhost:3001.
+// In production (Vercel), VITE_API_URL points to the deployed mock-bank,
+// or vercel.json rewrites /bank-api/* to the Railway mock-bank.
+const API_BASE = import.meta.env.VITE_API_URL || '/bank-api';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -14,7 +15,6 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  console.log(`[API] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, token ? 'Auth: Bearer ...' + token.slice(-10) : 'Auth: NONE');
   return config;
 });
 
@@ -23,7 +23,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('flexbank_token');
-      window.location.href = '/bank/';
+      window.location.href = '/';
     }
     return Promise.reject(error);
   },

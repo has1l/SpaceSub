@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/bank-api/(.*)", "destination": "https://hearty-education-production-908e.up.railway.app/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

@@ -3,17 +3,19 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  // All assets and routes are served under /bank/ so the gateway proxy works.
-  base: '/bank/',
   plugins: [react(), tailwindcss()],
   server: {
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
     allowedHosts: true,
-    hmr: {
-      // Through LocalTunnel (HTTPS port 443), WebSocket must target port 443.
-      clientPort: 443,
+    hmr: process.env.TUNNEL ? { clientPort: 443 } : true,
+    proxy: {
+      '/bank-api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/bank-api/, ''),
+      },
     },
   },
 })

@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setToken(null);
-    window.location.href = '/bank/';
+    window.location.href = '/';
   }, [setToken]);
 
   useEffect(() => {

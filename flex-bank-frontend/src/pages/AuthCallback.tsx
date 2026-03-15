@@ -35,7 +35,7 @@ export default function AuthCallback() {
         <CosmicBackground />
         <div className="text-center relative z-10">
           <p className="text-aurora-red mb-4">{error}</p>
-          <a href="/bank/" className="text-accent-blue hover:text-accent-cyan transition-colors"
+          <a href="/" className="text-accent-blue hover:text-accent-cyan transition-colors"
              style={{ fontFamily: 'var(--font-body)' }}>
             Вернуться ко входу
           </a>

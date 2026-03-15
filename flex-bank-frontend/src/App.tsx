@@ -13,7 +13,7 @@ import ConnectionCodePage from './pages/ConnectionCodePage';
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter basename="/bank">
+      <BrowserRouter>
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
