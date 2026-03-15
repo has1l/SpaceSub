@@ -9,6 +9,7 @@ import { AppModule } from './app.module';
 dns.setDefaultResultOrder('ipv4first');
 
 async function bootstrap() {
+  console.log('[bootstrap] Starting NestJS application...');
   const app = await NestFactory.create(AppModule);
 
   app.useGlobalPipes(
@@ -40,4 +41,7 @@ async function bootstrap() {
   console.log(`  FRONTEND_URL        = ${process.env.FRONTEND_URL ?? '(not set)'}`);
   console.log(`  YANDEX_REDIRECT_URI = ${process.env.YANDEX_REDIRECT_URI ?? '(not set)'}`);
 }
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Failed to start NestJS application:', err);
+  process.exit(1);
+});
