@@ -15,6 +15,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { IntegrationModule } from './integration/integration.module';
 import { BankIntegrationModule } from './bank-integration/bank-integration.module';
 import { DetectedSubscriptionsModule } from './detected-subscriptions/detected-subscriptions.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { DetectedSubscriptionsModule } from './detected-subscriptions/detected-s
     BankIntegrationModule,
     DetectedSubscriptionsModule,
   ],
+  controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
