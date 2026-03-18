@@ -5,7 +5,7 @@ import { categorize, type SubscriptionCategory } from './utils/category.utils';
 import { toMonthly, toYearly, periodToDays, round2, toMonthKey } from './utils/period.utils';
 
 // ─────────────────────────────────────────────────────────
-// Existing DTO (keep for backward compat)
+// Existing DTO (backward compat)
 // ─────────────────────────────────────────────────────────
 
 interface TopSubscriptionDto {
@@ -39,6 +39,7 @@ export interface OverviewDto {
   arr: number;
   activeCount: number;
   upcomingCount: number;
+  periodTotal: number;
   trend: {
     currentMonth: number;
     prevMonth: number;
@@ -48,6 +49,7 @@ export interface OverviewDto {
 
 export interface CategoryItemDto {
   category: SubscriptionCategory;
+  color: string;
   total: number;
   count: number;
   percent: number;
@@ -59,6 +61,7 @@ export interface ServiceItemDto {
   yearlyAmount: number;
   periodType: BillingCycle;
   category: SubscriptionCategory;
+  color: string;
 }
 
 export interface PeriodItemDto {
@@ -86,6 +89,27 @@ export interface RecommendationDto {
   currentCost: number;
   potentialSavings: number;
   reason: string;
+}
+
+// ─────────────────────────────────────────────────────────
+// Category color palette (vibrant, dark-theme safe)
+// ─────────────────────────────────────────────────────────
+
+const CATEGORY_COLORS: Record<string, string> = {
+  'Развлечения':      '#a855f7',
+  'Музыка':           '#ec4899',
+  'Продуктивность':   '#0ea5e9',
+  'Облако и хостинг': '#06b6d4',
+  'Безопасность':     '#00d4aa',
+  'Образование':      '#f59e0b',
+  'Игры':             '#8b5cf6',
+  'Фитнес':           '#ef4444',
+  'Новости':          '#64748b',
+  'Другое':           '#475569',
+};
+
+function categoryColor(cat: string): string {
+  return CATEGORY_COLORS[cat] ?? '#475569';
 }
 
 // ─────────────────────────────────────────────────────────
@@ -123,7 +147,6 @@ export class AnalyticsService {
     }
 
     scored.sort((a, b) => b.monthlyEquivalent - a.monthlyEquivalent);
-    const topSubscriptions = scored.slice(0, 5);
 
     const now = new Date();
     const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -140,14 +163,14 @@ export class AnalyticsService {
       monthlyTotal: round2(monthlyTotal),
       yearlyTotal: round2(yearlyTotal),
       activeSubscriptions: activeSubs.length,
-      topSubscriptions,
+      topSubscriptions: scored.slice(0, 5),
       upcomingCharges: upcoming,
     };
   }
 
   // ── Overview ─────────────────────────────────────────────
 
-  async getOverview(userId: string): Promise<OverviewDto> {
+  async getOverview(userId: string, from?: Date, to?: Date): Promise<OverviewDto> {
     const activeSubs = await this.prisma.detectedSubscription.findMany({
       where: { userId, isActive: true },
     });
@@ -164,61 +187,101 @@ export class AnalyticsService {
       (s) => s.nextExpectedCharge >= now && s.nextExpectedCharge <= in7Days,
     ).length;
 
-    // Trend: sum of imported transactions this month vs previous month
-    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    // Period total from imported transactions
+    const periodFrom = from ?? new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodTo = to ?? now;
 
-    const [thisMonthTxs, lastMonthTxs] = await Promise.all([
+    const startOfLastPeriod = new Date(periodFrom.getTime() - (periodTo.getTime() - periodFrom.getTime()));
+
+    const [currentTxs, prevTxs, periodAgg] = await Promise.all([
       this.prisma.importedTransaction.aggregate({
-        where: { userId, occurredAt: { gte: startOfThisMonth } },
+        where: { userId, occurredAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) } },
         _sum: { amount: true },
       }),
       this.prisma.importedTransaction.aggregate({
         where: {
           userId,
-          occurredAt: { gte: startOfLastMonth, lt: startOfThisMonth },
+          occurredAt: {
+            gte: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+            lt: new Date(now.getFullYear(), now.getMonth(), 1),
+          },
         },
+        _sum: { amount: true },
+      }),
+      this.prisma.importedTransaction.aggregate({
+        where: { userId, occurredAt: { gte: periodFrom, lte: periodTo } },
         _sum: { amount: true },
       }),
     ]);
 
-    const currentMonth = round2(Number(thisMonthTxs._sum.amount ?? 0));
-    const prevMonth = round2(Number(lastMonthTxs._sum.amount ?? 0));
+    const currentMonth = round2(Number(currentTxs._sum.amount ?? 0));
+    const prevMonth = round2(Number(prevTxs._sum.amount ?? 0));
     const changePct =
-      prevMonth === 0
-        ? 0
-        : round2(((currentMonth - prevMonth) / prevMonth) * 100);
+      prevMonth === 0 ? 0 : round2(((currentMonth - prevMonth) / prevMonth) * 100);
+
+    // Suppress prevTxs — used only for computing changePct above
+    void startOfLastPeriod;
 
     return {
       mrr,
       arr: round2(mrr * 12),
       activeCount: activeSubs.length,
       upcomingCount,
+      periodTotal: round2(Number(periodAgg._sum.amount ?? 0)),
       trend: { currentMonth, prevMonth, changePct },
     };
   }
 
   // ── By Category ──────────────────────────────────────────
 
-  async getByCategory(userId: string): Promise<CategoryItemDto[]> {
+  async getByCategory(userId: string, from?: Date, to?: Date): Promise<CategoryItemDto[]> {
+    // If date range given — aggregate from transactions
+    if (from && to) {
+      const txs = await this.prisma.importedTransaction.findMany({
+        where: { userId, occurredAt: { gte: from, lte: to } },
+        select: { merchant: true, description: true, amount: true },
+      });
+
+      const catMap = new Map<string, { color: string; total: number; count: number }>();
+      for (const tx of txs) {
+        const merchant = tx.merchant ?? tx.description;
+        const cat = categorize(merchant);
+        const color = categoryColor(cat);
+        const existing = catMap.get(cat) ?? { color, total: 0, count: 0 };
+        catMap.set(cat, { color, total: existing.total + Number(tx.amount), count: existing.count + 1 });
+      }
+
+      const totalAll = Array.from(catMap.values()).reduce((s, v) => s + v.total, 0);
+      return Array.from(catMap.entries())
+        .map(([category, { color, total, count }]) => ({
+          category: category as SubscriptionCategory,
+          color,
+          total: round2(total),
+          count,
+          percent: totalAll > 0 ? round2((total / totalAll) * 100) : 0,
+        }))
+        .sort((a, b) => b.total - a.total);
+    }
+
+    // Default — from active subscriptions
     const activeSubs = await this.prisma.detectedSubscription.findMany({
       where: { userId, isActive: true },
     });
 
-    const categoryMap = new Map<SubscriptionCategory, { total: number; count: number }>();
-
+    const categoryMap = new Map<string, { color: string; total: number; count: number }>();
     for (const sub of activeSubs) {
       const cat = categorize(sub.merchant);
+      const color = categoryColor(cat);
       const monthly = toMonthly(sub.amount.toNumber(), sub.periodType);
-      const existing = categoryMap.get(cat) ?? { total: 0, count: 0 };
-      categoryMap.set(cat, { total: existing.total + monthly, count: existing.count + 1 });
+      const existing = categoryMap.get(cat) ?? { color, total: 0, count: 0 };
+      categoryMap.set(cat, { color, total: existing.total + monthly, count: existing.count + 1 });
     }
 
     const totalAll = Array.from(categoryMap.values()).reduce((s, v) => s + v.total, 0);
-
     return Array.from(categoryMap.entries())
-      .map(([category, { total, count }]) => ({
-        category,
+      .map(([category, { color, total, count }]) => ({
+        category: category as SubscriptionCategory,
+        color,
         total: round2(total),
         count,
         percent: totalAll > 0 ? round2((total / totalAll) * 100) : 0,
@@ -228,40 +291,65 @@ export class AnalyticsService {
 
   // ── By Service ───────────────────────────────────────────
 
-  async getByService(userId: string, limit = 10): Promise<ServiceItemDto[]> {
+  async getByService(userId: string, limit = 10, from?: Date, to?: Date): Promise<ServiceItemDto[]> {
     const activeSubs = await this.prisma.detectedSubscription.findMany({
       where: { userId, isActive: true },
       orderBy: { amount: 'desc' },
     });
 
-    return activeSubs
-      .map((sub) => {
-        const amount = sub.amount.toNumber();
-        return {
-          merchant: sub.merchant,
-          monthlyAmount: round2(toMonthly(amount, sub.periodType)),
-          yearlyAmount: round2(toYearly(amount, sub.periodType)),
-          periodType: sub.periodType,
-          category: categorize(sub.merchant),
-        };
-      })
-      .sort((a, b) => b.monthlyAmount - a.monthlyAmount)
-      .slice(0, limit);
+    let results = activeSubs.map((sub) => {
+      const amount = sub.amount.toNumber();
+      const cat = categorize(sub.merchant);
+      return {
+        merchant: sub.merchant,
+        monthlyAmount: round2(toMonthly(amount, sub.periodType)),
+        yearlyAmount: round2(toYearly(amount, sub.periodType)),
+        periodType: sub.periodType,
+        category: cat,
+        color: categoryColor(cat),
+      };
+    });
+
+    // If date range — adjust amounts by actual transaction spend in period
+    if (from && to) {
+      const txs = await this.prisma.importedTransaction.findMany({
+        where: { userId, occurredAt: { gte: from, lte: to } },
+        select: { merchant: true, description: true, amount: true },
+      });
+
+      const txMap = new Map<string, number>();
+      for (const tx of txs) {
+        const key = (tx.merchant ?? tx.description).toLowerCase();
+        txMap.set(key, (txMap.get(key) ?? 0) + Number(tx.amount));
+      }
+
+      results = results.map((r) => {
+        const txAmount = txMap.get(r.merchant.toLowerCase());
+        return txAmount ? { ...r, monthlyAmount: round2(txAmount) } : r;
+      });
+    }
+
+    return results.sort((a, b) => b.monthlyAmount - a.monthlyAmount).slice(0, limit);
   }
 
-  // ── By Period (12 months) ────────────────────────────────
+  // ── By Period ────────────────────────────────────────────
 
-  async getByPeriod(userId: string, granularity: 'month' | 'week' = 'month'): Promise<PeriodItemDto[]> {
+  async getByPeriod(
+    userId: string,
+    granularity: 'month' | 'week' = 'month',
+    from?: Date,
+    to?: Date,
+  ): Promise<PeriodItemDto[]> {
     const now = new Date();
-    const from = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+    const rangeFrom = from ?? new Date(now.getFullYear() - 1, now.getMonth(), 1);
+    const rangeTo = to ?? now;
 
     const txs = await this.prisma.importedTransaction.findMany({
-      where: { userId, occurredAt: { gte: from } },
+      where: { userId, occurredAt: { gte: rangeFrom, lte: rangeTo } },
       select: { occurredAt: true, amount: true },
       orderBy: { occurredAt: 'asc' },
     });
 
-    // Group by period key
     const periodMap = new Map<string, { total: number; count: number }>();
 
     for (const tx of txs) {
@@ -271,18 +359,16 @@ export class AnalyticsService {
           : `${tx.occurredAt.getFullYear()}-W${getISOWeek(tx.occurredAt)}`;
 
       const existing = periodMap.get(key) ?? { total: 0, count: 0 };
-      periodMap.set(key, {
-        total: existing.total + Number(tx.amount),
-        count: existing.count + 1,
-      });
+      periodMap.set(key, { total: existing.total + Number(tx.amount), count: existing.count + 1 });
     }
 
-    // Fill missing months (so chart doesn't have gaps)
+    // Fill missing months (granularity=month only)
     if (granularity === 'month') {
-      for (let i = 11; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const key = toMonthKey(d);
+      let cursor = new Date(rangeFrom.getFullYear(), rangeFrom.getMonth(), 1);
+      while (cursor <= rangeTo) {
+        const key = toMonthKey(cursor);
         if (!periodMap.has(key)) periodMap.set(key, { total: 0, count: 0 });
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
       }
     }
 
@@ -291,10 +377,7 @@ export class AnalyticsService {
     return sorted.map(([period, { total, count }], idx) => {
       const prev = idx > 0 ? sorted[idx - 1][1].total : null;
       const momGrowthPct =
-        prev !== null && prev > 0
-          ? round2(((total - prev) / prev) * 100)
-          : null;
-
+        prev !== null && prev > 0 ? round2(((total - prev) / prev) * 100) : null;
       return { period, total: round2(total), count, momGrowthPct };
     });
   }
@@ -314,58 +397,52 @@ export class AnalyticsService {
 
     const now = new Date();
 
-    return activeSubs.map((sub) => {
-      const amount = sub.amount.toNumber();
-      const monthly = toMonthly(amount, sub.periodType);
-      const expectedDays = periodToDays(sub.periodType);
+    return activeSubs
+      .map((sub) => {
+        const amount = sub.amount.toNumber();
+        const monthly = toMonthly(amount, sub.periodType);
+        const expectedDays = periodToDays(sub.periodType);
 
-      // Recency: how recent is the last charge compared to expected period
-      const daysSinceCharge = (now.getTime() - sub.lastChargeDate.getTime()) / 86400000;
-      const recencyRatio = Math.max(0, 1 - daysSinceCharge / expectedDays);
-      const recencyScore = Math.round(recencyRatio * 30);
+        const daysSinceCharge = (now.getTime() - sub.lastChargeDate.getTime()) / 86400000;
+        const recencyRatio = Math.max(0, 1 - daysSinceCharge / expectedDays);
+        const recencyScore = Math.round(recencyRatio * 30);
+        const freqScore = Math.min(30, sub.transactionCount * 5);
+        const costShare = avgMonthly > 0 ? monthly / (avgMonthly * activeSubs.length) : 0;
+        const costScore = Math.round(Math.max(0, 20 - costShare * 20));
+        const confidenceScore = Math.round(sub.confidence * 20);
 
-      // Frequency: how many transactions
-      const freqScore = Math.min(30, sub.transactionCount * 5);
+        const valueScore = Math.min(100, recencyScore + freqScore + costScore + confidenceScore);
 
-      // Cost efficiency: cheaper subs score higher (inverse cost share)
-      const costShare = avgMonthly > 0 ? monthly / (avgMonthly * activeSubs.length) : 0;
-      const costScore = Math.round(Math.max(0, 20 - costShare * 20));
+        let label: ScoreItemDto['label'];
+        if (valueScore >= 75) label = 'Essential';
+        else if (valueScore >= 50) label = 'Valuable';
+        else if (valueScore >= 25) label = 'Marginal';
+        else label = 'Low Value';
 
-      // Confidence
-      const confidenceScore = Math.round(sub.confidence * 20);
+        const daysOverdue = (now.getTime() - sub.nextExpectedCharge.getTime()) / 86400000;
+        const overdueRatio = Math.max(0, daysOverdue / expectedDays);
+        let churnScore = Math.round(overdueRatio * 50);
+        if (sub.transactionCount < 3) churnScore += 20;
+        if (sub.confidence < 0.6) churnScore += 15;
+        churnScore = Math.min(100, churnScore);
 
-      const valueScore = Math.min(100, recencyScore + freqScore + costScore + confidenceScore);
+        let churnRisk: ScoreItemDto['churnRisk'];
+        if (churnScore < 30) churnRisk = 'LOW';
+        else if (churnScore < 60) churnRisk = 'MEDIUM';
+        else churnRisk = 'HIGH';
 
-      let label: ScoreItemDto['label'];
-      if (valueScore >= 75) label = 'Essential';
-      else if (valueScore >= 50) label = 'Valuable';
-      else if (valueScore >= 25) label = 'Marginal';
-      else label = 'Low Value';
-
-      // Churn risk: how overdue is the next charge
-      const daysOverdue = (now.getTime() - sub.nextExpectedCharge.getTime()) / 86400000;
-      const overdueRatio = Math.max(0, daysOverdue / expectedDays);
-      let churnScore = Math.round(overdueRatio * 50);
-      if (sub.transactionCount < 3) churnScore += 20;
-      if (sub.confidence < 0.6) churnScore += 15;
-      churnScore = Math.min(100, churnScore);
-
-      let churnRisk: ScoreItemDto['churnRisk'];
-      if (churnScore < 30) churnRisk = 'LOW';
-      else if (churnScore < 60) churnRisk = 'MEDIUM';
-      else churnRisk = 'HIGH';
-
-      return {
-        subscriptionId: sub.id,
-        merchant: sub.merchant,
-        valueScore,
-        churnRisk,
-        label,
-        monthlyAmount: round2(monthly),
-        periodType: sub.periodType,
-        lastChargeDate: sub.lastChargeDate.toISOString(),
-      };
-    }).sort((a, b) => b.valueScore - a.valueScore);
+        return {
+          subscriptionId: sub.id,
+          merchant: sub.merchant,
+          valueScore,
+          churnRisk,
+          label,
+          monthlyAmount: round2(monthly),
+          periodType: sub.periodType,
+          lastChargeDate: sub.lastChargeDate.toISOString(),
+        };
+      })
+      .sort((a, b) => b.valueScore - a.valueScore);
   }
 
   // ── Recommendations ──────────────────────────────────────
@@ -380,13 +457,9 @@ export class AnalyticsService {
     const now = new Date();
     const results: RecommendationDto[] = [];
 
-    const monthlyAmounts = activeSubs.map((s) =>
-      toMonthly(s.amount.toNumber(), s.periodType),
-    );
-    const avgMonthly =
-      monthlyAmounts.reduce((a, b) => a + b, 0) / monthlyAmounts.length;
+    const monthlyAmounts = activeSubs.map((s) => toMonthly(s.amount.toNumber(), s.periodType));
+    const avgMonthly = monthlyAmounts.reduce((a, b) => a + b, 0) / monthlyAmounts.length;
 
-    // Detect duplicates by normalizedMerchant
     const merchantCount = new Map<string, number>();
     for (const sub of activeSubs) {
       merchantCount.set(sub.normalizedMerchant, (merchantCount.get(sub.normalizedMerchant) ?? 0) + 1);
@@ -396,9 +469,8 @@ export class AnalyticsService {
       const amount = sub.amount.toNumber();
       const monthly = toMonthly(amount, sub.periodType);
       const expectedDays = periodToDays(sub.periodType);
-
-      // Rule 1: CANCEL — next charge is > 2 periods overdue
       const daysOverdue = (now.getTime() - sub.nextExpectedCharge.getTime()) / 86400000;
+
       if (daysOverdue > expectedDays * 2) {
         results.push({
           type: 'CANCEL',
@@ -406,12 +478,11 @@ export class AnalyticsService {
           merchant: sub.merchant,
           currentCost: round2(monthly),
           potentialSavings: round2(monthly * 12),
-          reason: `Списаний не было более ${Math.round(daysOverdue)} дней. Возможно, подписка не используется.`,
+          reason: `Списаний не было более ${Math.round(daysOverdue)} дней`,
         });
         continue;
       }
 
-      // Rule 2: REVIEW — cost > 3x average
       if (monthly > avgMonthly * 3 && activeSubs.length > 1) {
         results.push({
           type: 'REVIEW',
@@ -419,24 +490,21 @@ export class AnalyticsService {
           merchant: sub.merchant,
           currentCost: round2(monthly),
           potentialSavings: round2((monthly - avgMonthly * 2) * 12),
-          reason: `Стоимость в ${(monthly / avgMonthly).toFixed(1)}× выше среднего. Рассмотрите более дешёвый тариф.`,
+          reason: `В ${(monthly / avgMonthly).toFixed(1)}× дороже среднего`,
         });
       }
 
-      // Rule 3: DOWNGRADE — monthly billing for 6+ months, suggest yearly
       if (sub.periodType === 'MONTHLY' && sub.transactionCount >= 6) {
-        const yearlySaving = round2(monthly * 12 * 0.15);
         results.push({
           type: 'DOWNGRADE',
           priority: 'LOW',
           merchant: sub.merchant,
           currentCost: round2(monthly * 12),
-          potentialSavings: yearlySaving,
-          reason: `Платите ежемесячно уже ${sub.transactionCount} мес. Годовой план обычно дешевле на ~15%.`,
+          potentialSavings: round2(monthly * 12 * 0.15),
+          reason: `${sub.transactionCount} мес подряд — годовой план ~−15%`,
         });
       }
 
-      // Rule 4: CONSOLIDATE — duplicate by normalizedMerchant
       if ((merchantCount.get(sub.normalizedMerchant) ?? 0) > 1) {
         results.push({
           type: 'CONSOLIDATE',
@@ -444,12 +512,11 @@ export class AnalyticsService {
           merchant: sub.merchant,
           currentCost: round2(monthly),
           potentialSavings: round2(monthly),
-          reason: `Найдено несколько подписок от ${sub.merchant}. Возможно дублирование.`,
+          reason: 'Найдено дублирование подписки',
         });
       }
     }
 
-    // Sort: HIGH first, then by potentialSavings desc
     const order = { HIGH: 0, MEDIUM: 1, LOW: 2 };
     results.sort((a, b) => {
       const po = order[a.priority] - order[b.priority];
