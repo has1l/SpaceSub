@@ -27,6 +27,15 @@ function SubscriptionsIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+function AnalyticsIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12 L4 8 L7 10 L10 5 L13 7 L15 3" />
+      <path d="M1 14 L15 14" />
+    </svg>
+  );
+}
+
 function ConnectIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
@@ -125,6 +134,7 @@ export function Layout() {
               <div className="flex items-center gap-1">
                 <NavLink to="/dashboard" icon={<DashboardIcon />}>Панель</NavLink>
                 <NavLink to="/subscriptions" icon={<SubscriptionsIcon />}>Подписки</NavLink>
+                <NavLink to="/analytics" icon={<AnalyticsIcon />}>Аналитика</NavLink>
                 <NavLink to="/connect-flex" icon={<ConnectIcon />}>Подключение</NavLink>
               </div>
             </div>
@@ -193,6 +203,7 @@ export function Layout() {
           <nav className="bottom-nav">
             <BottomNavItem to="/dashboard" label="Панель" icon={<DashboardIcon size={20} />} />
             <BottomNavItem to="/subscriptions" label="Подписки" icon={<SubscriptionsIcon size={20} />} />
+            <BottomNavItem to="/analytics" label="Аналитика" icon={<AnalyticsIcon size={20} />} />
             <BottomNavItem to="/connect-flex" label="Банк" icon={<ConnectIcon size={20} />} />
           </nav>
         )}

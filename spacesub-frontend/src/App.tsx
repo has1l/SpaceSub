@@ -7,6 +7,7 @@ import { AuthCallback } from "./pages/AuthCallback";
 import { Dashboard } from "./pages/Dashboard";
 import { ConnectFlex } from "./pages/ConnectFlex";
 import { SubscriptionsPage } from "./pages/SubscriptionsPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/subscriptions" element={<SubscriptionsPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/connect-flex" element={<ConnectFlex />} />
             </Route>
           </Route>
