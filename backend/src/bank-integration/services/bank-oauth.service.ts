@@ -1,3 +1,4 @@
+import dns from 'node:dns';
 import https from 'node:https';
 import {
   Injectable,
@@ -19,6 +20,9 @@ const keepAliveAgent = new https.Agent({
   keepAlive: true,
   keepAliveMsecs: 30_000,
   maxSockets: 10,
+  lookup: (hostname, options, callback) => {
+    dns.lookup(hostname, { ...(typeof options === 'object' ? options : {}), family: 4 }, callback);
+  },
 });
 
 // ── Yandex OAuth client ──────────────────────────────────────

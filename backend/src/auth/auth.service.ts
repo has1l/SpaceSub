@@ -1,3 +1,4 @@
+import dns from 'node:dns';
 import https from 'node:https';
 import {
   Injectable,
@@ -14,12 +15,14 @@ import { OAuthStateStore } from './oauth-state.store';
 import { OAuthCodeExpiredException } from './oauth-code-expired.exception';
 
 // ── Shared HTTPS keep-alive agent ────────────────────────────
-// Reuses TCP/TLS connections to Yandex across requests.
-// Saves 200–500ms per request by skipping DNS + TLS handshake.
+// Force IPv4 via lookup — Railway containers often fail on IPv6.
 const keepAliveAgent = new https.Agent({
   keepAlive: true,
   keepAliveMsecs: 30_000,
   maxSockets: 10,
+  lookup: (hostname, options, callback) => {
+    dns.lookup(hostname, { ...(typeof options === 'object' ? options : {}), family: 4 }, callback);
+  },
 });
 
 // ── Yandex OAuth client ──────────────────────────────────────

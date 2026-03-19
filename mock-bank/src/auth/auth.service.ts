@@ -1,5 +1,11 @@
+import dns from 'node:dns';
 import https from 'node:https';
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  UnauthorizedException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
@@ -12,6 +18,9 @@ const keepAliveAgent = new https.Agent({
   keepAlive: true,
   keepAliveMsecs: 30_000,
   maxSockets: 10,
+  lookup: (hostname, options, callback) => {
+    dns.lookup(hostname, { ...(typeof options === 'object' ? options : {}), family: 4 }, callback);
+  },
 });
 
 // ── Yandex API client (retry on network errors only) ─────────
@@ -127,7 +136,7 @@ export class AuthService {
       this.logger.error(
         `Yandex token exchange network error: ${error instanceof Error ? error.message : error}`,
       );
-      throw new UnauthorizedException('Yandex token exchange request failed');
+      throw new InternalServerErrorException('Yandex token exchange network failure');
     }
   }
 
@@ -232,7 +241,7 @@ export class AuthService {
       this.logger.error(
         `Yandex user info network error: ${error instanceof Error ? error.message : error}`,
       );
-      throw new UnauthorizedException('Yandex user info request failed');
+      throw new InternalServerErrorException('Yandex user info network failure');
     }
   }
 }
