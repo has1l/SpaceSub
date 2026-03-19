@@ -149,7 +149,24 @@ function SummaryBlock({ summary }: { summary: SubscriptionSummary }) {
 
 /* ── Subscription Card ── */
 
-function SubscriptionCard({ sub, index }: { sub: DetectedSubscription; index: number }) {
+function SubscriptionCard({ sub, index, onDelete }: { sub: DetectedSubscription; index: number; onDelete: (id: string) => void }) {
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setDeleting(true);
+    try {
+      await subscriptionsApi.remove(sub.id);
+      onDelete(sub.id);
+    } catch {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
   const days = daysUntil(sub.nextExpectedCharge);
   const isUpcoming = days >= 0 && days <= 7;
   const lowConfidence = sub.confidence < 0.65;
@@ -281,6 +298,29 @@ function SubscriptionCard({ sub, index }: { sub: DetectedSubscription; index: nu
           </div>
         ))}
       </div>
+
+      {/* Delete button */}
+      <div className="pt-3 mt-3" style={{ borderTop: '1px solid rgba(239,68,68,0.06)' }}>
+        <motion.button
+          onClick={handleDelete}
+          onBlur={() => setConfirmDelete(false)}
+          disabled={deleting}
+          whileTap={{ scale: 0.97 }}
+          className="w-full py-2 rounded-lg text-xs font-semibold transition-all duration-200"
+          style={{
+            fontFamily: 'var(--font-mono)',
+            color: confirmDelete ? '#fff' : 'rgba(239,68,68,0.7)',
+            background: confirmDelete
+              ? 'linear-gradient(135deg, rgba(239,68,68,0.8), rgba(239,68,68,0.6))'
+              : 'rgba(239,68,68,0.06)',
+            border: `1px solid rgba(239,68,68,${confirmDelete ? '0.4' : '0.1'})`,
+            cursor: deleting ? 'wait' : 'pointer',
+            opacity: deleting ? 0.5 : 1,
+          }}
+        >
+          {deleting ? 'Удаление...' : confirmDelete ? 'Подтвердить удаление' : 'Удалить подписку'}
+        </motion.button>
+      </div>
     </motion.div>
   );
 }
@@ -375,6 +415,13 @@ export function SubscriptionsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleDelete = useCallback((id: string) => {
+    setActive((prev) => prev.filter((s) => s.id !== id));
+    setUpcoming((prev) => prev.filter((s) => s.id !== id));
+    // Refresh summary after deletion
+    subscriptionsApi.getSummary().then(setSummary).catch(() => {});
+  }, []);
 
   const sortedActive = useMemo(
     () =>
@@ -484,7 +531,7 @@ export function SubscriptionsPage() {
           </motion.h2>
           <div className="grid gap-4 sm:grid-cols-2">
             {sortedActive.map((sub, i) => (
-              <SubscriptionCard key={sub.id} sub={sub} index={i} />
+              <SubscriptionCard key={sub.id} sub={sub} index={i} onDelete={handleDelete} />
             ))}
           </div>
         </>

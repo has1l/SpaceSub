@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Delete, Param, UseGuards, Request, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DetectedSubscriptionsService } from './detected-subscriptions.service';
@@ -32,5 +32,12 @@ export class DetectedSubscriptionsController {
   @ApiOperation({ summary: 'Get subscription summary (totals, counts, upcoming)' })
   getSummary(@Request() req: { user: { id: string } }) {
     return this.service.getSummary(req.user.id);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a detected subscription' })
+  remove(@Request() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.service.remove(req.user.id, id);
   }
 }

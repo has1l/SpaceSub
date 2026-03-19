@@ -30,4 +30,6 @@ export const subscriptionsApi = {
     api.get<DetectedSubscription[]>(`${BASE}/upcoming`).then((r) => r.data),
   getSummary: () =>
     api.get<SubscriptionSummary>(`${BASE}/summary`).then((r) => r.data),
+  remove: (id: string) =>
+    api.delete(`${BASE}/${id}`),
 };

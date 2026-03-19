@@ -91,6 +91,12 @@ export class DetectedSubscriptionsService {
     };
   }
 
+  async remove(userId: string, id: string): Promise<void> {
+    await this.prisma.detectedSubscription.deleteMany({
+      where: { id, userId },
+    });
+  }
+
   private toDto(sub: DetectedSubscription): SubscriptionResponseDto {
     return {
       id: sub.id,
