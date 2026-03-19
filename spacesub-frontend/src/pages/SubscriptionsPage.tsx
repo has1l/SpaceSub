@@ -5,8 +5,12 @@ import { SatelliteIcon } from '../components/SatelliteIcon';
 import { OrbitDecoration } from '../components/OrbitDecoration';
 import {
   subscriptionsApi,
+  manualSubsApi,
   type DetectedSubscription,
   type SubscriptionSummary,
+  type ManualSubscription,
+  type BillingCycle,
+  type CreateSubscriptionPayload,
 } from '../services/subscriptionsApi';
 
 /* ── Helpers ── */
@@ -385,25 +389,368 @@ function UpcomingList({ subs }: { subs: DetectedSubscription[] }) {
   );
 }
 
+/* ── Add/Edit Subscription Modal ── */
+
+const CYCLE_OPTIONS: { value: BillingCycle; label: string }[] = [
+  { value: 'WEEKLY', label: 'Еженедельно' },
+  { value: 'MONTHLY', label: 'Ежемесячно' },
+  { value: 'QUARTERLY', label: 'Ежеквартально' },
+  { value: 'YEARLY', label: 'Ежегодно' },
+];
+
+function SubscriptionModal({
+  initial,
+  onClose,
+  onSaved,
+}: {
+  initial?: ManualSubscription;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(initial?.name ?? '');
+  const [amount, setAmount] = useState(initial?.amount?.toString() ?? '');
+  const [cycle, setCycle] = useState<BillingCycle>(initial?.periodType ?? 'MONTHLY');
+  const [nextBilling, setNextBilling] = useState(
+    initial?.nextBilling ? initial.nextBilling.slice(0, 10) : new Date().toISOString().slice(0, 10),
+  );
+  const [category, setCategory] = useState(initial?.category ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const isEdit = !!initial;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !amount) return;
+    setSaving(true);
+    setError('');
+    try {
+      if (isEdit) {
+        await manualSubsApi.update(initial!.id, {
+          name: name.trim(),
+          amount: parseFloat(amount),
+          billingCycle: cycle,
+          nextBilling: new Date(nextBilling).toISOString(),
+          category: category || undefined,
+        });
+      } else {
+        const payload: CreateSubscriptionPayload = {
+          name: name.trim(),
+          amount: parseFloat(amount),
+          billingCycle: cycle,
+          nextBilling: new Date(nextBilling).toISOString(),
+          category: category || undefined,
+        };
+        await manualSubsApi.create(payload);
+      }
+      onSaved();
+    } catch {
+      setError('Не удалось сохранить');
+      setSaving(false);
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '10px 14px',
+    borderRadius: 10,
+    border: '1px solid rgba(0,212,170,0.12)',
+    background: 'rgba(6,16,30,0.8)',
+    color: '#e2e8f0',
+    fontFamily: 'var(--font-body)',
+    fontSize: 14,
+    outline: 'none',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontFamily: 'var(--font-mono)',
+    fontSize: 11,
+    color: 'rgba(200,214,229,0.4)',
+    marginBottom: 6,
+    display: 'block',
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 100,
+        background: 'rgba(2,8,16,0.8)', backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16,
+      }}
+    >
+      <motion.form
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={handleSubmit}
+        style={{
+          width: '100%', maxWidth: 420, padding: 24, borderRadius: 20,
+          background: 'rgba(17,25,40,0.95)', backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(0,212,170,0.15)',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+        }}
+      >
+        <h2 style={{
+          fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700,
+          color: '#e2e8f0', marginBottom: 20,
+        }}>
+          {isEdit ? 'Редактировать подписку' : 'Добавить подписку'}
+        </h2>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Название *</label>
+            <input
+              style={inputStyle}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Netflix, Spotify..."
+              required
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Сумма (₽) *</label>
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="799"
+                required
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Период</label>
+              <select
+                style={{ ...inputStyle, cursor: 'pointer' }}
+                value={cycle}
+                onChange={(e) => setCycle(e.target.value as BillingCycle)}
+              >
+                {CYCLE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Следующее списание</label>
+              <input
+                style={inputStyle}
+                type="date"
+                value={nextBilling}
+                onChange={(e) => setNextBilling(e.target.value)}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Категория</label>
+              <input
+                style={inputStyle}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="Развлечения"
+              />
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <p style={{ color: '#ef4444', fontSize: 12, fontFamily: 'var(--font-mono)', marginTop: 12 }}>
+            {error}
+          </p>
+        )}
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              flex: 1, padding: '10px', borderRadius: 10,
+              border: '1px solid rgba(200,214,229,0.1)', background: 'transparent',
+              color: 'rgba(200,214,229,0.5)', fontFamily: 'var(--font-body)',
+              fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            }}
+          >
+            Отмена
+          </button>
+          <button
+            type="submit"
+            disabled={saving || !name.trim() || !amount}
+            style={{
+              flex: 1, padding: '10px', borderRadius: 10,
+              border: 'none',
+              background: saving ? 'rgba(0,212,170,0.3)' : 'linear-gradient(135deg, #00d4aa, #0ea5e9)',
+              color: '#06101e', fontFamily: 'var(--font-display)',
+              fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer',
+              opacity: (!name.trim() || !amount) ? 0.4 : 1,
+            }}
+          >
+            {saving ? 'Сохранение...' : isEdit ? 'Сохранить' : 'Добавить'}
+          </button>
+        </div>
+      </motion.form>
+    </motion.div>
+  );
+}
+
+/* ── Manual Subscription Card ── */
+
+function ManualSubCard({
+  sub,
+  onEdit,
+  onDeleted,
+}: {
+  sub: ManualSubscription;
+  onEdit: (s: ManualSubscription) => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!confirmDel) { setConfirmDel(true); return; }
+    setDeleting(true);
+    try {
+      await manualSubsApi.remove(sub.id);
+      onDeleted(sub.id);
+    } catch {
+      setDeleting(false);
+      setConfirmDel(false);
+    }
+  };
+
+  return (
+    <motion.div
+      variants={fadeUp}
+      className="station-panel station-panel-glow p-5 relative overflow-hidden"
+      whileHover={{ y: -2 }}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span style={{ fontSize: 14 }}>✋</span>
+            <h3
+              className="font-semibold truncate"
+              style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}
+            >
+              {sub.name}
+            </h3>
+          </div>
+          <p className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'rgba(200,214,229,0.35)' }}>
+            {PERIOD_LABELS[sub.periodType] ?? sub.periodType}
+            {sub.category && ` · ${sub.category}`}
+          </p>
+        </div>
+        <div className="text-right ml-3 flex-shrink-0">
+          <p className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}>
+            {formatCurrency(sub.amount, sub.currency)}
+          </p>
+          <span className="text-[10px]" style={{ fontFamily: 'var(--font-mono)', color: 'rgba(200,214,229,0.3)' }}>
+            {PERIOD_SHORT[sub.periodType] ?? ''}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {sub.isActive ? (
+          <span className="badge badge-active">
+            <span className="status-dot status-dot-active" style={{ width: 4, height: 4 }} />
+            На орбите
+          </span>
+        ) : (
+          <span className="badge badge-dim">Сошла с орбиты</span>
+        )}
+        <span className="badge" style={{
+          color: 'rgba(14,165,233,0.7)', background: 'rgba(14,165,233,0.08)',
+          border: '1px solid rgba(14,165,233,0.15)', borderRadius: 20,
+          fontFamily: 'var(--font-mono)', fontSize: 9, padding: '2px 8px',
+        }}>
+          РУЧНАЯ
+        </span>
+      </div>
+
+      <div className="space-y-2 pt-3" style={{ borderTop: '1px solid rgba(0,212,170,0.05)' }}>
+        <div className="flex items-center justify-between text-xs">
+          <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(200,214,229,0.3)' }}>Следующее списание</span>
+          <span style={{ fontFamily: 'var(--font-mono)', color: 'rgba(200,214,229,0.55)' }}>
+            {formatDate(sub.nextBilling)}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex gap-2 pt-3 mt-3" style={{ borderTop: '1px solid rgba(0,212,170,0.05)' }}>
+        <button
+          onClick={() => onEdit(sub)}
+          className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all duration-200"
+          style={{
+            fontFamily: 'var(--font-mono)',
+            color: 'rgba(14,165,233,0.7)',
+            background: 'rgba(14,165,233,0.06)',
+            border: '1px solid rgba(14,165,233,0.1)',
+            cursor: 'pointer',
+          }}
+        >
+          Редактировать
+        </button>
+        <button
+          onClick={handleDelete}
+          onBlur={() => setConfirmDel(false)}
+          disabled={deleting}
+          className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all duration-200"
+          style={{
+            fontFamily: 'var(--font-mono)',
+            color: confirmDel ? '#fff' : 'rgba(239,68,68,0.7)',
+            background: confirmDel
+              ? 'linear-gradient(135deg, rgba(239,68,68,0.8), rgba(239,68,68,0.6))'
+              : 'rgba(239,68,68,0.06)',
+            border: `1px solid rgba(239,68,68,${confirmDel ? '0.4' : '0.1'})`,
+            cursor: deleting ? 'wait' : 'pointer',
+            opacity: deleting ? 0.5 : 1,
+          }}
+        >
+          {deleting ? '...' : confirmDel ? 'Подтвердить' : 'Удалить'}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 /* ── Main Page ── */
 
 export function SubscriptionsPage() {
   const [summary, setSummary] = useState<SubscriptionSummary | null>(null);
   const [active, setActive] = useState<DetectedSubscription[]>([]);
   const [upcoming, setUpcoming] = useState<DetectedSubscription[]>([]);
+  const [manualSubs, setManualSubs] = useState<ManualSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [editingSub, setEditingSub] = useState<ManualSubscription | undefined>(undefined);
 
   const fetchData = useCallback(async () => {
     try {
-      const [summaryData, activeData, upcomingData] = await Promise.all([
+      const [summaryData, activeData, upcomingData, manualData] = await Promise.all([
         subscriptionsApi.getSummary(),
         subscriptionsApi.getActive(),
         subscriptionsApi.getUpcoming(),
+        manualSubsApi.getAll(),
       ]);
       setSummary(summaryData);
       setActive(activeData);
       setUpcoming(upcomingData);
+      setManualSubs(manualData);
       setError(null);
     } catch {
       setError('Не удалось загрузить данные подписок');
@@ -419,8 +766,27 @@ export function SubscriptionsPage() {
   const handleDelete = useCallback((id: string) => {
     setActive((prev) => prev.filter((s) => s.id !== id));
     setUpcoming((prev) => prev.filter((s) => s.id !== id));
-    // Refresh summary after deletion
     subscriptionsApi.getSummary().then(setSummary).catch(() => {});
+  }, []);
+
+  const handleManualDelete = useCallback((id: string) => {
+    setManualSubs((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+
+  const openAddModal = useCallback(() => {
+    setEditingSub(undefined);
+    setShowModal(true);
+  }, []);
+
+  const openEditModal = useCallback((sub: ManualSubscription) => {
+    setEditingSub(sub);
+    setShowModal(true);
+  }, []);
+
+  const handleModalSaved = useCallback(() => {
+    setShowModal(false);
+    setEditingSub(undefined);
+    manualSubsApi.getAll().then(setManualSubs).catch(() => {});
   }, []);
 
   const sortedActive = useMemo(
@@ -444,17 +810,44 @@ export function SubscriptionsPage() {
       initial="initial"
       animate="animate"
     >
+      {/* Modal */}
+      <AnimatePresence>
+        {showModal && (
+          <SubscriptionModal
+            initial={editingSub}
+            onClose={() => { setShowModal(false); setEditingSub(undefined); }}
+            onSaved={handleModalSaved}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Header */}
-      <motion.div variants={fadeUp} className="mb-8">
-        <h1
-          className="text-2xl md:text-3xl font-extrabold text-gradient-signal mb-1"
-          style={{ fontFamily: 'var(--font-display)' }}
+      <motion.div variants={fadeUp} className="mb-8 flex items-end justify-between flex-wrap gap-3">
+        <div>
+          <h1
+            className="text-2xl md:text-3xl font-extrabold text-gradient-signal mb-1"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            Подписки
+          </h1>
+          <p className="text-sm" style={{ fontFamily: 'var(--font-body)', color: 'rgba(200,214,229,0.4)' }}>
+            Автоматические и ручные подписки на вашей орбите
+          </p>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={openAddModal}
+          style={{
+            padding: '8px 18px', borderRadius: 10, border: 'none',
+            background: 'linear-gradient(135deg, #00d4aa, #0ea5e9)',
+            color: '#06101e', fontFamily: 'var(--font-display)',
+            fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            boxShadow: '0 2px 12px rgba(0,212,170,0.3)',
+          }}
         >
-          Обнаруженные подписки
-        </h1>
-        <p className="text-sm" style={{ fontFamily: 'var(--font-body)', color: 'rgba(200,214,229,0.4)' }}>
-          Автоматически обнаруженные повторяющиеся платежи на вашей орбите
-        </p>
+          + Добавить подписку
+        </motion.button>
       </motion.div>
 
       {/* Error */}
@@ -536,6 +929,63 @@ export function SubscriptionsPage() {
           </div>
         </>
       )}
+
+      {/* Manual subscriptions */}
+      <motion.div variants={fadeUp} className="mt-10">
+        <motion.h2
+          variants={fadeUp}
+          className="text-lg font-semibold mb-4 flex items-center gap-2"
+          style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}
+        >
+          <span style={{ fontSize: 16 }}>✋</span>
+          Ручные подписки
+          <span
+            className="text-xs ml-1.5 px-2 py-0.5 rounded-full"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              color: '#0ea5e9',
+              background: 'rgba(14,165,233,0.08)',
+            }}
+          >
+            {manualSubs.length}
+          </span>
+        </motion.h2>
+
+        {manualSubs.length === 0 ? (
+          <motion.div
+            variants={fadeUp}
+            className="station-panel p-8 text-center"
+            style={{ border: '1px dashed rgba(14,165,233,0.15)' }}
+          >
+            <p style={{ fontSize: 24, marginBottom: 8 }}>📝</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.4)', marginBottom: 12 }}>
+              Нет ручных подписок
+            </p>
+            <button
+              onClick={openAddModal}
+              style={{
+                padding: '6px 16px', borderRadius: 8, border: 'none',
+                background: 'rgba(14,165,233,0.1)', color: '#0ea5e9',
+                fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              + Добавить вручную
+            </button>
+          </motion.div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {manualSubs.map((sub) => (
+              <ManualSubCard
+                key={sub.id}
+                sub={sub}
+                onEdit={openEditModal}
+                onDeleted={handleManualDelete}
+              />
+            ))}
+          </div>
+        )}
+      </motion.div>
     </motion.div>
   );
 }

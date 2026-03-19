@@ -20,6 +20,41 @@ export interface SubscriptionSummary {
   upcomingNext7Days: DetectedSubscription[];
 }
 
+export type BillingCycle = "WEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY";
+
+export interface ManualSubscription {
+  id: string;
+  name: string;
+  description?: string;
+  amount: number;
+  currency: string;
+  periodType: BillingCycle;
+  nextBilling: string;
+  category?: string;
+  isActive: boolean;
+}
+
+export interface CreateSubscriptionPayload {
+  name: string;
+  description?: string;
+  amount: number;
+  currency?: string;
+  billingCycle?: BillingCycle;
+  nextBilling: string;
+  category?: string;
+}
+
+export interface UpdateSubscriptionPayload {
+  name?: string;
+  description?: string;
+  amount?: number;
+  currency?: string;
+  billingCycle?: BillingCycle;
+  nextBilling?: string;
+  category?: string;
+  isActive?: boolean;
+}
+
 const BASE = "/detected-subscriptions";
 
 export const subscriptionsApi = {
@@ -32,4 +67,15 @@ export const subscriptionsApi = {
     api.get<SubscriptionSummary>(`${BASE}/summary`).then((r) => r.data),
   remove: (id: string) =>
     api.delete(`${BASE}/${id}`),
+};
+
+export const manualSubsApi = {
+  getAll: () =>
+    api.get<ManualSubscription[]>("/subscriptions").then((r) => r.data),
+  create: (data: CreateSubscriptionPayload) =>
+    api.post<ManualSubscription>("/subscriptions", data).then((r) => r.data),
+  update: (id: string, data: UpdateSubscriptionPayload) =>
+    api.put<ManualSubscription>(`/subscriptions/${id}`, data).then((r) => r.data),
+  remove: (id: string) =>
+    api.delete(`/subscriptions/${id}`),
 };
