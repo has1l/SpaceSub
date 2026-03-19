@@ -92,9 +92,28 @@ export class DetectedSubscriptionsService {
   }
 
   async remove(userId: string, id: string): Promise<void> {
-    await this.prisma.detectedSubscription.deleteMany({
+    // Find subscription first to get merchant name
+    const sub = await this.prisma.detectedSubscription.findFirst({
       where: { id, userId },
     });
+    if (!sub) return;
+
+    // Delete subscription and its associated imported transactions
+    await this.prisma.$transaction([
+      this.prisma.importedTransaction.deleteMany({
+        where: {
+          userId,
+          OR: [
+            { merchant: sub.merchant },
+            { merchant: sub.normalizedMerchant },
+            { description: { contains: sub.merchant } },
+          ],
+        },
+      }),
+      this.prisma.detectedSubscription.delete({
+        where: { id },
+      }),
+    ]);
   }
 
   private toDto(sub: DetectedSubscription): SubscriptionResponseDto {
