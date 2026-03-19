@@ -214,8 +214,8 @@ export class AnalyticsService {
       }),
     ]);
 
-    const currentMonth = round2(Number(currentTxs._sum.amount ?? 0));
-    const prevMonth = round2(Number(prevTxs._sum.amount ?? 0));
+    const currentMonth = round2(Math.abs(Number(currentTxs._sum.amount ?? 0)));
+    const prevMonth = round2(Math.abs(Number(prevTxs._sum.amount ?? 0)));
     const changePct =
       prevMonth === 0 ? 0 : round2(((currentMonth - prevMonth) / prevMonth) * 100);
 
@@ -227,7 +227,7 @@ export class AnalyticsService {
       arr: round2(mrr * 12),
       activeCount: activeSubs.length,
       upcomingCount,
-      periodTotal: round2(Number(periodAgg._sum.amount ?? 0)),
+      periodTotal: round2(Math.abs(Number(periodAgg._sum.amount ?? 0))),
       trend: { currentMonth, prevMonth, changePct },
     };
   }
@@ -248,7 +248,7 @@ export class AnalyticsService {
         const cat = categorize(merchant);
         const color = categoryColor(cat);
         const existing = catMap.get(cat) ?? { color, total: 0, count: 0 };
-        catMap.set(cat, { color, total: existing.total + Number(tx.amount), count: existing.count + 1 });
+        catMap.set(cat, { color, total: existing.total + Math.abs(Number(tx.amount)), count: existing.count + 1 });
       }
 
       const totalAll = Array.from(catMap.values()).reduce((s, v) => s + v.total, 0);
@@ -320,12 +320,12 @@ export class AnalyticsService {
       const txMap = new Map<string, number>();
       for (const tx of txs) {
         const key = (tx.merchant ?? tx.description).toLowerCase();
-        txMap.set(key, (txMap.get(key) ?? 0) + Number(tx.amount));
+        txMap.set(key, (txMap.get(key) ?? 0) + Math.abs(Number(tx.amount)));
       }
 
       results = results.map((r) => {
         const txAmount = txMap.get(r.merchant.toLowerCase());
-        return txAmount ? { ...r, monthlyAmount: round2(txAmount) } : r;
+        return txAmount != null ? { ...r, monthlyAmount: round2(Math.abs(txAmount)) } : r;
       });
     }
 
@@ -359,7 +359,7 @@ export class AnalyticsService {
           : `${tx.occurredAt.getFullYear()}-W${getISOWeek(tx.occurredAt)}`;
 
       const existing = periodMap.get(key) ?? { total: 0, count: 0 };
-      periodMap.set(key, { total: existing.total + Number(tx.amount), count: existing.count + 1 });
+      periodMap.set(key, { total: existing.total + Math.abs(Number(tx.amount)), count: existing.count + 1 });
     }
 
     // Fill missing months (granularity=month only)
