@@ -1,3 +1,4 @@
+import https from 'node:https';
 import {
   Injectable,
   Logger,
@@ -12,11 +13,18 @@ import { UsersService } from '../users/users.service';
 import { OAuthStateStore } from './oauth-state.store';
 import { OAuthCodeExpiredException } from './oauth-code-expired.exception';
 
-// Dedicated axios instance for Yandex OAuth with retry logic.
-// Timeout is 15s to survive Railway cold starts (DNS + TLS + response).
-// ONLY network errors are retried — never HTTP 4xx (invalid_grant, etc.)
-// because authorization codes are single-use and expire in seconds.
-const yandexClient = axios.create({ timeout: 15_000 });
+// ── Shared HTTPS keep-alive agent ────────────────────────────
+// Reuses TCP/TLS connections to Yandex across requests.
+// Saves 200–500ms per request by skipping DNS + TLS handshake.
+const keepAliveAgent = new https.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 30_000,
+  maxSockets: 10,
+});
+
+// ── Yandex OAuth client ──────────────────────────────────────
+// 15s timeout for Railway cold starts. Network-only retries.
+const yandexClient = axios.create({ timeout: 15_000, httpsAgent: keepAliveAgent });
 axiosRetry(yandexClient, {
   retries: 2,
   retryDelay: (retryCount) => retryCount * 1_000, // 1s, 2s
@@ -58,10 +66,6 @@ export class AuthService {
     const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');
     const state = this.oauthStateStore.generate(platform);
 
-    this.logger.log(
-      `[AUTH:authorize] env=YANDEX_CLIENT_ID, client_id=${clientId}, redirect_uri=${redirectUri}`,
-    );
-
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: clientId,
@@ -70,6 +74,26 @@ export class AuthService {
       state,
       force_confirm: 'true',
       prompt: 'select_account',
+    });
+
+    return `https://oauth.yandex.ru/authorize?${params.toString()}`;
+  }
+
+  /**
+   * Restart URL without force_confirm — Yandex auto-approves returning users.
+   * Makes the restart after OAuthCodeExpiredException nearly invisible.
+   */
+  getYandexRestartUrl(platform?: string): string {
+    const clientId = this.configService.get('YANDEX_CLIENT_ID');
+    const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');
+    const state = this.oauthStateStore.generate(platform);
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: 'login:email login:info login:avatar',
+      state,
     });
 
     return `https://oauth.yandex.ru/authorize?${params.toString()}`;
@@ -104,19 +128,13 @@ export class AuthService {
   }
 
   private async exchangeCodeForToken(code: string, callbackTime?: number) {
-    const now = Date.now();
-    console.log('TOKEN EXCHANGE START:', now);
     if (callbackTime) {
-      console.log('CALLBACK → TOKEN EXCHANGE DELAY:', now - callbackTime, 'ms');
+      this.logger.log(`[AUTH:token-exchange] callback→exchange delay: ${Date.now() - callbackTime}ms`);
     }
 
     const clientId = this.configService.get('YANDEX_CLIENT_ID');
     const clientSecret = this.configService.get('YANDEX_CLIENT_SECRET');
     const redirectUri = this.configService.get('YANDEX_REDIRECT_URI');
-
-    this.logger.log(
-      `[AUTH:token-exchange] client_id=${clientId}, redirect_uri=${redirectUri}`,
-    );
 
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -138,13 +156,6 @@ export class AuthService {
       this.logger.log('[AUTH:token-exchange] success');
       return response.data;
     } catch (error) {
-      console.error('YANDEX TOKEN ERROR');
-      console.error('status:', error?.response?.status);
-      console.error('data:', error?.response?.data);
-      console.error('headers:', error?.response?.headers);
-      console.error('message:', error?.message);
-      console.error('code:', error?.code);
-
       if (axios.isAxiosError(error) && error.response) {
         const data = error.response.data;
         this.logger.error(

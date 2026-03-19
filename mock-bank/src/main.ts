@@ -1,12 +1,13 @@
 import dns from 'node:dns';
+import net from 'node:net';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
-// Force IPv4 for all DNS resolution — Railway containers often fail
-// on IPv6 connections to external services (Yandex OAuth, etc.)
+// ── Network reliability fixes for Railway ──────────────────
 dns.setDefaultResultOrder('ipv4first');
+net.setDefaultAutoSelectFamilyAttemptTimeout?.(100);
 
 async function bootstrap() {
   console.log('[bootstrap] Starting NestJS application...');
@@ -40,6 +41,16 @@ async function bootstrap() {
   console.log(`Swagger docs: /api/docs`);
   console.log(`  FRONTEND_URL        = ${process.env.FRONTEND_URL ?? '(not set)'}`);
   console.log(`  YANDEX_REDIRECT_URI = ${process.env.YANDEX_REDIRECT_URI ?? '(not set)'}`);
+
+  // ── Keep-alive self-ping — prevent Railway from sleeping ──
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    const selfUrl = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/health`;
+    const INTERVAL = 4 * 60 * 1000;
+    setInterval(() => {
+      fetch(selfUrl).catch(() => {});
+    }, INTERVAL);
+    console.log(`[keep-alive] self-ping every 4m → ${selfUrl}`);
+  }
 }
 bootstrap().catch((err) => {
   console.error('Failed to start NestJS application:', err);

@@ -72,27 +72,18 @@ describe('AuthService (flexbank)', () => {
 
   describe('exchangeYandexToken', () => {
     it('should call getYandexUserInfo, upsert user, and return JWT', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            id: 'yandex-123',
-            default_email: 'test@ya.ru',
-            display_name: 'Test User',
-          }),
+      // Spy on the private method to avoid mocking module-level axios instance
+      jest.spyOn(service as any, 'getYandexUserInfo').mockResolvedValue({
+        id: 'yandex-123',
+        default_email: 'test@ya.ru',
+        display_name: 'Test User',
       });
-      global.fetch = mockFetch;
 
       const result = await service.exchangeYandexToken('yandex-access-token');
 
       expect(result).toHaveProperty('accessToken');
       expect(typeof result.accessToken).toBe('string');
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://login.yandex.ru/info?format=json',
-        expect.objectContaining({
-          headers: { Authorization: 'OAuth yandex-access-token' },
-        }),
-      );
+      expect((service as any).getYandexUserInfo).toHaveBeenCalledWith('yandex-access-token');
     });
   });
 

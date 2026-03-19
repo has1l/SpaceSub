@@ -12,6 +12,8 @@ import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { OAuthCodeExpiredException } from './oauth-code-expired.exception';
 
+const MAX_RETRIES = 2;
+
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
@@ -23,37 +25,44 @@ export class AuthController {
   ) {}
 
   @Get('yandex')
-  @ApiOperation({ summary: 'Redirect to Yandex OAuth (with state + PKCE)' })
-  @ApiQuery({ name: 'platform', required: false, description: 'Client platform: "ios" for mobile redirect' })
+  @ApiOperation({ summary: 'Redirect to Yandex OAuth' })
+  @ApiQuery({ name: 'platform', required: false })
   yandexAuth(
     @Query('platform') platform: string | undefined,
     @Res() res: Response,
   ) {
-    console.log('OAUTH REDIRECT TIME:', Date.now());
     const url = this.authService.getYandexAuthUrl(platform);
     return res.redirect(url);
   }
 
   @Get('yandex/callback')
-  @ApiOperation({ summary: 'Yandex OAuth callback — validates state, redirects to frontend or mobile' })
+  @ApiOperation({ summary: 'Yandex OAuth callback' })
   @ApiQuery({ name: 'code', required: true })
   @ApiQuery({ name: 'state', required: true })
+  @ApiQuery({ name: 'retry', required: false })
   async yandexCallback(
     @Query('code') code: string,
     @Query('state') state: string,
+    @Query('retry') retry: string | undefined,
     @Res() res: Response,
   ) {
     const callbackTime = Date.now();
-    console.log('CALLBACK HANDLER START:', callbackTime);
+    const retryCount = parseInt(retry ?? '0', 10) || 0;
 
-    // Exchange the authorization code IMMEDIATELY — codes expire in seconds.
     let result: Awaited<ReturnType<AuthService['handleYandexCallback']>>;
     try {
       result = await this.authService.handleYandexCallback(code, callbackTime);
     } catch (error) {
       if (error instanceof OAuthCodeExpiredException) {
-        this.logger.warn('OAuth code expired — restarting OAuth flow');
-        return res.redirect('/api/auth/yandex');
+        if (retryCount >= MAX_RETRIES) {
+          this.logger.error(`OAuth code expired after ${retryCount} retries — giving up`);
+          const frontendUrl = this.configService.get('FRONTEND_URL') || 'http://localhost:5174';
+          return res.redirect(`${frontendUrl}/?error=oauth_timeout`);
+        }
+        this.logger.warn(`OAuth code expired — restart #${retryCount + 1}`);
+        // Use restart URL (no force_confirm) so Yandex auto-approves returning users
+        const restartUrl = this.authService.getYandexRestartUrl();
+        return res.redirect(restartUrl);
       }
       throw error;
     }
@@ -64,21 +73,14 @@ export class AuthController {
     }
 
     if (stateResult.timestamp) {
-      const roundtripMs = callbackTime - stateResult.timestamp;
-      console.log('OAUTH ROUNDTRIP:', roundtripMs, 'ms');
-      console.log('OAUTH REDIRECT TIME:', stateResult.timestamp);
+      this.logger.log(`OAuth roundtrip: ${callbackTime - stateResult.timestamp}ms`);
     }
 
     if (stateResult.platform === 'ios') {
-      const redirectTo = `spacesub://auth/callback?token=${result.accessToken}`;
-      this.logger.log(`OAuth callback redirect → iOS app (spacesub://)`);
-      return res.redirect(redirectTo);
+      return res.redirect(`spacesub://auth/callback?token=${result.accessToken}`);
     }
 
-    const frontendUrl =
-      this.configService.get('FRONTEND_URL') || 'http://localhost:5174';
-    const redirectTo = `${frontendUrl}/auth/callback?token=${result.accessToken}`;
-    this.logger.log(`OAuth callback redirect → ${frontendUrl}`);
-    return res.redirect(redirectTo);
+    const frontendUrl = this.configService.get('FRONTEND_URL') || 'http://localhost:5174';
+    return res.redirect(`${frontendUrl}/auth/callback?token=${result.accessToken}`);
   }
 }

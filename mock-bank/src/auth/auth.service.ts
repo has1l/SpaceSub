@@ -1,9 +1,32 @@
+import https from 'node:https';
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
 import { PrismaService } from '../prisma/prisma.service';
 import { OAuthStateStore } from './oauth-state.store';
+
+// ── Shared HTTPS keep-alive agent ────────────────────────────
+const keepAliveAgent = new https.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 30_000,
+  maxSockets: 10,
+});
+
+// ── Yandex API client (retry on network errors only) ─────────
+const yandexClient = axios.create({ timeout: 15_000, httpsAgent: keepAliveAgent });
+axiosRetry(yandexClient, {
+  retries: 2,
+  retryDelay: (retryCount) => retryCount * 1_000,
+  retryCondition: (error) => {
+    if (error.response) return false;
+    return axiosRetry.isNetworkError(error) || error.code === 'ECONNABORTED';
+  },
+  onRetry: (retryCount, error) => {
+    console.log(`[mock-bank:yandex] retry #${retryCount}: ${error.code ?? 'UNKNOWN'} — ${error.message}`);
+  },
+});
 
 interface YandexUserInfo {
   id: string | number;
@@ -88,9 +111,8 @@ export class AuthService {
     });
 
     try {
-      const response = await axios.post('https://oauth.yandex.ru/token', params, {
+      const response = await yandexClient.post('https://oauth.yandex.ru/token', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        timeout: 15_000,
       });
 
       this.logger.log('Yandex token exchange successful');
@@ -196,9 +218,8 @@ export class AuthService {
     accessToken: string,
   ): Promise<YandexUserInfo> {
     try {
-      const response = await axios.get('https://login.yandex.ru/info?format=json', {
+      const response = await yandexClient.get('https://login.yandex.ru/info?format=json', {
         headers: { Authorization: `OAuth ${accessToken}` },
-        timeout: 15_000,
       });
 
       this.logger.debug(`[AUTH] Raw Yandex API response keys: ${Object.keys(response.data).join(', ')}`);
