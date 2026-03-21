@@ -14,17 +14,10 @@ export default function AuthCallback() {
   useEffect(() => {
     const token = searchParams.get('token');
     if (token) {
-      // Write to localStorage as backup
       localStorage.setItem('flexbank_token', token);
-      // Update AuthContext synchronously so ProtectedRoute sees the token
-      // before React Router renders the dashboard route
-      flushSync(() => {
-        setToken(token);
-      });
-      console.log('[AuthCallback] Token saved, navigating to dashboard');
+      flushSync(() => { setToken(token); });
       navigate('/dashboard', { replace: true });
     } else {
-      console.error('[AuthCallback] No token in URL params. Full URL:', window.location.href);
       setError('Токен не получен');
     }
   }, [searchParams, setToken, navigate]);
@@ -34,9 +27,8 @@ export default function AuthCallback() {
       <div className="min-h-svh flex items-center justify-center">
         <CosmicBackground />
         <div className="text-center relative z-10">
-          <p className="text-aurora-red mb-4">{error}</p>
-          <a href="/" className="text-accent-blue hover:text-accent-cyan transition-colors"
-             style={{ fontFamily: 'var(--font-body)' }}>
+          <p className="text-accent-red mb-4">{error}</p>
+          <a href="/" className="text-accent-blue hover:text-accent-blue/80 transition-colors text-sm">
             Вернуться ко входу
           </a>
         </div>
@@ -45,7 +37,7 @@ export default function AuthCallback() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative" style={{ background: 'var(--color-void)' }}>
+    <div className="min-h-svh flex items-center justify-center" style={{ background: 'var(--color-void)' }}>
       <CosmicBackground />
       <div className="text-center relative z-10">
         <Spinner text="Авторизация..." />
