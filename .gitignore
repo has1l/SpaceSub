@@ -47,5 +47,6 @@ xcuserdata/
 # Vercel
 .vercel/
 
-# Claude Code memory
+# Claude Code
 .claude/
+CLAUDE.md

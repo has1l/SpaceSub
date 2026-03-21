@@ -1,16 +1,50 @@
 import Foundation
 import Observation
 
+enum PeriodPreset: String, CaseIterable, Sendable {
+    case week = "7д"
+    case oneMonth = "1мес"
+    case threeMonths = "3мес"
+    case year = "12мес"
+
+    var dateRange: (from: Date, to: Date) {
+        let now = Date()
+        let calendar = Calendar.current
+        let from: Date
+        switch self {
+        case .week:
+            from = calendar.date(byAdding: .day, value: -7, to: now)!
+        case .oneMonth:
+            from = calendar.date(byAdding: .month, value: -1, to: now)!
+        case .threeMonths:
+            from = calendar.date(byAdding: .month, value: -3, to: now)!
+        case .year:
+            from = calendar.date(byAdding: .year, value: -1, to: now)!
+        }
+        return (from, now)
+    }
+}
+
 @Observable
 final class AnalyticsViewModel {
 
-    private(set) var analytics: AnalyticsResponse?
+    // Data
+    private(set) var overview: AnalyticsOverview?
+    private(set) var categories: [CategoryItem] = []
+    private(set) var services: [ServiceItem] = []
+    private(set) var periods: [PeriodItem] = []
+    private(set) var scores: [ScoreItem] = []
+    private(set) var recommendations: [RecommendationItem] = []
+
+    // State
+    var selectedPeriod: PeriodPreset = .oneMonth
     private(set) var isLoading = false
+    private(set) var isChartLoading = false
     private(set) var error: String?
 
-    private let service: AnalyticsService
-
     var onUnauthorized: (() -> Void)?
+
+    private let service: AnalyticsService
 
     init(service: AnalyticsService = AnalyticsService()) {
         self.service = service
@@ -19,15 +53,86 @@ final class AnalyticsViewModel {
     func load() async {
         isLoading = true
         error = nil
+        await fetchAll()
+        isLoading = false
+    }
 
+    func changePeriod(_ period: PeriodPreset) async {
+        selectedPeriod = period
+        isChartLoading = true
+        await fetchDateRangeData()
+        isChartLoading = false
+    }
+
+    // MARK: - Private
+
+    private func fetchAll() async {
+        let range = selectedPeriod.dateRange
+
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await self.fetchOverview(from: range.from, to: range.to) }
+            group.addTask { await self.fetchCategories(from: range.from, to: range.to) }
+            group.addTask { await self.fetchServices(from: range.from, to: range.to) }
+            group.addTask { await self.fetchPeriods(from: range.from, to: range.to) }
+            group.addTask { await self.fetchScores() }
+            group.addTask { await self.fetchRecommendations() }
+        }
+    }
+
+    private func fetchDateRangeData() async {
+        let range = selectedPeriod.dateRange
+
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await self.fetchOverview(from: range.from, to: range.to) }
+            group.addTask { await self.fetchCategories(from: range.from, to: range.to) }
+            group.addTask { await self.fetchServices(from: range.from, to: range.to) }
+            group.addTask { await self.fetchPeriods(from: range.from, to: range.to) }
+        }
+    }
+
+    @MainActor
+    private func fetchOverview(from: Date, to: Date) async {
         do {
-            analytics = try await service.fetchAnalytics()
+            overview = try await service.fetchOverview(from: from, to: to)
         } catch let apiError as APIError where apiError.isUnauthorized {
             onUnauthorized?()
         } catch {
             self.error = error.localizedDescription
         }
+    }
 
-        isLoading = false
+    @MainActor
+    private func fetchCategories(from: Date, to: Date) async {
+        do {
+            categories = try await service.fetchByCategory(from: from, to: to)
+        } catch is APIError {} catch {}
+    }
+
+    @MainActor
+    private func fetchServices(from: Date, to: Date) async {
+        do {
+            services = try await service.fetchByService(from: from, to: to)
+        } catch is APIError {} catch {}
+    }
+
+    @MainActor
+    private func fetchPeriods(from: Date, to: Date) async {
+        do {
+            periods = try await service.fetchByPeriod(from: from, to: to)
+        } catch is APIError {} catch {}
+    }
+
+    @MainActor
+    private func fetchScores() async {
+        do {
+            scores = try await service.fetchScores()
+        } catch is APIError {} catch {}
+    }
+
+    @MainActor
+    private func fetchRecommendations() async {
+        do {
+            recommendations = try await service.fetchRecommendations()
+        } catch is APIError {} catch {}
     }
 }

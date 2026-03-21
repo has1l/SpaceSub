@@ -6,11 +6,10 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   BarChart, Bar,
 } from 'recharts';
+import { OrbitDecoration } from '../components/OrbitDecoration';
 import api from '../services/api';
 
-// ─────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────
+// ─── Types ───
 
 interface Overview {
   mrr: number;
@@ -62,9 +61,7 @@ interface ScoreItem {
   monthlyAmount: number;
 }
 
-// ─────────────────────────────────────────────────────────
-// Period presets
-// ─────────────────────────────────────────────────────────
+// ─── Period presets ───
 
 type PeriodKey = '7d' | '1m' | '3m' | '12m';
 
@@ -81,9 +78,92 @@ function getPeriodDates(key: PeriodKey): { from: string; to: string } {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-// ─────────────────────────────────────────────────────────
-// Animations
-// ─────────────────────────────────────────────────────────
+// ─── SVG Icons ───
+
+function SatelliteSmall() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="3" r="1.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+function WalletIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <path d="M21 12V7H5a2 2 0 010-4h14v4" />
+      <path d="M3 5v14a2 2 0 002 2h16v-5" />
+      <path d="M18 12a2 2 0 100 4h4v-4h-4z" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+
+function BoltIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
+}
+
+function CheckCircleIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+      <polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
+  );
+}
+
+function ArrowDownIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <path d="M12 5v14M5 12l7 7 7-7" />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+
+// ─── Animations ───
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -95,9 +175,7 @@ const fadeUp = {
   visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring' as const, stiffness: 320, damping: 26 } },
 };
 
-// ─────────────────────────────────────────────────────────
-// Glass Tooltip
-// ─────────────────────────────────────────────────────────
+// ─── Glass Tooltip ───
 
 function GlassTooltip({ active, payload, label }: {
   active?: boolean;
@@ -106,11 +184,7 @@ function GlassTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{
-      background: 'rgba(6,16,30,0.95)',
-      backdropFilter: 'blur(16px)',
-      border: '1px solid rgba(0,212,170,0.15)',
-      borderRadius: 12,
+    <div className="station-panel" style={{
       padding: '10px 16px',
       boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
     }}>
@@ -119,16 +193,14 @@ function GlassTooltip({ active, payload, label }: {
           {label}
         </p>
       )}
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: '#00d4aa' }}>
+      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--signal-primary)' }}>
         ₽{payload[0].value.toLocaleString('ru-RU')}
       </p>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────
+// ─── Helpers ───
 
 function fmtMonth(key: string) {
   const parts = key.split('-');
@@ -137,20 +209,23 @@ function fmtMonth(key: string) {
   return ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][parseInt(month,10)-1] ?? key;
 }
 
-const RECO_ICONS = { CANCEL: '⛔', REVIEW: '⚠️', DOWNGRADE: '💡', CONSOLIDATE: '🔗' };
+const RECO_ICONS: Record<string, () => JSX.Element> = {
+  CANCEL: () => <AlertIcon />,
+  REVIEW: () => <AlertIcon />,
+  DOWNGRADE: () => <ArrowDownIcon />,
+  CONSOLIDATE: () => <LinkIcon />,
+};
 const RECO_LABELS = { CANCEL: 'Отменить', REVIEW: 'Проверить', DOWNGRADE: 'Сменить план', CONSOLIDATE: 'Дубликат' };
 const RECO_COLORS = {
-  CANCEL: { text: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.2)' },
-  REVIEW: { text: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' },
-  DOWNGRADE: { text: '#00d4aa', bg: 'rgba(0,212,170,0.08)', border: 'rgba(0,212,170,0.2)' },
-  CONSOLIDATE: { text: '#f97316', bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.2)' },
+  CANCEL: { text: 'var(--signal-danger)', bg: 'rgba(239,68,68,0.06)', border: 'rgba(239,68,68,0.15)' },
+  REVIEW: { text: 'var(--signal-warn)', bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.15)' },
+  DOWNGRADE: { text: 'var(--signal-primary)', bg: 'rgba(0,212,170,0.06)', border: 'rgba(0,212,170,0.15)' },
+  CONSOLIDATE: { text: '#f97316', bg: 'rgba(249,115,22,0.06)', border: 'rgba(249,115,22,0.15)' },
 };
-const RISK_COLOR = { LOW: '#00d4aa', MEDIUM: '#f59e0b', HIGH: '#ef4444' };
-const RISK_LABEL = { LOW: 'Низкий', MEDIUM: 'Средний', HIGH: 'Высокий' };
+const RISK_COLOR: Record<string, string> = { LOW: 'var(--signal-primary)', MEDIUM: 'var(--signal-warn)', HIGH: 'var(--signal-danger)' };
+const RISK_LABEL: Record<string, string> = { LOW: 'Низкий', MEDIUM: 'Средний', HIGH: 'Высокий' };
 
-// ─────────────────────────────────────────────────────────
-// Skeleton
-// ─────────────────────────────────────────────────────────
+// ─── Skeleton ───
 
 function Skeleton({ h = 20, w = '100%', r = 8 }: { h?: number; w?: number | string; r?: number }) {
   return (
@@ -163,16 +238,12 @@ function Skeleton({ h = 20, w = '100%', r = 8 }: { h?: number; w?: number | stri
   );
 }
 
-// ─────────────────────────────────────────────────────────
-// Period Tabs
-// ─────────────────────────────────────────────────────────
+// ─── Period Tabs ───
 
 function PeriodTabs({ active, onChange }: { active: PeriodKey; onChange: (k: PeriodKey) => void }) {
   return (
-    <div style={{
+    <div className="station-panel" style={{
       display: 'inline-flex', gap: 4, padding: '4px',
-      background: 'rgba(255,255,255,0.04)',
-      borderRadius: 12, border: '1px solid rgba(255,255,255,0.07)',
     }}>
       {PERIODS.map((p) => {
         const isActive = p.key === active;
@@ -181,20 +252,13 @@ function PeriodTabs({ active, onChange }: { active: PeriodKey; onChange: (k: Per
             key={p.key}
             onClick={() => onChange(p.key)}
             whileTap={{ scale: 0.95 }}
+            className={isActive ? 'btn-signal' : 'btn-ghost'}
             style={{
               padding: '6px 14px',
-              borderRadius: 8,
-              border: 'none',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-mono)',
               fontSize: 12,
-              fontWeight: isActive ? 700 : 400,
-              color: isActive ? '#06101e' : 'rgba(200,214,229,0.5)',
-              background: isActive
-                ? 'linear-gradient(135deg, #00d4aa, #0ea5e9)'
-                : 'transparent',
-              boxShadow: isActive ? '0 2px 12px rgba(0,212,170,0.35)' : 'none',
-              transition: 'all 0.2s ease',
+              fontFamily: 'var(--font-mono)',
+              borderRadius: 8,
+              minWidth: 'unset',
             }}
           >
             {p.label}
@@ -205,9 +269,7 @@ function PeriodTabs({ active, onChange }: { active: PeriodKey; onChange: (k: Per
   );
 }
 
-// ─────────────────────────────────────────────────────────
-// Interactive Donut with center label
-// ─────────────────────────────────────────────────────────
+// ─── Interactive Donut ───
 
 function InteractiveDonut({ data }: { data: CategoryItem[] }) {
   const [active, setActive] = useState<number | null>(null);
@@ -294,9 +356,7 @@ function InteractiveDonut({ data }: { data: CategoryItem[] }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────
-// Category Progress List
-// ─────────────────────────────────────────────────────────
+// ─── Category Progress List ───
 
 function CategoryList({ data }: { data: CategoryItem[] }) {
   if (data.length === 0) return null;
@@ -329,7 +389,6 @@ function CategoryList({ data }: { data: CategoryItem[] }) {
               </span>
             </div>
           </div>
-          {/* Progress bar */}
           <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
             <motion.div
               initial={{ width: 0 }}
@@ -348,20 +407,23 @@ function CategoryList({ data }: { data: CategoryItem[] }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────
-// Health Score Gauge Card
-// ─────────────────────────────────────────────────────────
+// ─── Health Score Gauge Card ───
 
 function ScoreGauge({ valueScore, churnRisk, merchant, label }: ScoreItem) {
   const color = RISK_COLOR[churnRisk];
-  const pct = valueScore;
 
   return (
     <motion.div
       className="station-panel"
-      style={{ padding: '14px 16px', borderRadius: 14 }}
-      whileHover={{ scale: 1.01, boxShadow: `0 6px 24px ${color}20` }}
+      style={{ padding: '14px 16px', position: 'relative', overflow: 'hidden' }}
+      whileHover={{ y: -1 }}
     >
+      {/* Top accent */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+        background: `linear-gradient(90deg, transparent, ${color === 'var(--signal-primary)' ? 'rgba(0,212,170,0.3)' : color === 'var(--signal-warn)' ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)'}, transparent)`,
+      }} />
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -371,32 +433,26 @@ function ScoreGauge({ valueScore, churnRisk, merchant, label }: ScoreItem) {
             {label}
           </p>
         </div>
-        <span style={{
-          fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700,
-          padding: '3px 8px', borderRadius: 20,
-          background: `${color}18`, color,
-          border: `1px solid ${color}30`,
-          flexShrink: 0, marginLeft: 8,
-        }}>
+        <span className={`badge-${churnRisk === 'LOW' ? 'active' : churnRisk === 'HIGH' ? 'danger' : 'warn'}`}
+          style={{ fontSize: 10, padding: '2px 8px', flexShrink: 0, marginLeft: 8 }}>
           {RISK_LABEL[churnRisk]}
         </span>
       </div>
 
-      {/* Score bar */}
       <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 6, overflow: 'hidden' }}>
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: `${pct}%` }}
+            animate={{ width: `${valueScore}%` }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
             style={{
               height: '100%', borderRadius: 6,
-              background: `linear-gradient(90deg, ${color}, ${color}cc)`,
-              boxShadow: `0 0 10px ${color}40`,
+              background: `linear-gradient(90deg, ${color === 'var(--signal-primary)' ? '#00d4aa' : color === 'var(--signal-warn)' ? '#f59e0b' : '#ef4444'}, ${color === 'var(--signal-primary)' ? '#00d4aacc' : color === 'var(--signal-warn)' ? '#f59e0bcc' : '#ef4444cc'})`,
+              boxShadow: `0 0 10px ${color === 'var(--signal-primary)' ? 'rgba(0,212,170,0.4)' : color === 'var(--signal-warn)' ? 'rgba(245,158,11,0.4)' : 'rgba(239,68,68,0.4)'}`,
             }}
           />
         </div>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 800, color, minWidth: 30 }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 800, color: color === 'var(--signal-primary)' ? '#00d4aa' : color === 'var(--signal-warn)' ? '#f59e0b' : '#ef4444', minWidth: 30 }}>
           {valueScore}
         </span>
       </div>
@@ -404,9 +460,27 @@ function ScoreGauge({ valueScore, churnRisk, merchant, label }: ScoreItem) {
   );
 }
 
-// ─────────────────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────────────────
+// ─── Section Header ───
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{
+      fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600,
+      color: 'rgba(200,214,229,0.7)', marginBottom: 12,
+      display: 'flex', alignItems: 'center', gap: 8,
+    }}>
+      <span style={{
+        width: 6, height: 6, borderRadius: '50%',
+        background: 'var(--signal-primary)',
+        boxShadow: '0 0 8px rgba(0,212,170,0.4)',
+        display: 'inline-block',
+      }} />
+      {children}
+    </p>
+  );
+}
+
+// ─── Page ───
 
 export function AnalyticsPage() {
   const [period, setPeriod] = useState<PeriodKey>('1m');
@@ -476,6 +550,13 @@ export function AnalyticsPage() {
     );
   }
 
+  const heroStats = [
+    { label: 'Подписок', value: overview?.activeCount ?? 0, color: 'var(--signal-primary)', icon: <SatelliteSmall /> },
+    { label: 'MRR', value: overview?.mrr ?? 0, color: 'var(--signal-secondary)', icon: <WalletIcon />, prefix: '₽' },
+    { label: 'ARR', value: overview?.arr ?? 0, color: '#a78bfa', icon: <CalendarIcon />, prefix: '₽' },
+    { label: 'Скоро', value: overview?.upcomingCount ?? 0, color: 'var(--signal-warn)', icon: <BoltIcon /> },
+  ];
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-4 md:py-10">
       {/* Ambient blobs */}
@@ -507,8 +588,8 @@ export function AnalyticsPage() {
                 className="text-gradient-signal">
                 Аналитика
               </h1>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.4)', marginTop: 4 }}>
-                Расходы, здоровье подписок и рекомендации
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(200,214,229,0.35)', marginTop: 4, letterSpacing: '0.05em' }}>
+                РАСХОДЫ / ЗДОРОВЬЕ / РЕКОМЕНДАЦИИ
               </p>
             </div>
             <PeriodTabs active={period} onChange={handlePeriod} />
@@ -517,52 +598,56 @@ export function AnalyticsPage() {
           {/* ── Hero Card ── */}
           <motion.div variants={fadeUp} className="station-panel station-panel-glow"
             style={{
-              padding: '20px 24px', marginBottom: 16, borderRadius: 20,
-              background: 'rgba(17,25,40,0.85)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(0,212,170,0.15)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16,
+              padding: '20px 24px', marginBottom: 16, position: 'relative', overflow: 'hidden',
             }}>
-            <div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(200,214,229,0.4)', marginBottom: 4 }}>
-                Потрачено за период
-              </p>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 40, fontWeight: 800, color: '#e2e8f0', lineHeight: 1 }}>
-                  ₽<CountUp end={overview?.periodTotal ?? 0} duration={1.4} separator=" " useEasing />
-                </span>
-                {overview && overview.trend.changePct !== 0 && (
-                  <motion.span
-                    initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }}
-                    style={{
-                      fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700,
-                      color: trendUp ? '#ef4444' : '#00d4aa',
-                      background: trendUp ? 'rgba(239,68,68,0.1)' : 'rgba(0,212,170,0.1)',
-                      padding: '3px 10px', borderRadius: 20,
-                    }}>
-                    {trendUp ? '↑' : '↓'}{trendAbs}%
-                  </motion.span>
-                )}
-              </div>
-            </div>
+            {/* Top accent line */}
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+              background: 'linear-gradient(90deg, transparent, rgba(0,212,170,0.4), rgba(14,165,233,0.3), transparent)',
+            }} />
 
-            {/* Mini stats */}
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-              {[
-                { label: 'Подписок', value: overview?.activeCount ?? 0, color: '#00d4aa', icon: '🛰' },
-                { label: 'MRR', value: overview?.mrr ?? 0, color: '#0ea5e9', icon: '💰', prefix: '₽' },
-                { label: 'ARR', value: overview?.arr ?? 0, color: '#a855f7', icon: '📅', prefix: '₽' },
-                { label: 'Скоро', value: overview?.upcomingCount ?? 0, color: '#f59e0b', icon: '⚡' },
-              ].map((stat) => (
-                <div key={stat.label} style={{ textAlign: 'center' }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 800, color: stat.color, lineHeight: 1 }}>
-                    {stat.prefix ?? ''}<CountUp end={stat.value} duration={1.4} separator=" " useEasing />
-                  </p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'rgba(200,214,229,0.35)', marginTop: 4 }}>
-                    {stat.icon} {stat.label}
-                  </p>
+            {/* Orbit decoration */}
+            <OrbitDecoration className="-top-12 -right-12" />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, position: 'relative', zIndex: 1 }}>
+              <div>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(200,214,229,0.35)', marginBottom: 6, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  Потрачено за период
+                </p>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 40, fontWeight: 800, color: '#e2e8f0', lineHeight: 1 }}>
+                    ₽<CountUp end={overview?.periodTotal ?? 0} duration={1.4} separator=" " useEasing />
+                  </span>
+                  {overview && overview.trend.changePct !== 0 && (
+                    <motion.span
+                      initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }}
+                      className={trendUp ? 'badge-danger' : 'badge-active'}
+                      style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700 }}>
+                      {trendUp ? '↑' : '↓'}{trendAbs}%
+                    </motion.span>
+                  )}
                 </div>
-              ))}
+              </div>
+
+              {/* Mini stats */}
+              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                {heroStats.map((stat, i) => (
+                  <motion.div key={stat.label}
+                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 + i * 0.08 }}
+                    style={{ textAlign: 'center' }}>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 800, color: stat.color, lineHeight: 1 }}>
+                      {stat.prefix ?? ''}<CountUp end={stat.value} duration={1.4} separator=" " useEasing />
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 4, color: 'rgba(200,214,229,0.35)' }}>
+                      {stat.icon}
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 11 }}>
+                        {stat.label}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </div>
           </motion.div>
 
@@ -570,31 +655,27 @@ export function AnalyticsPage() {
           <motion.div variants={fadeUp}
             style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}
             className="analytics-grid-2">
-            <div className="station-panel" style={{
-              padding: '20px', borderRadius: 20,
-              background: 'rgba(17,25,40,0.75)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: 'rgba(200,214,229,0.7)', marginBottom: 4 }}>
-                Категории
-              </p>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'rgba(200,214,229,0.3)', marginBottom: 12 }}>
-                Наведите на сектор
+            <div className="station-panel" style={{ padding: '20px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+                background: 'linear-gradient(90deg, transparent, rgba(0,212,170,0.2), transparent)',
+              }} />
+              <SectionLabel>Категории</SectionLabel>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(200,214,229,0.25)', marginBottom: 12, letterSpacing: '0.05em' }}>
+                НАВЕДИТЕ НА СЕКТОР
               </p>
               {chartLoading ? <Skeleton h={220} r={110} /> : <InteractiveDonut data={categories} />}
             </div>
 
             <div className="station-panel" style={{
-              padding: '20px', borderRadius: 20,
-              background: 'rgba(17,25,40,0.75)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              padding: '20px', position: 'relative', overflow: 'hidden',
               display: 'flex', flexDirection: 'column', justifyContent: 'center',
             }}>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: 'rgba(200,214,229,0.7)', marginBottom: 16 }}>
-                Распределение
-              </p>
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+                background: 'linear-gradient(90deg, transparent, rgba(14,165,233,0.2), transparent)',
+              }} />
+              <SectionLabel>Распределение</SectionLabel>
               {chartLoading
                 ? <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{[...Array(5)].map((_, i) => <Skeleton key={i} h={32} r={6} />)}</div>
                 : <CategoryList data={categories} />
@@ -604,15 +685,14 @@ export function AnalyticsPage() {
 
           {/* ── Area Chart ── */}
           <motion.div variants={fadeUp} className="station-panel" style={{
-            padding: '20px', borderRadius: 20, marginBottom: 16,
-            background: 'rgba(17,25,40,0.75)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            padding: '20px', marginBottom: 16, position: 'relative', overflow: 'hidden',
           }}>
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+              background: 'linear-gradient(90deg, transparent, rgba(0,212,170,0.2), transparent)',
+            }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: 'rgba(200,214,229,0.7)' }}>
-                Динамика расходов
-              </p>
+              <SectionLabel>Динамика расходов</SectionLabel>
               {!chartLoading && periods.some((p) => p.total > 0) && (
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(200,214,229,0.3)' }}>
                   {periods.length} периодов
@@ -657,14 +737,13 @@ export function AnalyticsPage() {
           {/* ── Bar Chart ── */}
           {services.length > 0 && (
             <motion.div variants={fadeUp} className="station-panel" style={{
-              padding: '20px', borderRadius: 20, marginBottom: 16,
-              background: 'rgba(17,25,40,0.75)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              padding: '20px', marginBottom: 16, position: 'relative', overflow: 'hidden',
             }}>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: 'rgba(200,214,229,0.7)', marginBottom: 16 }}>
-                Топ сервисов по стоимости
-              </p>
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+                background: 'linear-gradient(90deg, transparent, rgba(14,165,233,0.2), transparent)',
+              }} />
+              <SectionLabel>Топ сервисов по стоимости</SectionLabel>
               {chartLoading ? <Skeleton h={services.length * 40} r={8} /> : (
                 <ResponsiveContainer width="100%" height={Math.max(180, services.length * 42)}>
                   <BarChart data={services} layout="vertical" margin={{ top: 0, right: 12, left: 8, bottom: 0 }}>
@@ -702,15 +781,15 @@ export function AnalyticsPage() {
 
             {/* Recommendations */}
             <motion.div variants={fadeUp}>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: 'rgba(200,214,229,0.7)', marginBottom: 12 }}>
-                Рекомендации
-              </p>
+              <SectionLabel>Рекомендации</SectionLabel>
               {recommendations.length === 0 ? (
                 <div className="station-panel" style={{
-                  padding: '24px', borderRadius: 16, textAlign: 'center',
+                  padding: '24px', textAlign: 'center',
                   border: '1px dashed rgba(0,212,170,0.15)',
                 }}>
-                  <p style={{ fontSize: 24, marginBottom: 8 }}>✨</p>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, color: 'var(--signal-primary)' }}>
+                    <CheckCircleIcon />
+                  </div>
                   <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.4)' }}>
                     Всё отлично — замечаний нет
                   </p>
@@ -719,19 +798,24 @@ export function AnalyticsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {recommendations.slice(0, 4).map((rec, i) => {
                     const cfg = RECO_COLORS[rec.type];
+                    const Icon = RECO_ICONS[rec.type];
                     return (
                       <motion.div key={i} className="station-panel"
                         style={{
-                          padding: '14px 16px', borderRadius: 14,
+                          padding: '14px 16px', position: 'relative', overflow: 'hidden',
                           background: cfg.bg, borderColor: cfg.border,
                         }}
-                        whileHover={{ scale: 1.01 }}
+                        whileHover={{ y: -1 }}
                         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.06 }}
                       >
+                        <div style={{
+                          position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+                          background: `linear-gradient(90deg, transparent, ${cfg.border}, transparent)`,
+                        }} />
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
                           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', minWidth: 0 }}>
-                            <span style={{ fontSize: 16, flexShrink: 0 }}>{RECO_ICONS[rec.type]}</span>
+                            <span style={{ color: cfg.text, flexShrink: 0, marginTop: 1 }}>{Icon && <Icon />}</span>
                             <div style={{ minWidth: 0 }}>
                               <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 3 }}>
                                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: cfg.text }}>
@@ -739,7 +823,7 @@ export function AnalyticsPage() {
                                 </p>
                                 <span style={{
                                   fontFamily: 'var(--font-mono)', fontSize: 10, padding: '1px 7px', borderRadius: 10,
-                                  background: `${cfg.text}18`, color: cfg.text, flexShrink: 0,
+                                  background: `${cfg.border}`, color: cfg.text, flexShrink: 0,
                                 }}>
                                   {RECO_LABELS[rec.type]}
                                 </span>
@@ -750,7 +834,7 @@ export function AnalyticsPage() {
                             </div>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 800, color: '#00d4aa' }}>
+                            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 800, color: 'var(--signal-primary)' }}>
                               −₽{Math.round(rec.potentialSavings).toLocaleString('ru-RU')}
                             </p>
                             <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'rgba(200,214,229,0.3)' }}>
@@ -767,12 +851,15 @@ export function AnalyticsPage() {
 
             {/* Scores */}
             <motion.div variants={fadeUp}>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: 'rgba(200,214,229,0.7)', marginBottom: 12 }}>
-                Здоровье подписок
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span style={{ color: 'var(--signal-primary)' }}><ShieldIcon /></span>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: 'rgba(200,214,229,0.7)' }}>
+                  Здоровье подписок
+                </p>
+              </div>
               {scores.length === 0 ? (
                 <div className="station-panel" style={{
-                  padding: '24px', borderRadius: 16, textAlign: 'center',
+                  padding: '24px', textAlign: 'center',
                   border: '1px dashed rgba(0,212,170,0.15)',
                 }}>
                   <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.4)' }}>

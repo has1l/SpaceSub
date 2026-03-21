@@ -106,3 +106,14 @@ extension View {
         modifier(GlassCardModifier(glowing: glowing))
     }
 }
+
+// MARK: - Hex String Color Init
+
+extension Color {
+    init(hexString: String) {
+        let hex = hexString.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        var rgbValue: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&rgbValue)
+        self.init(hex: UInt(rgbValue))
+    }
+}

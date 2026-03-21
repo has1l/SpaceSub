@@ -51,6 +51,44 @@ function daysUntil(iso: string): number {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
+/* ── Icons ── */
+
+function ManualIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
+function PlusIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+      <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+    </svg>
+  );
+}
+
 /* ── Animation variants ── */
 
 const stagger = {
@@ -121,12 +159,10 @@ function SummaryBlock({ summary }: { summary: SubscriptionSummary }) {
           variants={fadeUp}
           className="station-panel p-4 md:p-5 group relative overflow-hidden"
         >
-          {/* Top accent line */}
           <div
             className="absolute top-0 left-0 right-0 h-px"
             style={{ background: `linear-gradient(90deg, transparent, ${card.color}30, transparent)` }}
           />
-
           <div className="flex items-center gap-2 mb-3" style={{ color: card.color }}>
             {card.icon}
             <span
@@ -151,17 +187,14 @@ function SummaryBlock({ summary }: { summary: SubscriptionSummary }) {
   );
 }
 
-/* ── Subscription Card ── */
+/* ── Subscription Card (Detected) ── */
 
 function SubscriptionCard({ sub, index, onDelete }: { sub: DetectedSubscription; index: number; onDelete: (id: string) => void }) {
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
+    if (!confirmDelete) { setConfirmDelete(true); return; }
     setDeleting(true);
     try {
       await subscriptionsApi.remove(sub.id);
@@ -171,6 +204,7 @@ function SubscriptionCard({ sub, index, onDelete }: { sub: DetectedSubscription;
       setConfirmDelete(false);
     }
   };
+
   const days = daysUntil(sub.nextExpectedCharge);
   const isUpcoming = days >= 0 && days <= 7;
   const lowConfidence = sub.confidence < 0.65;
@@ -183,7 +217,7 @@ function SubscriptionCard({ sub, index, onDelete }: { sub: DetectedSubscription;
       }`}
       whileHover={{ y: -2 }}
     >
-      {/* Orbit decoration per card */}
+      {/* Orbit decoration */}
       <div className="absolute -top-6 -right-6 pointer-events-none">
         <motion.div
           className="orbit-ring"
@@ -191,14 +225,12 @@ function SubscriptionCard({ sub, index, onDelete }: { sub: DetectedSubscription;
           animate={{ rotate: 360 }}
           transition={{ duration: 20 + index * 5, repeat: Infinity, ease: 'linear' }}
         >
-          <div
-            style={{
-              position: 'absolute', top: -1.5, left: '50%', marginLeft: -1.5,
-              width: 3, height: 3, borderRadius: '50%',
-              background: sub.isActive ? 'var(--signal-primary)' : 'rgba(200,214,229,0.3)',
-              boxShadow: sub.isActive ? '0 0 6px rgba(0,212,170,0.4)' : 'none',
-            }}
-          />
+          <div style={{
+            position: 'absolute', top: -1.5, left: '50%', marginLeft: -1.5,
+            width: 3, height: 3, borderRadius: '50%',
+            background: sub.isActive ? 'var(--signal-primary)' : 'rgba(200,214,229,0.3)',
+            boxShadow: sub.isActive ? '0 0 6px rgba(0,212,170,0.4)' : 'none',
+          }} />
         </motion.div>
       </div>
 
@@ -206,35 +238,20 @@ function SubscriptionCard({ sub, index, onDelete }: { sub: DetectedSubscription;
       <div className="flex items-start justify-between mb-3 relative z-10">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <SatelliteIcon
-              size={16}
-              color={sub.isActive ? 'var(--signal-primary)' : 'rgba(200,214,229,0.3)'}
-            />
-            <h3
-              className="font-semibold truncate"
-              style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}
-            >
+            <SatelliteIcon size={16} color={sub.isActive ? 'var(--signal-primary)' : 'rgba(200,214,229,0.3)'} />
+            <h3 className="font-semibold truncate" style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}>
               {sub.merchant}
             </h3>
           </div>
-          <p
-            className="text-xs"
-            style={{ fontFamily: 'var(--font-mono)', color: 'rgba(200,214,229,0.35)' }}
-          >
+          <p className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'rgba(200,214,229,0.35)' }}>
             {PERIOD_LABELS[sub.periodType] ?? sub.periodType}
           </p>
         </div>
         <div className="text-right ml-3 flex-shrink-0">
-          <p
-            className="text-lg font-bold"
-            style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}
-          >
+          <p className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}>
             {formatCurrency(sub.amount, sub.currency)}
           </p>
-          <span
-            className="text-[10px]"
-            style={{ fontFamily: 'var(--font-mono)', color: 'rgba(200,214,229,0.3)' }}
-          >
+          <span className="text-[10px]" style={{ fontFamily: 'var(--font-mono)', color: 'rgba(200,214,229,0.3)' }}>
             {PERIOD_SHORT[sub.periodType] ?? ''}
           </span>
         </div>
@@ -268,61 +285,50 @@ function SubscriptionCard({ sub, index, onDelete }: { sub: DetectedSubscription;
           {
             label: 'Следующее',
             value: formatDate(sub.nextExpectedCharge),
-            extra: days >= 0
-              ? days === 0
-                ? 'сегодня'
-                : `через ${days} дн.`
-              : null,
+            extra: days >= 0 ? (days === 0 ? 'сегодня' : `через ${days} дн.`) : null,
             warn: days >= 0 && days <= 3,
           },
           { label: 'Транзакций', value: String(sub.transactionCount) },
-          {
-            label: 'Сила сигнала',
-            value: `${Math.round(sub.confidence * 100)}%`,
-            warn: lowConfidence,
-          },
+          { label: 'Сила сигнала', value: `${Math.round(sub.confidence * 100)}%`, warn: lowConfidence },
         ].map((item) => (
           <div key={item.label} className="flex items-center justify-between text-xs">
-            <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(200,214,229,0.3)' }}>
-              {item.label}
-            </span>
+            <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(200,214,229,0.3)' }}>{item.label}</span>
             <span style={{
               fontFamily: 'var(--font-mono)',
-              color: 'warn' in item && item.warn
-                ? 'var(--signal-warn)'
-                : 'rgba(200,214,229,0.55)',
+              color: 'warn' in item && item.warn ? 'var(--signal-warn)' : 'rgba(200,214,229,0.55)',
             }}>
               {item.value}
               {'extra' in item && item.extra && (
-                <span className="ml-1.5" style={{ color: 'rgba(200,214,229,0.25)' }}>
-                  ({item.extra})
-                </span>
+                <span className="ml-1.5" style={{ color: 'rgba(200,214,229,0.25)' }}>({item.extra})</span>
               )}
             </span>
           </div>
         ))}
       </div>
 
-      {/* Delete button */}
-      <div className="pt-3 mt-3" style={{ borderTop: '1px solid rgba(239,68,68,0.06)' }}>
+      {/* Delete */}
+      <div className="pt-3 mt-3" style={{ borderTop: '1px solid rgba(0,212,170,0.05)' }}>
         <motion.button
           onClick={handleDelete}
           onBlur={() => setConfirmDelete(false)}
           disabled={deleting}
           whileTap={{ scale: 0.97 }}
-          className="w-full py-2 rounded-lg text-xs font-semibold transition-all duration-200"
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300"
           style={{
             fontFamily: 'var(--font-mono)',
-            color: confirmDelete ? '#fff' : 'rgba(239,68,68,0.7)',
+            letterSpacing: '0.02em',
+            color: confirmDelete ? '#fff' : 'rgba(239,68,68,0.6)',
             background: confirmDelete
-              ? 'linear-gradient(135deg, rgba(239,68,68,0.8), rgba(239,68,68,0.6))'
-              : 'rgba(239,68,68,0.06)',
-            border: `1px solid rgba(239,68,68,${confirmDelete ? '0.4' : '0.1'})`,
+              ? 'linear-gradient(135deg, rgba(239,68,68,0.75), rgba(239,68,68,0.55))'
+              : 'rgba(239,68,68,0.04)',
+            border: `1px solid rgba(239,68,68,${confirmDelete ? '0.35' : '0.08'})`,
+            boxShadow: confirmDelete ? '0 0 20px rgba(239,68,68,0.15)' : 'none',
             cursor: deleting ? 'wait' : 'pointer',
             opacity: deleting ? 0.5 : 1,
           }}
         >
-          {deleting ? 'Удаление...' : confirmDelete ? 'Подтвердить удаление' : 'Удалить подписку'}
+          <TrashIcon />
+          {deleting ? 'Удаление...' : confirmDelete ? 'Подтвердить удаление' : 'Удалить'}
         </motion.button>
       </div>
     </motion.div>
@@ -360,24 +366,15 @@ function UpcomingList({ subs }: { subs: DetectedSubscription[] }) {
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="status-dot status-dot-warn" />
-                <span
-                  className="font-medium truncate"
-                  style={{ fontFamily: 'var(--font-body)', color: '#e2e8f0' }}
-                >
+                <span className="font-medium truncate" style={{ fontFamily: 'var(--font-body)', color: '#e2e8f0' }}>
                   {sub.merchant}
                 </span>
               </div>
               <div className="flex items-center gap-4 flex-shrink-0 ml-3">
-                <span
-                  className="text-xs"
-                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--signal-warn)' }}
-                >
+                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--signal-warn)' }}>
                   {days === 0 ? 'Сегодня' : `Через ${days} дн.`}
                 </span>
-                <span
-                  className="font-semibold"
-                  style={{ fontFamily: 'var(--font-mono)', color: '#e2e8f0' }}
-                >
+                <span className="font-semibold" style={{ fontFamily: 'var(--font-mono)', color: '#e2e8f0' }}>
                   {formatCurrency(sub.amount, sub.currency)}
                 </span>
               </div>
@@ -450,26 +447,6 @@ function SubscriptionModal({
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '10px 14px',
-    borderRadius: 10,
-    border: '1px solid rgba(0,212,170,0.12)',
-    background: 'rgba(6,16,30,0.8)',
-    color: '#e2e8f0',
-    fontFamily: 'var(--font-body)',
-    fontSize: 14,
-    outline: 'none',
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontFamily: 'var(--font-mono)',
-    fontSize: 11,
-    color: 'rgba(200,214,229,0.4)',
-    marginBottom: 6,
-    display: 'block',
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -478,127 +455,206 @@ function SubscriptionModal({
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 100,
-        background: 'rgba(2,8,16,0.8)', backdropFilter: 'blur(8px)',
+        background: 'rgba(2,8,16,0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 16,
       }}
     >
       <motion.form
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.92, y: 24 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        exit={{ opacity: 0, scale: 0.92, y: 24 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 28 }}
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
+        className="station-panel station-panel-glow"
         style={{
-          width: '100%', maxWidth: 420, padding: 24, borderRadius: 20,
-          background: 'rgba(17,25,40,0.95)', backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(0,212,170,0.15)',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+          width: '100%', maxWidth: 440, padding: 0, overflow: 'hidden',
+          position: 'relative',
         }}
       >
-        <h2 style={{
-          fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700,
-          color: '#e2e8f0', marginBottom: 20,
-        }}>
-          {isEdit ? 'Редактировать подписку' : 'Добавить подписку'}
-        </h2>
+        {/* Top accent */}
+        <div style={{
+          height: 1,
+          background: 'linear-gradient(90deg, transparent, rgba(0,212,170,0.3), rgba(14,165,233,0.2), transparent)',
+        }} />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div>
-            <label style={labelStyle}>Название *</label>
-            <input
-              style={inputStyle}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Netflix, Spotify..."
-              required
-            />
+        {/* Orbit deco */}
+        <div className="absolute -top-12 -right-12 pointer-events-none" style={{ opacity: 0.15 }}>
+          <motion.div
+            className="orbit-ring"
+            style={{ width: 120, height: 120 }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+          >
+            <div style={{
+              position: 'absolute', top: -2, left: '50%', marginLeft: -2,
+              width: 4, height: 4, borderRadius: '50%',
+              background: 'var(--signal-primary)',
+              boxShadow: '0 0 8px rgba(0,212,170,0.5)',
+            }} />
+          </motion.div>
+        </div>
+
+        <div style={{ padding: '24px 24px 20px' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 10,
+              background: 'rgba(0,212,170,0.08)',
+              border: '1px solid rgba(0,212,170,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--signal-primary)',
+            }}>
+              {isEdit ? <EditIcon /> : <PlusIcon size={14} />}
+            </div>
+            <div>
+              <h2 style={{
+                fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700,
+                color: '#e2e8f0', margin: 0, lineHeight: 1,
+              }}>
+                {isEdit ? 'Редактировать подписку' : 'Новый спутник'}
+              </h2>
+              <p style={{
+                fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(200,214,229,0.3)',
+                marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}>
+                {isEdit ? 'Изменение параметров' : 'Ручная регистрация'}
+              </p>
+            </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {/* Fields */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <label style={labelStyle}>Сумма (₽) *</label>
+              <label style={{
+                fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600,
+                color: 'rgba(200,214,229,0.35)', marginBottom: 6, display: 'block',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}>
+                Название
+              </label>
               <input
-                style={inputStyle}
-                type="number"
-                min="0"
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="799"
+                className="input-station"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Netflix, Spotify, Figma..."
                 required
               />
             </div>
-            <div>
-              <label style={labelStyle}>Период</label>
-              <select
-                style={{ ...inputStyle, cursor: 'pointer' }}
-                value={cycle}
-                onChange={(e) => setCycle(e.target.value as BillingCycle)}
-              >
-                {CYCLE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600,
+                  color: 'rgba(200,214,229,0.35)', marginBottom: 6, display: 'block',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                }}>
+                  Стоимость
+                </label>
+                <input
+                  className="input-station"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="799 ₽"
+                  required
+                />
+              </div>
+              <div>
+                <label style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600,
+                  color: 'rgba(200,214,229,0.35)', marginBottom: 6, display: 'block',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                }}>
+                  Период
+                </label>
+                <select
+                  className="input-station"
+                  style={{ cursor: 'pointer' }}
+                  value={cycle}
+                  onChange={(e) => setCycle(e.target.value as BillingCycle)}
+                >
+                  {CYCLE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600,
+                  color: 'rgba(200,214,229,0.35)', marginBottom: 6, display: 'block',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                }}>
+                  Дата списания
+                </label>
+                <input
+                  className="input-station"
+                  type="date"
+                  value={nextBilling}
+                  onChange={(e) => setNextBilling(e.target.value)}
+                />
+              </div>
+              <div>
+                <label style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600,
+                  color: 'rgba(200,214,229,0.35)', marginBottom: 6, display: 'block',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                }}>
+                  Категория
+                </label>
+                <input
+                  className="input-station"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  placeholder="Развлечения"
+                />
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={labelStyle}>Следующее списание</label>
-              <input
-                style={inputStyle}
-                type="date"
-                value={nextBilling}
-                onChange={(e) => setNextBilling(e.target.value)}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Категория</label>
-              <input
-                style={inputStyle}
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="Развлечения"
-              />
-            </div>
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+              className="mt-3 px-3 py-2 rounded-lg"
+              style={{
+                background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)',
+              }}
+            >
+              <p style={{ color: 'var(--signal-danger)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
+                {error}
+              </p>
+            </motion.div>
+          )}
+
+          {/* Buttons */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+            <button type="button" onClick={onClose} className="btn-ghost" style={{ flex: 1, padding: '10px 16px', fontSize: 13 }}>
+              Отмена
+            </button>
+            <motion.button
+              type="submit"
+              disabled={saving || !name.trim() || !amount}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              className="btn-signal"
+              style={{
+                flex: 1, padding: '10px 16px', fontSize: 13,
+                opacity: (!name.trim() || !amount) ? 0.35 : 1,
+                cursor: saving ? 'wait' : (!name.trim() || !amount) ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {saving ? 'Сохранение...' : isEdit ? 'Сохранить' : 'Вывести на орбиту'}
+            </motion.button>
           </div>
-        </div>
-
-        {error && (
-          <p style={{ color: '#ef4444', fontSize: 12, fontFamily: 'var(--font-mono)', marginTop: 12 }}>
-            {error}
-          </p>
-        )}
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              flex: 1, padding: '10px', borderRadius: 10,
-              border: '1px solid rgba(200,214,229,0.1)', background: 'transparent',
-              color: 'rgba(200,214,229,0.5)', fontFamily: 'var(--font-body)',
-              fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            }}
-          >
-            Отмена
-          </button>
-          <button
-            type="submit"
-            disabled={saving || !name.trim() || !amount}
-            style={{
-              flex: 1, padding: '10px', borderRadius: 10,
-              border: 'none',
-              background: saving ? 'rgba(0,212,170,0.3)' : 'linear-gradient(135deg, #00d4aa, #0ea5e9)',
-              color: '#06101e', fontFamily: 'var(--font-display)',
-              fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer',
-              opacity: (!name.trim() || !amount) ? 0.4 : 1,
-            }}
-          >
-            {saving ? 'Сохранение...' : isEdit ? 'Сохранить' : 'Добавить'}
-          </button>
         </div>
       </motion.form>
     </motion.div>
@@ -609,15 +665,18 @@ function SubscriptionModal({
 
 function ManualSubCard({
   sub,
+  index,
   onEdit,
   onDeleted,
 }: {
   sub: ManualSubscription;
+  index: number;
   onEdit: (s: ManualSubscription) => void;
   onDeleted: (id: string) => void;
 }) {
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const days = daysUntil(sub.nextBilling);
 
   const handleDelete = async () => {
     if (!confirmDel) { setConfirmDel(true); return; }
@@ -634,23 +693,49 @@ function ManualSubCard({
   return (
     <motion.div
       variants={fadeUp}
-      className="station-panel station-panel-glow p-5 relative overflow-hidden"
+      className={`station-panel p-5 relative overflow-hidden group transition-all duration-400 ${
+        sub.isActive ? 'station-panel-glow' : 'opacity-50'
+      }`}
       whileHover={{ y: -2 }}
     >
-      <div className="flex items-start justify-between mb-3">
+      {/* Orbit decoration */}
+      <div className="absolute -top-6 -right-6 pointer-events-none">
+        <motion.div
+          className="orbit-ring"
+          style={{ width: 70, height: 70, opacity: 0.2 }}
+          animate={{ rotate: -360 }}
+          transition={{ duration: 25 + index * 4, repeat: Infinity, ease: 'linear' }}
+        >
+          <div style={{
+            position: 'absolute', top: -1.5, left: '50%', marginLeft: -1.5,
+            width: 3, height: 3, borderRadius: '50%',
+            background: 'var(--signal-secondary)',
+            boxShadow: '0 0 6px rgba(14,165,233,0.4)',
+          }} />
+        </motion.div>
+      </div>
+
+      {/* Top accent — secondary blue for manual */}
+      <div className="absolute top-0 left-0 right-0 h-px" style={{
+        background: 'linear-gradient(90deg, transparent, rgba(14,165,233,0.2), transparent)',
+      }} />
+
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3 relative z-10">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span style={{ fontSize: 14 }}>✋</span>
-            <h3
-              className="font-semibold truncate"
-              style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}
-            >
+            <div style={{ color: 'var(--signal-secondary)' }}>
+              <ManualIcon size={15} />
+            </div>
+            <h3 className="font-semibold truncate" style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}>
               {sub.name}
             </h3>
           </div>
           <p className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'rgba(200,214,229,0.35)' }}>
             {PERIOD_LABELS[sub.periodType] ?? sub.periodType}
-            {sub.category && ` · ${sub.category}`}
+            {sub.category && (
+              <span style={{ color: 'rgba(200,214,229,0.2)' }}> / {sub.category}</span>
+            )}
           </p>
         </div>
         <div className="text-right ml-3 flex-shrink-0">
@@ -663,6 +748,7 @@ function ManualSubCard({
         </div>
       </div>
 
+      {/* Badges */}
       <div className="flex flex-wrap gap-1.5 mb-3">
         {sub.isActive ? (
           <span className="badge badge-active">
@@ -673,55 +759,78 @@ function ManualSubCard({
           <span className="badge badge-dim">Сошла с орбиты</span>
         )}
         <span className="badge" style={{
-          color: 'rgba(14,165,233,0.7)', background: 'rgba(14,165,233,0.08)',
-          border: '1px solid rgba(14,165,233,0.15)', borderRadius: 20,
-          fontFamily: 'var(--font-mono)', fontSize: 9, padding: '2px 8px',
+          background: 'rgba(14,165,233,0.08)',
+          color: 'var(--signal-secondary)',
+          border: '1px solid rgba(14,165,233,0.15)',
         }}>
-          РУЧНАЯ
+          Ручная
         </span>
+        {days >= 0 && days <= 7 && (
+          <span className="badge badge-warn">
+            <span className="status-dot status-dot-warn" style={{ width: 4, height: 4 }} />
+            Скоро
+          </span>
+        )}
       </div>
 
-      <div className="space-y-2 pt-3" style={{ borderTop: '1px solid rgba(0,212,170,0.05)' }}>
+      {/* Meta */}
+      <div className="space-y-2 pt-3" style={{ borderTop: '1px solid rgba(14,165,233,0.05)' }}>
         <div className="flex items-center justify-between text-xs">
           <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(200,214,229,0.3)' }}>Следующее списание</span>
-          <span style={{ fontFamily: 'var(--font-mono)', color: 'rgba(200,214,229,0.55)' }}>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            color: days >= 0 && days <= 3 ? 'var(--signal-warn)' : 'rgba(200,214,229,0.55)',
+          }}>
             {formatDate(sub.nextBilling)}
+            {days >= 0 && (
+              <span className="ml-1.5" style={{ color: 'rgba(200,214,229,0.25)' }}>
+                ({days === 0 ? 'сегодня' : `через ${days} дн.`})
+              </span>
+            )}
           </span>
         </div>
       </div>
 
-      <div className="flex gap-2 pt-3 mt-3" style={{ borderTop: '1px solid rgba(0,212,170,0.05)' }}>
-        <button
+      {/* Actions */}
+      <div className="flex gap-2 pt-3 mt-3" style={{ borderTop: '1px solid rgba(14,165,233,0.05)' }}>
+        <motion.button
           onClick={() => onEdit(sub)}
-          className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all duration-200"
+          whileTap={{ scale: 0.97 }}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300"
           style={{
             fontFamily: 'var(--font-mono)',
+            letterSpacing: '0.02em',
             color: 'rgba(14,165,233,0.7)',
-            background: 'rgba(14,165,233,0.06)',
-            border: '1px solid rgba(14,165,233,0.1)',
+            background: 'rgba(14,165,233,0.04)',
+            border: '1px solid rgba(14,165,233,0.08)',
             cursor: 'pointer',
           }}
         >
-          Редактировать
-        </button>
-        <button
+          <EditIcon />
+          Изменить
+        </motion.button>
+        <motion.button
           onClick={handleDelete}
           onBlur={() => setConfirmDel(false)}
           disabled={deleting}
-          className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all duration-200"
+          whileTap={{ scale: 0.97 }}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300"
           style={{
             fontFamily: 'var(--font-mono)',
-            color: confirmDel ? '#fff' : 'rgba(239,68,68,0.7)',
+            letterSpacing: '0.02em',
+            color: confirmDel ? '#fff' : 'rgba(239,68,68,0.6)',
             background: confirmDel
-              ? 'linear-gradient(135deg, rgba(239,68,68,0.8), rgba(239,68,68,0.6))'
-              : 'rgba(239,68,68,0.06)',
-            border: `1px solid rgba(239,68,68,${confirmDel ? '0.4' : '0.1'})`,
+              ? 'linear-gradient(135deg, rgba(239,68,68,0.75), rgba(239,68,68,0.55))'
+              : 'rgba(239,68,68,0.04)',
+            border: `1px solid rgba(239,68,68,${confirmDel ? '0.35' : '0.08'})`,
+            boxShadow: confirmDel ? '0 0 20px rgba(239,68,68,0.15)' : 'none',
             cursor: deleting ? 'wait' : 'pointer',
             opacity: deleting ? 0.5 : 1,
           }}
         >
+          <TrashIcon />
           {deleting ? '...' : confirmDel ? 'Подтвердить' : 'Удалить'}
-        </button>
+        </motion.button>
       </div>
     </motion.div>
   );
@@ -759,9 +868,7 @@ export function SubscriptionsPage() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleDelete = useCallback((id: string) => {
     setActive((prev) => prev.filter((s) => s.id !== id));
@@ -790,12 +897,9 @@ export function SubscriptionsPage() {
   }, []);
 
   const sortedActive = useMemo(
-    () =>
-      [...active].sort(
-        (a, b) =>
-          new Date(a.nextExpectedCharge).getTime() -
-          new Date(b.nextExpectedCharge).getTime(),
-      ),
+    () => [...active].sort((a, b) =>
+      new Date(a.nextExpectedCharge).getTime() - new Date(b.nextExpectedCharge).getTime(),
+    ),
     [active],
   );
 
@@ -835,18 +939,14 @@ export function SubscriptionsPage() {
           </p>
         </div>
         <motion.button
-          whileHover={{ scale: 1.03 }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
           onClick={openAddModal}
-          style={{
-            padding: '8px 18px', borderRadius: 10, border: 'none',
-            background: 'linear-gradient(135deg, #00d4aa, #0ea5e9)',
-            color: '#06101e', fontFamily: 'var(--font-display)',
-            fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            boxShadow: '0 2px 12px rgba(0,212,170,0.3)',
-          }}
+          className="btn-signal flex items-center gap-2"
+          style={{ padding: '9px 20px', fontSize: 13 }}
         >
-          + Добавить подписку
+          <PlusIcon size={14} />
+          Добавить
         </motion.button>
       </motion.div>
 
@@ -871,14 +971,13 @@ export function SubscriptionsPage() {
       {/* Upcoming */}
       <UpcomingList subs={upcoming} />
 
-      {/* Active subscriptions */}
+      {/* Detected subscriptions */}
       {sortedActive.length === 0 ? (
         <motion.div
           variants={fadeUp}
           className="station-panel station-panel-glow p-8 md:p-16 text-center relative overflow-hidden"
         >
           <OrbitDecoration className="opacity-30" />
-
           <motion.svg
             width="80" height="80" viewBox="0 0 80 80" fill="none"
             className="mx-auto mb-6"
@@ -891,11 +990,7 @@ export function SubscriptionsPage() {
               <animate attributeName="opacity" values="0.2;0.5;0.2" dur="3s" repeatCount="indefinite" />
             </circle>
           </motion.svg>
-
-          <p
-            className="text-lg font-semibold mb-2"
-            style={{ fontFamily: 'var(--font-display)', color: 'rgba(200,214,229,0.7)' }}
-          >
+          <p className="text-lg font-semibold mb-2" style={{ fontFamily: 'var(--font-display)', color: 'rgba(200,214,229,0.7)' }}>
             Подписки ещё не обнаружены
           </p>
           <p className="text-sm max-w-xs mx-auto" style={{ color: 'rgba(200,214,229,0.3)' }}>
@@ -910,7 +1005,7 @@ export function SubscriptionsPage() {
             style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}
           >
             <SatelliteIcon size={18} color="var(--signal-primary)" />
-            Все активные подписки
+            Обнаруженные подписки
             <span
               className="text-xs ml-1.5 px-2 py-0.5 rounded-full"
               style={{
@@ -937,13 +1032,15 @@ export function SubscriptionsPage() {
           className="text-lg font-semibold mb-4 flex items-center gap-2"
           style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}
         >
-          <span style={{ fontSize: 16 }}>✋</span>
+          <div style={{ color: 'var(--signal-secondary)' }}>
+            <ManualIcon size={18} />
+          </div>
           Ручные подписки
           <span
             className="text-xs ml-1.5 px-2 py-0.5 rounded-full"
             style={{
               fontFamily: 'var(--font-mono)',
-              color: '#0ea5e9',
+              color: 'var(--signal-secondary)',
               background: 'rgba(14,165,233,0.08)',
             }}
           >
@@ -954,31 +1051,47 @@ export function SubscriptionsPage() {
         {manualSubs.length === 0 ? (
           <motion.div
             variants={fadeUp}
-            className="station-panel p-8 text-center"
-            style={{ border: '1px dashed rgba(14,165,233,0.15)' }}
+            className="station-panel p-8 md:p-12 text-center relative overflow-hidden"
+            style={{ borderColor: 'rgba(14,165,233,0.08)' }}
           >
-            <p style={{ fontSize: 24, marginBottom: 8 }}>📝</p>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.4)', marginBottom: 12 }}>
-              Нет ручных подписок
-            </p>
-            <button
-              onClick={openAddModal}
-              style={{
-                padding: '6px 16px', borderRadius: 8, border: 'none',
-                background: 'rgba(14,165,233,0.1)', color: '#0ea5e9',
-                fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600,
-                cursor: 'pointer',
-              }}
+            {/* Orbit deco */}
+            <motion.svg
+              width="64" height="64" viewBox="0 0 64 64" fill="none"
+              className="mx-auto mb-5"
+              animate={{ rotate: [0, -360] }}
+              transition={{ duration: 35, repeat: Infinity, ease: 'linear' }}
             >
-              + Добавить вручную
-            </button>
+              <circle cx="32" cy="32" r="24" stroke="rgba(14,165,233,0.08)" strokeWidth="1" strokeDasharray="4 6" />
+              <circle cx="32" cy="32" r="14" stroke="rgba(14,165,233,0.05)" strokeWidth="1" strokeDasharray="3 5" />
+              <circle cx="32" cy="32" r="2.5" fill="rgba(14,165,233,0.3)">
+                <animate attributeName="opacity" values="0.2;0.5;0.2" dur="3s" repeatCount="indefinite" />
+              </circle>
+            </motion.svg>
+
+            <p className="font-semibold mb-1.5" style={{ fontFamily: 'var(--font-display)', fontSize: 15, color: 'rgba(200,214,229,0.6)' }}>
+              Ручных подписок нет
+            </p>
+            <p className="text-sm max-w-xs mx-auto mb-5" style={{ fontFamily: 'var(--font-body)', color: 'rgba(200,214,229,0.25)' }}>
+              Добавьте подписки, которые не были обнаружены автоматически
+            </p>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={openAddModal}
+              className="btn-ghost inline-flex items-center gap-2"
+              style={{ padding: '8px 18px', fontSize: 12, borderColor: 'rgba(14,165,233,0.2)', color: 'var(--signal-secondary)' }}
+            >
+              <PlusIcon size={13} />
+              Добавить вручную
+            </motion.button>
           </motion.div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
-            {manualSubs.map((sub) => (
+            {manualSubs.map((sub, i) => (
               <ManualSubCard
                 key={sub.id}
                 sub={sub}
+                index={i}
                 onEdit={openEditModal}
                 onDeleted={handleManualDelete}
               />

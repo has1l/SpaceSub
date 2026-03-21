@@ -3,6 +3,8 @@ import SwiftUI
 enum AppTab: Hashable {
     case dashboard
     case subscriptions
+    case analytics
+    case forecast
     case connect
 }
 
@@ -41,6 +43,14 @@ struct MainTabView: View {
 
             Tab("Подписки", systemImage: "antenna.radiowaves.left.and.right", value: .subscriptions) {
                 SubscriptionsView(auth: auth)
+            }
+
+            Tab("Аналитика", systemImage: "chart.pie.fill", value: .analytics) {
+                AnalyticsView(auth: auth)
+            }
+
+            Tab("Прогноз", systemImage: "chart.line.uptrend.xyaxis", value: .forecast) {
+                ForecastView(auth: auth)
             }
 
             Tab("Подключение", systemImage: "link.badge.plus", value: .connect) {

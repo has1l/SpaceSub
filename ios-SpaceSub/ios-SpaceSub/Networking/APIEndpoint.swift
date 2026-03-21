@@ -76,6 +76,40 @@ extension APIEndpoint {
     static func analytics() -> APIEndpoint {
         APIEndpoint(path: "/analytics")
     }
+
+    static func analyticsOverview(from: Date? = nil, to: Date? = nil) -> APIEndpoint {
+        APIEndpoint(path: "/analytics/overview", queryItems: dateQueryItems(from: from, to: to))
+    }
+
+    static func analyticsByCategory(from: Date? = nil, to: Date? = nil) -> APIEndpoint {
+        APIEndpoint(path: "/analytics/by-category", queryItems: dateQueryItems(from: from, to: to))
+    }
+
+    static func analyticsByService(limit: Int = 8, from: Date? = nil, to: Date? = nil) -> APIEndpoint {
+        var items = dateQueryItems(from: from, to: to)
+        items.append(URLQueryItem(name: "limit", value: "\(limit)"))
+        return APIEndpoint(path: "/analytics/by-service", queryItems: items)
+    }
+
+    static func analyticsByPeriod(from: Date? = nil, to: Date? = nil) -> APIEndpoint {
+        APIEndpoint(path: "/analytics/by-period", queryItems: dateQueryItems(from: from, to: to))
+    }
+
+    static func analyticsScores() -> APIEndpoint {
+        APIEndpoint(path: "/analytics/scores")
+    }
+
+    static func analyticsRecommendations() -> APIEndpoint {
+        APIEndpoint(path: "/analytics/recommendations")
+    }
+
+    private static func dateQueryItems(from: Date?, to: Date?) -> [URLQueryItem] {
+        let formatter = ISO8601DateFormatter()
+        var items: [URLQueryItem] = []
+        if let from { items.append(URLQueryItem(name: "from", value: formatter.string(from: from))) }
+        if let to { items.append(URLQueryItem(name: "to", value: formatter.string(from: to))) }
+        return items
+    }
 }
 
 // MARK: - Forecast Endpoints
