@@ -683,8 +683,8 @@ export function AnalyticsPage() {
 
   const heroStats = [
     { label: 'ПОДПИСОК', value: overview?.activeCount ?? 0, color: '#00d4aa', icon: <OrbitIcon size={20} /> },
-    { label: 'MRR', value: overview?.mrr ?? 0, color: '#0ea5e9', icon: <DataFlowIcon size={20} />, prefix: '₽' },
-    { label: 'ARR', value: overview?.arr ?? 0, color: '#a78bfa', icon: <SignalTowerIcon size={20} />, prefix: '₽' },
+    { label: 'В МЕСЯЦ', value: overview?.mrr ?? 0, color: '#0ea5e9', icon: <DataFlowIcon size={20} />, prefix: '₽' },
+    { label: 'В ГОД', value: overview?.arr ?? 0, color: '#a78bfa', icon: <SignalTowerIcon size={20} />, prefix: '₽' },
     { label: 'СКОРО', value: overview?.upcomingCount ?? 0, color: '#f59e0b', icon: <TelemetryIcon size={20} /> },
   ];
 
