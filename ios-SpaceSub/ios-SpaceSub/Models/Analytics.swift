@@ -117,3 +117,30 @@ nonisolated struct RecommendationItem: Codable, Identifiable, Sendable {
 
     var id: String { "\(type.rawValue)-\(merchant)" }
 }
+
+// MARK: - Period with Moving Average
+
+struct PeriodItemWithAvg: Identifiable {
+    let id: String
+    let period: String
+    let total: Double
+    let count: Int
+    let momGrowthPct: Double?
+    let movingAvg: Double
+}
+
+// MARK: - Score Filter
+
+enum ScoreFilter: String, CaseIterable, Identifiable {
+    case all, risky, healthy
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .all: "Все"
+        case .risky: "Проблемные"
+        case .healthy: "Здоровые"
+        }
+    }
+}

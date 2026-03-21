@@ -107,6 +107,38 @@ extension View {
     }
 }
 
+// MARK: - Neon Dot
+
+struct NeonDot: View {
+    let color: Color
+    var size: CGFloat = 8
+    var pulsing: Bool = false
+
+    @State private var pulseScale: CGFloat = 1
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(color.opacity(0.4))
+                .frame(width: size * 1.8, height: size * 1.8)
+                .blur(radius: size * 0.6)
+
+            Circle()
+                .fill(color)
+                .frame(width: size, height: size)
+                .shadow(color: color.opacity(0.6), radius: size * 0.5)
+        }
+        .scaleEffect(pulsing ? pulseScale : 1)
+        .onAppear {
+            if pulsing {
+                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                    pulseScale = 1.3
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Hex String Color Init
 
 extension Color {

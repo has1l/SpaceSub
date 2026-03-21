@@ -38,6 +38,8 @@ final class AnalyticsViewModel {
 
     // State
     var selectedPeriod: PeriodPreset = .oneMonth
+    var selectedCategory: String? = nil
+    var scoreFilter: ScoreFilter = .all
     private(set) var isLoading = false
     private(set) var isChartLoading = false
     private(set) var error: String?
@@ -50,6 +52,68 @@ final class AnalyticsViewModel {
         self.service = service
     }
 
+    // MARK: - Computed
+
+    var periodsWithAvg: [PeriodItemWithAvg] {
+        periods.enumerated().map { i, item in
+            let windowStart = max(0, i - 2)
+            let window = Array(periods[windowStart...i])
+            let avg = window.map(\.total).reduce(0, +) / Double(window.count)
+            return PeriodItemWithAvg(
+                id: item.period,
+                period: item.period,
+                total: item.total,
+                count: item.count,
+                momGrowthPct: item.momGrowthPct,
+                movingAvg: avg
+            )
+        }
+    }
+
+    var rankedServices: [(service: ServiceItem, rank: Int)] {
+        let sorted = services.sorted { $0.monthlyAmount > $1.monthlyAmount }
+        return sorted.enumerated().map { ($1, rank: $0 + 1) }
+    }
+
+    var filteredScores: [ScoreItem] {
+        switch scoreFilter {
+        case .all: return scores
+        case .risky: return scores.filter { $0.churnRisk == .HIGH || $0.churnRisk == .MEDIUM }
+        case .healthy: return scores.filter { $0.churnRisk == .LOW }
+        }
+    }
+
+    var budgetHealthScore: Double {
+        let high = Double(recommendations.filter { $0.priority == .HIGH }.count)
+        let med = Double(recommendations.filter { $0.priority == .MEDIUM }.count)
+        return max(0, min(100, 100 - high * 20 - med * 10))
+    }
+
+    var optimizationPotential: Double {
+        guard let ov = overview, ov.periodTotal > 0 else { return 0 }
+        let savings = recommendations.reduce(0.0) { $0 + $1.potentialSavings }
+        return min(100, (savings / 12) / ov.periodTotal * 100)
+    }
+
+    var subscriptionDensity: Double {
+        let catCount = max(1, Set(categories.map(\.category)).count)
+        return Double(overview?.activeCount ?? 0) / Double(catCount)
+    }
+
+    var totalPotentialSavings: Double {
+        recommendations.reduce(0) { $0 + $1.potentialSavings }
+    }
+
+    var periodTotals: [Double] {
+        Array(periods.suffix(6).map(\.total))
+    }
+
+    func services(for category: String) -> [ServiceItem] {
+        services.filter { $0.category == category }
+    }
+
+    // MARK: - Actions
+
     func load() async {
         isLoading = true
         error = nil
@@ -59,6 +123,7 @@ final class AnalyticsViewModel {
 
     func changePeriod(_ period: PeriodPreset) async {
         selectedPeriod = period
+        selectedCategory = nil
         isChartLoading = true
         await fetchDateRangeData()
         isChartLoading = false
@@ -111,7 +176,7 @@ final class AnalyticsViewModel {
     @MainActor
     private func fetchServices(from: Date, to: Date) async {
         do {
-            services = try await service.fetchByService(from: from, to: to)
+            services = try await service.fetchByService(limit: 15, from: from, to: to)
         } catch is APIError {} catch {}
     }
 
