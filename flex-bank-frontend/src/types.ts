@@ -68,14 +68,3 @@ export const CATEGORY_COLORS: Record<TransactionCategory, string> = {
   OTHER: '#6B7280',
 };
 
-export const CATEGORY_ICONS: Record<TransactionCategory, string> = {
-  SUBSCRIPTIONS: '🔄',
-  SUPERMARKETS: '🛒',
-  TRANSFERS: '💸',
-  DIGITAL_SERVICES: '💻',
-  INVESTMENTS: '📈',
-  TRANSPORT: '🚗',
-  RESTAURANTS: '🍽️',
-  HEALTH: '💊',
-  OTHER: '📦',
-};

@@ -190,9 +190,9 @@ export default function AnalyticsPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
             {[
-              { label: 'ДОХОДЫ', value: fmt(totalIncome), color: 'text-aurora-green', icon: '↑' },
-              { label: 'РАСХОДЫ', value: fmt(totalExpense), color: 'text-aurora-red', icon: '↓' },
-              { label: 'ОПЕРАЦИЙ', value: totalTxCount.toString(), color: 'text-accent-blue', icon: '≡' },
+              { label: 'ДОХОДЫ', value: fmt(totalIncome), color: 'text-aurora-green', iconPath: 'M12 19V5m0 0l-5 5m5-5l5 5', iconColor: '#00E5A0' },
+              { label: 'РАСХОДЫ', value: fmt(totalExpense), color: 'text-aurora-red', iconPath: 'M12 5v14m0 0l5-5m-5 5l-5-5', iconColor: '#FF5C7A' },
+              { label: 'ОПЕРАЦИЙ', value: totalTxCount.toString(), color: 'text-accent-blue', iconPath: 'M4 6h16M4 12h16M4 18h16', iconColor: '#4F7CFF' },
             ].map((card, i) => (
               <motion.div
                 key={card.label}
@@ -209,7 +209,8 @@ export default function AnalyticsPage() {
 
                 <p className="text-text-void text-xs tracking-[0.15em] uppercase mb-2"
                    style={{ fontFamily: 'var(--font-mono)' }}>
-                  {card.icon} {card.label}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={card.iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-1.5 -mt-px"><path d={card.iconPath} /></svg>
+                  {card.label}
                 </p>
                 <motion.p
                   className={`text-xl font-bold ${card.color}`}

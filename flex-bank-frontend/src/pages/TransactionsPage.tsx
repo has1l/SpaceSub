@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import api from '../services/api';
 import type { Transaction, TransactionCategory } from '../types';
-import { CATEGORY_LABELS, CATEGORY_ICONS } from '../types';
+import { CATEGORY_LABELS } from '../types';
+import CategoryIcon from '../components/CategoryIcon';
 import Spinner from '../components/Spinner';
 
 const stagger = {
@@ -86,9 +87,8 @@ export default function TransactionsPage() {
                       }}
                       whileHover={{ backgroundColor: 'rgba(79, 124, 255, 0.03)' }}
                     >
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-all duration-300 group-hover:scale-110"
-                           style={{ background: 'rgba(79, 124, 255, 0.08)' }}>
-                        {CATEGORY_ICONS[cat] || '📦'}
+                      <div className="transition-transform duration-300 group-hover:scale-110">
+                        <CategoryIcon category={cat} />
                       </div>
 
                       <div className="flex-1 min-w-0">
