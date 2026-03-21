@@ -36,6 +36,15 @@ final class AnalyticsViewModel {
     private(set) var scores: [ScoreItem] = []
     private(set) var recommendations: [RecommendationItem] = []
 
+    // Cached derived data (recomputed only on data change)
+    private(set) var periodsWithAvg: [PeriodItemWithAvg] = []
+    private(set) var rankedServices: [(service: ServiceItem, rank: Int)] = []
+    private(set) var budgetHealthScore: Double = 100
+    private(set) var optimizationPotential: Double = 0
+    private(set) var subscriptionDensity: Double = 0
+    private(set) var totalPotentialSavings: Double = 0
+    private(set) var periodTotals: [Double] = []
+
     // State
     var selectedPeriod: PeriodPreset = .oneMonth
     var selectedCategory: String? = nil
@@ -47,15 +56,58 @@ final class AnalyticsViewModel {
     var onUnauthorized: (() -> Void)?
 
     private let service: AnalyticsService
+    private var loadTask: Task<Void, Never>?
 
     init(service: AnalyticsService = AnalyticsService()) {
         self.service = service
     }
 
-    // MARK: - Computed
+    // MARK: - Computed (cheap)
 
-    var periodsWithAvg: [PeriodItemWithAvg] {
-        periods.enumerated().map { i, item in
+    var filteredScores: [ScoreItem] {
+        switch scoreFilter {
+        case .all: return scores
+        case .risky: return scores.filter { $0.churnRisk == .HIGH || $0.churnRisk == .MEDIUM }
+        case .healthy: return scores.filter { $0.churnRisk == .LOW }
+        }
+    }
+
+    // Service lookup cache
+    private var servicesByCategory: [String: [ServiceItem]] = [:]
+
+    func services(for category: String) -> [ServiceItem] {
+        servicesByCategory[category] ?? []
+    }
+
+    // MARK: - Actions
+
+    func load() async {
+        guard !isLoading else { return }
+        isLoading = true
+        error = nil
+        await fetchAll()
+        recomputeDerivedData()
+        isLoading = false
+    }
+
+    func changePeriod(_ period: PeriodPreset) async {
+        loadTask?.cancel()
+        selectedPeriod = period
+        selectedCategory = nil
+        isChartLoading = true
+        let task = Task { await fetchDateRangeData() }
+        loadTask = task
+        await task.value
+        guard !task.isCancelled else { return }
+        recomputeDerivedData()
+        isChartLoading = false
+    }
+
+    // MARK: - Derived Data Recomputation
+
+    private func recomputeDerivedData() {
+        // periodsWithAvg
+        periodsWithAvg = periods.enumerated().map { i, item in
             let windowStart = max(0, i - 2)
             let window = Array(periods[windowStart...i])
             let avg = window.map(\.total).reduce(0, +) / Double(window.count)
@@ -68,65 +120,36 @@ final class AnalyticsViewModel {
                 movingAvg: avg
             )
         }
-    }
 
-    var rankedServices: [(service: ServiceItem, rank: Int)] {
+        // rankedServices
         let sorted = services.sorted { $0.monthlyAmount > $1.monthlyAmount }
-        return sorted.enumerated().map { ($1, rank: $0 + 1) }
-    }
+        rankedServices = sorted.enumerated().map { ($1, rank: $0 + 1) }
 
-    var filteredScores: [ScoreItem] {
-        switch scoreFilter {
-        case .all: return scores
-        case .risky: return scores.filter { $0.churnRisk == .HIGH || $0.churnRisk == .MEDIUM }
-        case .healthy: return scores.filter { $0.churnRisk == .LOW }
-        }
-    }
+        // servicesByCategory
+        servicesByCategory = Dictionary(grouping: services, by: \.category)
 
-    var budgetHealthScore: Double {
+        // budgetHealthScore
         let high = Double(recommendations.filter { $0.priority == .HIGH }.count)
         let med = Double(recommendations.filter { $0.priority == .MEDIUM }.count)
-        return max(0, min(100, 100 - high * 20 - med * 10))
-    }
+        budgetHealthScore = max(0, min(100, 100 - high * 20 - med * 10))
 
-    var optimizationPotential: Double {
-        guard let ov = overview, ov.periodTotal > 0 else { return 0 }
-        let savings = recommendations.reduce(0.0) { $0 + $1.potentialSavings }
-        return min(100, (savings / 12) / ov.periodTotal * 100)
-    }
+        // optimizationPotential
+        if let ov = overview, ov.periodTotal > 0 {
+            let savings = recommendations.reduce(0.0) { $0 + $1.potentialSavings }
+            optimizationPotential = min(100, (savings / 12) / ov.periodTotal * 100)
+        } else {
+            optimizationPotential = 0
+        }
 
-    var subscriptionDensity: Double {
+        // subscriptionDensity
         let catCount = max(1, Set(categories.map(\.category)).count)
-        return Double(overview?.activeCount ?? 0) / Double(catCount)
-    }
+        subscriptionDensity = Double(overview?.activeCount ?? 0) / Double(catCount)
 
-    var totalPotentialSavings: Double {
-        recommendations.reduce(0) { $0 + $1.potentialSavings }
-    }
+        // totalPotentialSavings
+        totalPotentialSavings = recommendations.reduce(0) { $0 + $1.potentialSavings }
 
-    var periodTotals: [Double] {
-        Array(periods.suffix(6).map(\.total))
-    }
-
-    func services(for category: String) -> [ServiceItem] {
-        services.filter { $0.category == category }
-    }
-
-    // MARK: - Actions
-
-    func load() async {
-        isLoading = true
-        error = nil
-        await fetchAll()
-        isLoading = false
-    }
-
-    func changePeriod(_ period: PeriodPreset) async {
-        selectedPeriod = period
-        selectedCategory = nil
-        isChartLoading = true
-        await fetchDateRangeData()
-        isChartLoading = false
+        // periodTotals
+        periodTotals = Array(periods.suffix(6).map(\.total))
     }
 
     // MARK: - Private

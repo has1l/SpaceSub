@@ -22,14 +22,9 @@ struct HudPanel<Content: View>: View {
         content()
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.spaceDeep.opacity(0.8))
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(.ultraThinMaterial.opacity(0.3))
-                    )
+                    .fill(Color.spaceDeep.opacity(0.85))
             )
             .overlay(alignment: .top) {
-                // Accent beam
                 Rectangle()
                     .fill(
                         LinearGradient(
@@ -40,7 +35,7 @@ struct HudPanel<Content: View>: View {
                     )
                     .frame(height: 1)
             }
-            .overlay { cornerBrackets }
+            .overlay { CornerBracketsShape(cornerSize: 16).stroke(accent.opacity(0.25), lineWidth: 1) }
             .overlay {
                 if scanLine {
                     ScanLineView(color: accent)
@@ -50,52 +45,45 @@ struct HudPanel<Content: View>: View {
                 RoundedRectangle(cornerRadius: 16)
                     .strokeBorder(accent.opacity(glowing ? 0.18 : 0.08), lineWidth: 0.5)
             )
-            .shadow(color: accent.opacity(glowing ? 0.08 : 0.03), radius: glowing ? 20 : 10)
+            .shadow(color: accent.opacity(glowing ? 0.06 : 0.02), radius: glowing ? 12 : 6)
             .clipShape(RoundedRectangle(cornerRadius: 16))
     }
+}
 
-    private var cornerBrackets: some View {
-        GeometryReader { geo in
-            let size: CGFloat = 16
-            let stroke = accent.opacity(0.25)
+// MARK: - Corner Brackets (Shape — no GeometryReader)
 
-            // Top-left
-            Path { p in
-                p.move(to: CGPoint(x: 0, y: size))
-                p.addLine(to: CGPoint(x: 0, y: 4))
-                p.addQuadCurve(to: CGPoint(x: 4, y: 0), control: CGPoint(x: 0, y: 0))
-                p.addLine(to: CGPoint(x: size, y: 0))
-            }
-            .stroke(stroke, lineWidth: 1)
+private struct CornerBracketsShape: Shape {
+    let cornerSize: CGFloat
 
-            // Top-right
-            Path { p in
-                p.move(to: CGPoint(x: geo.size.width - size, y: 0))
-                p.addLine(to: CGPoint(x: geo.size.width - 4, y: 0))
-                p.addQuadCurve(to: CGPoint(x: geo.size.width, y: 4), control: CGPoint(x: geo.size.width, y: 0))
-                p.addLine(to: CGPoint(x: geo.size.width, y: size))
-            }
-            .stroke(stroke, lineWidth: 1)
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let s = cornerSize
 
-            // Bottom-left
-            Path { p in
-                p.move(to: CGPoint(x: 0, y: geo.size.height - size))
-                p.addLine(to: CGPoint(x: 0, y: geo.size.height - 4))
-                p.addQuadCurve(to: CGPoint(x: 4, y: geo.size.height), control: CGPoint(x: 0, y: geo.size.height))
-                p.addLine(to: CGPoint(x: size, y: geo.size.height))
-            }
-            .stroke(stroke, lineWidth: 1)
+        // Top-left
+        p.move(to: CGPoint(x: rect.minX, y: rect.minY + s))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY + 4))
+        p.addQuadCurve(to: CGPoint(x: rect.minX + 4, y: rect.minY), control: CGPoint(x: rect.minX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.minX + s, y: rect.minY))
 
-            // Bottom-right
-            Path { p in
-                p.move(to: CGPoint(x: geo.size.width - size, y: geo.size.height))
-                p.addLine(to: CGPoint(x: geo.size.width - 4, y: geo.size.height))
-                p.addQuadCurve(to: CGPoint(x: geo.size.width, y: geo.size.height - 4), control: CGPoint(x: geo.size.width, y: geo.size.height))
-                p.addLine(to: CGPoint(x: geo.size.width, y: geo.size.height - size))
-            }
-            .stroke(stroke, lineWidth: 1)
-        }
-        .allowsHitTesting(false)
+        // Top-right
+        p.move(to: CGPoint(x: rect.maxX - s, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX - 4, y: rect.minY))
+        p.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.minY + 4), control: CGPoint(x: rect.maxX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + s))
+
+        // Bottom-left
+        p.move(to: CGPoint(x: rect.minX, y: rect.maxY - s))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - 4))
+        p.addQuadCurve(to: CGPoint(x: rect.minX + 4, y: rect.maxY), control: CGPoint(x: rect.minX, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX + s, y: rect.maxY))
+
+        // Bottom-right
+        p.move(to: CGPoint(x: rect.maxX - s, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.maxX - 4, y: rect.maxY))
+        p.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.maxY - 4), control: CGPoint(x: rect.maxX, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - s))
+
+        return p
     }
 }
 
@@ -119,8 +107,9 @@ private struct ScanLineView: View {
                 .offset(y: offset * geo.size.height)
         }
         .allowsHitTesting(false)
+        .drawingGroup()
         .onAppear {
-            withAnimation(.linear(duration: 4).repeatForever(autoreverses: false)) {
+            withAnimation(.linear(duration: 6).repeatForever(autoreverses: false)) {
                 offset = 1
             }
         }

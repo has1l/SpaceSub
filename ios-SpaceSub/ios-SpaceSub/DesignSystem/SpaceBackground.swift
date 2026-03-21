@@ -50,6 +50,7 @@ private struct GridOverlay: View {
                 context.stroke(path, with: .color(Color.signalPrimary.opacity(0.5)), lineWidth: 0.5)
             }
         }
+        .drawingGroup()
     }
 }
 
@@ -59,16 +60,16 @@ private struct StarfieldView: View {
 
     @State private var phase: CGFloat = 0
 
-    private let stars: [(x: CGFloat, y: CGFloat, size: CGFloat, brightness: CGFloat, speed: CGFloat)] = {
+    private static let stars: [(x: CGFloat, y: CGFloat, size: CGFloat, brightness: CGFloat, speed: CGFloat)] = {
         var result: [(CGFloat, CGFloat, CGFloat, CGFloat, CGFloat)] = []
-        for i in 0..<60 {
+        for i in 0..<40 {
             let seed = Double(i)
             result.append((
                 CGFloat((seed * 173.7).truncatingRemainder(dividingBy: 1000)) / 1000,
                 CGFloat((seed * 259.3).truncatingRemainder(dividingBy: 1000)) / 1000,
-                CGFloat.random(in: 0.5...1.5),
-                CGFloat.random(in: 0.2...0.7),
-                CGFloat.random(in: 0.3...1.0)
+                CGFloat(1 + (seed * 37.3).truncatingRemainder(dividingBy: 100) / 100),
+                CGFloat(0.2 + (seed * 91.7).truncatingRemainder(dividingBy: 100) / 200),
+                CGFloat(0.3 + (seed * 53.1).truncatingRemainder(dividingBy: 100) / 143)
             ))
         }
         return result
@@ -76,7 +77,7 @@ private struct StarfieldView: View {
 
     var body: some View {
         Canvas { context, size in
-            for star in stars {
+            for star in Self.stars {
                 let pulseFactor = 0.5 + 0.5 * sin(phase * star.speed + star.x * 10)
                 let alpha = star.brightness * pulseFactor
 
@@ -95,17 +96,18 @@ private struct StarfieldView: View {
 
                 context.fill(Circle().path(in: rect), with: .color(color))
 
-                if star.size > 1.0 {
-                    let glowRect = rect.insetBy(dx: -2, dy: -2)
+                if star.size > 1.2 {
+                    let glowRect = rect.insetBy(dx: -1.5, dy: -1.5)
                     context.fill(
                         Circle().path(in: glowRect),
-                        with: .color(color.opacity(0.15))
+                        with: .color(color.opacity(0.12))
                     )
                 }
             }
         }
+        .drawingGroup()
         .onAppear {
-            withAnimation(.linear(duration: 8).repeatForever(autoreverses: false)) {
+            withAnimation(.linear(duration: 12).repeatForever(autoreverses: false)) {
                 phase = .pi * 2
             }
         }

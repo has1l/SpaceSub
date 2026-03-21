@@ -10,32 +10,13 @@ struct ForecastView: View {
             SpaceBackground()
 
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: SpaceMetrics.sectionSpacing) {
+                LazyVStack(alignment: .leading, spacing: SpaceMetrics.sectionSpacing) {
 
-                    // Header
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Прогноз")
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [Color.signalPrimary, Color.signalSecondary],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-
-                        Text("Траектория расходов")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(Color.textSecondary)
-                    }
-                    .padding(.top, 8)
+                    ForecastHeaderView()
 
                     if let f = vm.forecast {
-                        // Forecast totals
-                        forecastTotals(f)
-
-                        // Timeline
-                        timelineSection(f)
+                        ForecastTotalsSection(forecast: f)
+                        ForecastTimelineSection(timeline: f.upcomingTimeline)
                     }
 
                     if let error = vm.error {
@@ -63,10 +44,35 @@ struct ForecastView: View {
         .onAppear { vm.onUnauthorized = { auth.handleUnauthorized() } }
         .task { await vm.load() }
     }
+}
 
-    // MARK: - Totals
+// MARK: - Extracted Subviews
 
-    private func forecastTotals(_ f: ForecastResponse) -> some View {
+private struct ForecastHeaderView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Прогноз")
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color.signalPrimary, Color.signalSecondary],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+
+            Text("Траектория расходов")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Color.textSecondary)
+        }
+        .padding(.top, 8)
+    }
+}
+
+private struct ForecastTotalsSection: View {
+    let forecast: ForecastResponse
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader("Прогноз расходов", icon: "chart.line.uptrend.xyaxis")
 
@@ -76,13 +82,13 @@ struct ForecastView: View {
                 MetricCard(
                     icon: "7.circle",
                     label: "7 дней",
-                    value: "\(Int(f.next7DaysTotal)) ₽"
+                    value: "\(Int(forecast.next7DaysTotal)) ₽"
                 )
 
                 MetricCard(
                     icon: "30.circle",
                     label: "30 дней",
-                    value: "\(Int(f.next30DaysTotal)) ₽",
+                    value: "\(Int(forecast.next30DaysTotal)) ₽",
                     accentColor: .signalSecondary
                 )
             }
@@ -90,86 +96,101 @@ struct ForecastView: View {
             MetricCard(
                 icon: "12.circle",
                 label: "12 месяцев",
-                value: "\(Int(f.next12MonthsTotal)) ₽",
+                value: "\(Int(forecast.next12MonthsTotal)) ₽",
                 accentColor: .signalWarn
             )
         }
     }
+}
 
-    // MARK: - Timeline
+private struct ForecastTimelineSection: View {
+    let timeline: [TimelineEntry]
 
-    private func timelineSection(_ f: ForecastResponse) -> some View {
-        Group {
-            if !f.upcomingTimeline.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    SectionHeader("Хронология миссий", icon: "calendar.badge.clock") {
-                        Text("\(f.upcomingTimeline.count)")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                            .foregroundStyle(Color.signalSecondary)
-                    }
+    var body: some View {
+        if !timeline.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeader("Хронология миссий", icon: "calendar.badge.clock") {
+                    Text("\(timeline.count)")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Color.signalSecondary)
+                }
 
-                    ForEach(Array(f.upcomingTimeline.enumerated()), id: \.element.id) { index, entry in
-                        HStack(spacing: 0) {
-                            // Timeline connector
-                            VStack(spacing: 0) {
-                                if index > 0 {
-                                    Rectangle()
-                                        .fill(Color.signalPrimary.opacity(0.1))
-                                        .frame(width: 1)
-                                }
-
-                                Circle()
-                                    .fill(Color.signalPrimary.opacity(0.3))
-                                    .frame(width: 8, height: 8)
-                                    .overlay(
-                                        Circle()
-                                            .fill(Color.signalPrimary)
-                                            .frame(width: 4, height: 4)
-                                    )
-                                    .shadow(color: Color.signalPrimary.opacity(0.3), radius: 4)
-
-                                if index < f.upcomingTimeline.count - 1 {
-                                    Rectangle()
-                                        .fill(Color.signalPrimary.opacity(0.1))
-                                        .frame(width: 1)
-                                }
-                            }
-                            .frame(width: 20)
-
-                            // Card
-                            SpaceCard {
-                                HStack(spacing: 12) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(entry.merchant)
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .foregroundStyle(Color.textPrimary)
-
-                                        HStack(spacing: 6) {
-                                            Text(DateFormatting.formatDate(entry.chargeDate))
-                                                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                                                .foregroundStyle(Color.textMuted)
-
-                                            Text("•")
-                                                .foregroundStyle(Color.textMuted.opacity(0.3))
-
-                                            Text(entry.periodType.displayName)
-                                                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                                                .foregroundStyle(Color.textMuted)
-                                        }
-                                    }
-
-                                    Spacer()
-
-                                    Text("\(Int(entry.amount)) ₽")
-                                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                                        .foregroundStyle(Color.textPrimary)
-                                }
-                            }
-                            .padding(.leading, 8)
-                        }
-                    }
+                ForEach(Array(timeline.enumerated()), id: \.element.id) { index, entry in
+                    TimelineItemView(
+                        entry: entry,
+                        isFirst: index == 0,
+                        isLast: index == timeline.count - 1
+                    )
                 }
             }
+        }
+    }
+}
+
+private struct TimelineItemView: View {
+    let entry: TimelineEntry
+    let isFirst: Bool
+    let isLast: Bool
+
+    var body: some View {
+        HStack(spacing: 0) {
+            VStack(spacing: 0) {
+                if !isFirst {
+                    Rectangle()
+                        .fill(Color.signalPrimary.opacity(0.1))
+                        .frame(width: 1)
+                }
+
+                Circle()
+                    .fill(Color.signalPrimary.opacity(0.3))
+                    .frame(width: 8, height: 8)
+                    .overlay(
+                        Circle()
+                            .fill(Color.signalPrimary)
+                            .frame(width: 4, height: 4)
+                    )
+                    .shadow(color: Color.signalPrimary.opacity(0.3), radius: 4)
+
+                if !isLast {
+                    Rectangle()
+                        .fill(Color.signalPrimary.opacity(0.1))
+                        .frame(width: 1)
+                }
+            }
+            .frame(width: 20)
+
+            SpaceCard {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(entry.merchant)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.textPrimary)
+                            .lineLimit(1)
+
+                        HStack(spacing: 6) {
+                            Text(DateFormatting.formatDate(entry.chargeDate))
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundStyle(Color.textMuted)
+
+                            Text("•")
+                                .foregroundStyle(Color.textMuted.opacity(0.3))
+
+                            Text(entry.periodType.displayName)
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundStyle(Color.textMuted)
+                        }
+                    }
+
+                    Spacer()
+
+                    Text("\(Int(entry.amount)) ₽")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+            }
+            .padding(.leading, 8)
         }
     }
 }

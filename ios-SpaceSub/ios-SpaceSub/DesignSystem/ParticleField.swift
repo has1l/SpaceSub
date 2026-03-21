@@ -21,7 +21,7 @@ struct ParticleField: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+        TimelineView(.animation(minimumInterval: 1.0 / 12.0)) { context in
             Canvas { gfx, size in
                 let time = context.date.timeIntervalSinceReferenceDate
                 for p in particles {

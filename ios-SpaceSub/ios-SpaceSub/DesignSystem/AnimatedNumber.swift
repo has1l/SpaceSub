@@ -10,6 +10,8 @@ struct AnimatedNumber: View {
     var body: some View {
         Text(formatted)
             .font(font)
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
             .contentTransition(.numericText(value: value))
             .animation(.spring(duration: 0.6, bounce: 0.15), value: value)
     }

@@ -11,7 +11,7 @@ struct ConnectFlexView: View {
             SpaceBackground()
 
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: SpaceMetrics.sectionSpacing) {
+                LazyVStack(alignment: .leading, spacing: SpaceMetrics.sectionSpacing) {
 
                     // Header
                     VStack(alignment: .leading, spacing: 4) {
@@ -198,7 +198,7 @@ struct ConnectFlexView: View {
                         )
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .shadow(color: Color.signalSecondary.opacity(0.2), radius: 10, y: 4)
+                    .shadow(color: Color.signalSecondary.opacity(0.15), radius: 6, y: 3)
                 }
                 .disabled(vm.isOAuthLoading)
                 .buttonStyle(.plain)

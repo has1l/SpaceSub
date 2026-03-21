@@ -10,41 +10,22 @@ struct SubscriptionsView: View {
             SpaceBackground()
 
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: SpaceMetrics.sectionSpacing) {
+                LazyVStack(alignment: .leading, spacing: SpaceMetrics.sectionSpacing) {
 
-                    // Header
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Обнаруженные подписки")
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [Color.signalPrimary, Color.signalSecondary],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
+                    SubsHeaderView()
 
-                        Text("Автоматически обнаруженные повторяющиеся платежи")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(Color.textSecondary)
-                    }
-                    .padding(.top, 8)
-
-                    // Summary metrics
                     if let s = vm.summary {
-                        summarySection(s)
+                        SubsSummarySection(summary: s)
                     }
 
-                    // Upcoming charges
                     if !vm.upcoming.isEmpty {
-                        upcomingSection
+                        SubsUpcomingSection(upcoming: vm.upcoming)
                     }
 
-                    // Active subscriptions
                     if vm.active.isEmpty && !vm.isLoading {
-                        emptyState
+                        SubsEmptyState()
                     } else if !vm.active.isEmpty {
-                        activeSection
+                        SubsActiveSection(active: vm.active)
                     }
 
                     if let error = vm.error {
@@ -72,113 +53,144 @@ struct SubscriptionsView: View {
         .onAppear { vm.onUnauthorized = { auth.handleUnauthorized() } }
         .task { await vm.load() }
     }
+}
 
-    // MARK: - Summary
+// MARK: - Extracted Subviews
 
-    private func summarySection(_ s: SubscriptionSummary) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            let grid = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
-
-            LazyVGrid(columns: grid, spacing: 12) {
-                MetricCard(
-                    icon: "antenna.radiowaves.left.and.right",
-                    label: "Активных спутников",
-                    value: "\(s.activeCount)"
+private struct SubsHeaderView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Обнаруженные подписки")
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color.signalPrimary, Color.signalSecondary],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
                 )
 
-                MetricCard(
-                    icon: "rublesign.circle",
-                    label: "В месяц",
-                    value: "\(Int(s.monthlyTotal)) ₽",
-                    accentColor: .signalSecondary
-                )
+            Text("Автоматически обнаруженные повторяющиеся платежи")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Color.textSecondary)
+        }
+        .padding(.top, 8)
+    }
+}
 
-                MetricCard(
-                    icon: "rublesign.circle.fill",
-                    label: "В год",
-                    value: "\(Int(s.yearlyTotal)) ₽",
-                    accentColor: Color(red: 0.65, green: 0.55, blue: 0.98)
-                )
+private struct SubsSummarySection: View {
+    let summary: SubscriptionSummary
 
-                MetricCard(
-                    icon: "exclamationmark.triangle",
-                    label: "Скоро списание",
-                    value: "\(s.upcomingNext7Days.count)",
-                    accentColor: .signalWarn
-                )
-            }
+    var body: some View {
+        let grid = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+
+        LazyVGrid(columns: grid, spacing: 12) {
+            MetricCard(
+                icon: "antenna.radiowaves.left.and.right",
+                label: "Активных спутников",
+                value: "\(summary.activeCount)"
+            )
+
+            MetricCard(
+                icon: "exclamationmark.triangle",
+                label: "Скоро списание",
+                value: "\(summary.upcomingNext7Days.count)",
+                accentColor: .signalWarn
+            )
         }
     }
+}
 
-    // MARK: - Upcoming
+private struct SubsUpcomingSection: View {
+    let upcoming: [DetectedSubscription]
 
-    private var upcomingSection: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader("Ближайшие списания", icon: "clock.fill") {
                 StatusBadge(text: "Скоро", variant: .warn)
             }
 
-            ForEach(vm.upcoming) { sub in
-                let days = daysUntil(sub.nextExpectedCharge)
-
-                SpaceCard(accentColor: .signalWarn) {
-                    HStack(spacing: 12) {
-                        Circle()
-                            .fill(Color.signalWarn)
-                            .frame(width: 6, height: 6)
-                            .shadow(color: Color.signalWarn.opacity(0.5), radius: 3)
-
-                        Text(sub.merchant)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Color.textPrimary)
-                            .lineLimit(1)
-
-                        Spacer()
-
-                        Text(days == 0 ? "Сегодня" : "Через \(days) дн.")
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
-                            .foregroundStyle(Color.signalWarn)
-
-                        Text("\(Int(sub.amount)) ₽")
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.textPrimary)
-                    }
-                }
+            ForEach(upcoming) { sub in
+                UpcomingSubCard(sub: sub)
             }
         }
     }
+}
 
-    // MARK: - Active
+private struct UpcomingSubCard: View {
+    let sub: DetectedSubscription
 
-    private var activeSection: some View {
+    private var days: Int {
+        guard let date = DateFormatting.parseISO(sub.nextExpectedCharge) else { return -1 }
+        return Int(ceil(date.timeIntervalSince(Date()) / 86400))
+    }
+
+    var body: some View {
+        SpaceCard(accentColor: .signalWarn) {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(Color.signalWarn)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: Color.signalWarn.opacity(0.5), radius: 3)
+
+                Text(sub.merchant)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.textPrimary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text(days == 0 ? "Сегодня" : "Через \(days) дн.")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(Color.signalWarn)
+                    .lineLimit(1)
+
+                Text("\(Int(sub.amount)) ₽")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.textPrimary)
+                    .lineLimit(1)
+            }
+        }
+    }
+}
+
+private struct SubsActiveSection: View {
+    let active: [DetectedSubscription]
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader("Все активные подписки", icon: "dot.radiowaves.left.and.right") {
-                Text("\(vm.active.count)")
+                Text("\(active.count)")
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .foregroundStyle(Color.signalPrimary)
             }
 
-            ForEach(vm.active) { sub in
-                detectedSubscriptionCard(sub)
+            ForEach(active) { sub in
+                DetectedSubscriptionCard(sub: sub)
             }
         }
     }
+}
 
-    // MARK: - Subscription Card
+private struct DetectedSubscriptionCard: View {
+    let sub: DetectedSubscription
 
-    private func detectedSubscriptionCard(_ sub: DetectedSubscription) -> some View {
-        let days = daysUntil(sub.nextExpectedCharge)
-        let isUpcoming = days >= 0 && days <= 7
-        let lowConfidence = sub.confidence < 0.65
+    private var days: Int {
+        guard let date = DateFormatting.parseISO(sub.nextExpectedCharge) else { return -1 }
+        return Int(ceil(date.timeIntervalSince(Date()) / 86400))
+    }
+    private var isUpcoming: Bool { days >= 0 && days <= 7 }
+    private var lowConfidence: Bool { sub.confidence < 0.65 }
 
-        return SpaceCard(glowing: sub.isActive) {
+    var body: some View {
+        SpaceCard(glowing: sub.isActive) {
             VStack(alignment: .leading, spacing: 12) {
-                // Header row
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(sub.merchant)
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(Color.textPrimary)
+                            .lineLimit(1)
 
                         Text(sub.periodType.russianName)
                             .font(.system(size: 10, weight: .medium, design: .monospaced))
@@ -191,6 +203,8 @@ struct SubscriptionsView: View {
                         Text("\(Int(sub.amount)) ₽")
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundStyle(Color.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
 
                         Text(sub.periodType.shortLabel)
                             .font(.system(size: 10, weight: .medium, design: .monospaced))
@@ -198,7 +212,6 @@ struct SubscriptionsView: View {
                     }
                 }
 
-                // Badges
                 HStack(spacing: 6) {
                     if sub.isActive {
                         StatusBadge(text: "На орбите", variant: .active)
@@ -215,24 +228,23 @@ struct SubscriptionsView: View {
                     }
                 }
 
-                // Meta grid
                 Divider()
                     .overlay(Color.signalPrimary.opacity(0.05))
 
                 VStack(spacing: 6) {
-                    metaRow("Последнее списание", value: DateFormatting.formatDate(sub.lastChargeDate))
+                    SubsMetaRow(label: "Последнее списание", value: DateFormatting.formatDate(sub.lastChargeDate))
 
-                    metaRow(
-                        "Следующее",
+                    SubsMetaRow(
+                        label: "Следующее",
                         value: DateFormatting.formatDate(sub.nextExpectedCharge),
                         extra: days >= 0 ? (days == 0 ? "сегодня" : "через \(days) дн.") : nil,
                         warn: days >= 0 && days <= 3
                     )
 
-                    metaRow("Транзакций", value: "\(sub.transactionCount)")
+                    SubsMetaRow(label: "Транзакций", value: "\(sub.transactionCount)")
 
-                    metaRow(
-                        "Сила сигнала",
+                    SubsMetaRow(
+                        label: "Сила сигнала",
                         value: "\(Int(sub.confidence * 100))%",
                         warn: lowConfidence
                     )
@@ -240,12 +252,20 @@ struct SubscriptionsView: View {
             }
         }
     }
+}
 
-    private func metaRow(_ label: String, value: String, extra: String? = nil, warn: Bool = false) -> some View {
+private struct SubsMetaRow: View {
+    let label: String
+    let value: String
+    var extra: String? = nil
+    var warn: Bool = false
+
+    var body: some View {
         HStack {
             Text(label)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Color.textMuted.opacity(0.6))
+                .lineLimit(1)
 
             Spacer()
 
@@ -253,19 +273,21 @@ struct SubscriptionsView: View {
                 Text(value)
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(warn ? Color.signalWarn : Color.textSecondary)
+                    .lineLimit(1)
 
                 if let extra {
                     Text("(\(extra))")
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
                         .foregroundStyle(Color.textMuted.opacity(0.4))
+                        .lineLimit(1)
                 }
             }
         }
     }
+}
 
-    // MARK: - Empty State
-
-    private var emptyState: some View {
+private struct SubsEmptyState: View {
+    var body: some View {
         SpaceCard(glowing: true) {
             VStack(spacing: 16) {
                 OrbitIndicator(size: 80, duration: 8)
@@ -283,13 +305,5 @@ struct SubscriptionsView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 20)
         }
-    }
-
-    // MARK: - Helpers
-
-    private func daysUntil(_ iso: String) -> Int {
-        guard let date = DateFormatting.parseISO(iso) else { return -1 }
-        let diff = date.timeIntervalSince(Date())
-        return Int(ceil(diff / 86400))
     }
 }

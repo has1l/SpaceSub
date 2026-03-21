@@ -12,35 +12,34 @@ struct DashboardView: View {
             SpaceBackground()
 
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: SpaceMetrics.sectionSpacing) {
+                LazyVStack(alignment: .leading, spacing: SpaceMetrics.sectionSpacing) {
 
-                    // Header
-                    header
+                    DashboardHeaderView(onLogout: { auth.logout() })
 
-                    // Bank connected banner
                     if showBankConnectedBanner {
-                        bankConnectedBanner
+                        BankConnectedBanner(onDismiss: { showBankConnectedBanner = false })
                     }
 
-                    // Sync result banner
                     if let result = vm.syncResult {
-                        syncResultBanner(result)
+                        SyncResultBanner(result: result, onDismiss: { vm.syncResult = nil })
                     }
 
-                    // Primary action
                     GlowButton(title: "Подключить спутник", icon: "antenna.radiowaves.left.and.right") {
                         selectedTab = .connect
                     }
 
                     if vm.bankConnections.isEmpty && !vm.isLoading {
-                        emptyState
+                        DashboardEmptyState(onConnect: { selectedTab = .connect })
                     } else {
-                        bankSection
+                        BankConnectionsSection(
+                            connections: vm.bankConnections,
+                            isSyncing: vm.isSyncing,
+                            onSync: { Task { await vm.syncBank() } }
+                        )
                     }
 
-                    // Error
                     if let error = vm.error {
-                        errorBanner(error)
+                        ErrorBannerView(message: error)
                     }
                 }
                 .padding(SpaceMetrics.screenPadding)
@@ -49,16 +48,20 @@ struct DashboardView: View {
             .refreshable { await vm.loadDashboard() }
 
             if vm.isLoading && vm.bankConnections.isEmpty {
-                loadingOverlay
+                LoadingOverlayView(text: "Сканирование орбиты...")
             }
         }
         .onAppear { vm.onUnauthorized = { auth.handleUnauthorized() } }
         .task { await vm.loadDashboard() }
     }
+}
 
-    // MARK: - Header
+// MARK: - Extracted Subviews
 
-    private var header: some View {
+private struct DashboardHeaderView: View {
+    let onLogout: () -> Void
+
+    var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("SpaceSub")
@@ -83,7 +86,7 @@ struct DashboardView: View {
 
             Spacer()
 
-            Button { auth.logout() } label: {
+            Button(action: onLogout) {
                 Image(systemName: "rectangle.portrait.and.arrow.right")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(Color.textMuted)
@@ -94,10 +97,12 @@ struct DashboardView: View {
         }
         .padding(.top, 8)
     }
+}
 
-    // MARK: - Banners
+private struct BankConnectedBanner: View {
+    let onDismiss: () -> Void
 
-    private var bankConnectedBanner: some View {
+    var body: some View {
         SpaceCard(accentColor: .signalPrimary, showTopAccent: true) {
             HStack(spacing: 10) {
                 Circle()
@@ -111,9 +116,7 @@ struct DashboardView: View {
 
                 Spacer()
 
-                Button {
-                    showBankConnectedBanner = false
-                } label: {
+                Button(action: onDismiss) {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(Color.textMuted.opacity(0.5))
@@ -121,10 +124,16 @@ struct DashboardView: View {
             }
         }
     }
+}
 
-    private func syncResultBanner(_ result: String) -> some View {
-        let isError = result.contains("Ошибка")
-        return SpaceCard(accentColor: isError ? .signalDanger : .signalSecondary) {
+private struct SyncResultBanner: View {
+    let result: String
+    let onDismiss: () -> Void
+
+    private var isError: Bool { result.contains("Ошибка") }
+
+    var body: some View {
+        SpaceCard(accentColor: isError ? .signalDanger : .signalSecondary) {
             HStack(spacing: 10) {
                 Text(result)
                     .font(.system(size: 12, weight: .medium))
@@ -132,9 +141,7 @@ struct DashboardView: View {
 
                 Spacer()
 
-                Button {
-                    vm.syncResult = nil
-                } label: {
+                Button(action: onDismiss) {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(Color.textMuted.opacity(0.5))
@@ -142,10 +149,12 @@ struct DashboardView: View {
             }
         }
     }
+}
 
-    // MARK: - Empty State
+private struct DashboardEmptyState: View {
+    let onConnect: () -> Void
 
-    private var emptyState: some View {
+    var body: some View {
         SpaceCard(glowing: true) {
             VStack(spacing: 16) {
                 OrbitIndicator(size: 80, duration: 8)
@@ -160,77 +169,72 @@ struct DashboardView: View {
                     .foregroundStyle(Color.textMuted)
                     .multilineTextAlignment(.center)
 
-                GlowButton(title: "Подключить Flex Bank", icon: "antenna.radiowaves.left.and.right") {
-                    selectedTab = .connect
-                }
+                GlowButton(title: "Подключить Flex Bank", icon: "antenna.radiowaves.left.and.right", action: onConnect)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
         }
     }
+}
 
-    // MARK: - Bank
+private struct BankConnectionsSection: View {
+    let connections: [BankConnection]
+    let isSyncing: Bool
+    let onSync: () -> Void
 
-    private var bankSection: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader("Банковские связи", icon: "link")
 
-            ForEach(vm.bankConnections) { conn in
-                SpaceCard(glowing: conn.status == .connected) {
-                    VStack(spacing: 12) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(conn.provider.rawValue)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(Color.textPrimary)
+            ForEach(connections) { conn in
+                BankConnectionCard(connection: conn, isSyncing: isSyncing, onSync: onSync)
+            }
+        }
+    }
+}
 
-                                StatusBadge(
-                                    text: statusLabel(conn.status),
-                                    variant: statusVariant(conn.status)
-                                )
-                            }
+private struct BankConnectionCard: View {
+    let connection: BankConnection
+    let isSyncing: Bool
+    let onSync: () -> Void
 
-                            Spacer()
-                        }
+    var body: some View {
+        SpaceCard(glowing: connection.status == .connected) {
+            VStack(spacing: 12) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(connection.provider.rawValue)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.textPrimary)
+                            .lineLimit(1)
 
-                        // Meta
-                        VStack(spacing: 4) {
-                            if let syncedAt = conn.lastSyncAt {
-                                metaRow("Последняя синхронизация", value: DateFormatting.formatDate(syncedAt))
-                            }
-
-                            metaRow("Подключён", value: DateFormatting.formatDate(conn.createdAt))
-                        }
-
-                        // Sync button
-                        GhostButton(
-                            title: vm.isSyncing ? "Синхронизация..." : "Синхронизировать",
-                            icon: "arrow.triangle.2.circlepath"
-                        ) {
-                            Task { await vm.syncBank() }
-                        }
-                        .disabled(vm.isSyncing)
+                        StatusBadge(
+                            text: Self.statusLabel(connection.status),
+                            variant: Self.statusVariant(connection.status)
+                        )
                     }
+
+                    Spacer()
                 }
+
+                VStack(spacing: 4) {
+                    if let syncedAt = connection.lastSyncAt {
+                        DashboardMetaRow(label: "Последняя синхронизация", value: DateFormatting.formatDate(syncedAt))
+                    }
+                    DashboardMetaRow(label: "Подключён", value: DateFormatting.formatDate(connection.createdAt))
+                }
+
+                GhostButton(
+                    title: isSyncing ? "Синхронизация..." : "Синхронизировать",
+                    icon: "arrow.triangle.2.circlepath",
+                    action: onSync
+                )
+                .disabled(isSyncing)
             }
         }
     }
 
-    // MARK: - Helpers
-
-    private func metaRow(_ label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(Color.textMuted.opacity(0.6))
-            Spacer()
-            Text(value)
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundStyle(Color.textSecondary)
-        }
-    }
-
-    private func statusLabel(_ status: BankConnectionStatus) -> String {
+    private static func statusLabel(_ status: BankConnectionStatus) -> String {
         switch status {
         case .connected: "На орбите"
         case .expired: "Сигнал потерян"
@@ -239,7 +243,7 @@ struct DashboardView: View {
         }
     }
 
-    private func statusVariant(_ status: BankConnectionStatus) -> BadgeVariant {
+    private static func statusVariant(_ status: BankConnectionStatus) -> BadgeVariant {
         switch status {
         case .connected: .active
         case .expired: .warn
@@ -247,10 +251,31 @@ struct DashboardView: View {
         case .disconnected: .dim
         }
     }
+}
 
-    // MARK: - Error & Loading
+private struct DashboardMetaRow: View {
+    let label: String
+    let value: String
 
-    private func errorBanner(_ message: String) -> some View {
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Color.textMuted.opacity(0.6))
+                .lineLimit(1)
+            Spacer()
+            Text(value)
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(Color.textSecondary)
+                .lineLimit(1)
+        }
+    }
+}
+
+private struct ErrorBannerView: View {
+    let message: String
+
+    var body: some View {
         SpaceCard(accentColor: .signalDanger) {
             HStack(spacing: 10) {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -259,15 +284,20 @@ struct DashboardView: View {
                 Text(message)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color.signalDanger.opacity(0.8))
+                    .lineLimit(3)
             }
         }
     }
+}
 
-    private var loadingOverlay: some View {
+private struct LoadingOverlayView: View {
+    let text: String
+
+    var body: some View {
         VStack(spacing: 16) {
             OrbitIndicator(size: 60, duration: 3)
 
-            Text("Сканирование орбиты...")
+            Text(text)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Color.textSecondary)
         }

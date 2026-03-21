@@ -12,19 +12,19 @@ struct AnalyticsView: View {
             SpaceBackground()
 
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
+                LazyVStack(alignment: .leading, spacing: 14) {
 
-                    headerSection
-                    periodPicker
+                    AnalyticsHeaderView(appeared: appeared)
+                    AnalyticsPeriodPicker(vm: vm, appeared: appeared)
 
                     if vm.overview != nil {
-                        heroCard
-                        budgetRadar
-                        donutAndAccordion
-                        areaChartSection
-                        barChartSection
-                        recommendationsSection
-                        scoresSection
+                        AnalyticsHeroCard(vm: vm, appeared: appeared)
+                        AnalyticsBudgetRadar(vm: vm, appeared: appeared)
+                        AnalyticsDonutSection(vm: vm, appeared: appeared)
+                        AnalyticsAreaChartSection(vm: vm, appeared: appeared)
+                        AnalyticsBarChartSection(vm: vm, appeared: appeared)
+                        AnalyticsRecommendationsSection(vm: vm, appeared: appeared)
+                        AnalyticsScoresSection(vm: vm, appeared: appeared)
                     }
 
                     if let error = vm.error {
@@ -42,7 +42,12 @@ struct AnalyticsView: View {
             .refreshable { await vm.load() }
 
             if vm.isLoading && vm.overview == nil {
-                loadingState
+                VStack(spacing: 16) {
+                    OrbitIndicator(size: 60, duration: 3)
+                    Text("Обработка телеметрии...")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.textSecondary)
+                }
             }
         }
         .onAppear { vm.onUnauthorized = { auth.handleUnauthorized() } }
@@ -51,21 +56,23 @@ struct AnalyticsView: View {
             withAnimation(.spring(duration: 0.5)) { appeared = true }
         }
     }
+}
 
-    // MARK: - Header
+// MARK: - Header
 
-    private var headerSection: some View {
+private struct AnalyticsHeaderView: View {
+    let appeared: Bool
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 10) {
                 Image(systemName: "scope")
                     .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(Color.signalPrimary.opacity(0.7))
-
                 Text("Аналитика")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(SpaceGradient.signalText)
             }
-
             Text("ТЕЛЕМЕТРИЯ РАСХОДОВ · ДИАГНОСТИКА · РЕКОМЕНДАЦИИ")
                 .font(.system(size: 9, weight: .semibold, design: .monospaced))
                 .tracking(1)
@@ -74,12 +81,17 @@ struct AnalyticsView: View {
         .padding(.top, 8)
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 20)
-        .animation(.spring(duration: 0.5).delay(0), value: appeared)
+        .animation(.spring(duration: 0.5), value: appeared)
     }
+}
 
-    // MARK: - Period Picker
+// MARK: - Period Picker
 
-    private var periodPicker: some View {
+private struct AnalyticsPeriodPicker: View {
+    @Bindable var vm: AnalyticsViewModel
+    let appeared: Bool
+
+    var body: some View {
         HStack(spacing: 0) {
             ForEach(PeriodPreset.allCases, id: \.self) { preset in
                 Button {
@@ -111,68 +123,75 @@ struct AnalyticsView: View {
         .offset(y: appeared ? 0 : 16)
         .animation(.spring(duration: 0.5).delay(0.05), value: appeared)
     }
+}
 
-    // MARK: - Hero Card
+// MARK: - Hero Card
 
-    private var heroCard: some View {
+private struct AnalyticsHeroCard: View {
+    let vm: AnalyticsViewModel
+    let appeared: Bool
+
+    var body: some View {
         HudPanel(accent: .signalPrimary, glowing: true, scanLine: true) {
             ZStack {
                 ParticleField(count: 6)
 
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 12) {
                     Text("ПОТРАЧЕНО ЗА ПЕРИОД")
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
                         .tracking(1.2)
                         .foregroundStyle(Color.textMuted)
 
                     if let overview = vm.overview {
-                        // Main number + trend
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
                             AnimatedNumber(
                                 value: overview.periodTotal,
                                 prefix: "₽",
-                                font: .system(size: 36, weight: .heavy, design: .monospaced)
+                                font: .system(size: 26, weight: .heavy, design: .monospaced)
                             )
                             .foregroundStyle(Color.textPrimary)
 
                             Spacer()
 
                             if overview.trend.changePct != 0 {
-                                VStack(alignment: .trailing, spacing: 4) {
-                                    trendBadge(overview.trend.changePct)
+                                VStack(alignment: .trailing, spacing: 3) {
+                                    TrendBadge(changePct: overview.trend.changePct)
                                     TrendSparkline(
                                         data: vm.periodTotals,
                                         color: overview.trend.changePct >= 0 ? .signalDanger : .signalPrimary,
-                                        width: 70,
-                                        height: 20
+                                        width: 56,
+                                        height: 18
                                     )
                                 }
                             }
                         }
 
-                        // Mini stats
                         HStack(spacing: 0) {
-                            miniStat(label: "ПОДПИСОК", value: Double(overview.activeCount), color: .signalPrimary, icon: "antenna.radiowaves.left.and.right", delay: 0.3)
+                            MiniStat(label: "ПОДПИСОК", value: Double(overview.activeCount), color: .signalPrimary, icon: "antenna.radiowaves.left.and.right", appeared: appeared, delay: 0.3)
                             Spacer()
-                            miniStat(label: "В МЕСЯЦ", value: overview.mrr, color: .signalSecondary, icon: "arrow.clockwise", prefix: "₽", delay: 0.42)
+                            MiniStat(label: "В МЕСЯЦ", value: overview.mrr, color: .signalSecondary, icon: "arrow.clockwise", prefix: "₽", appeared: appeared, delay: 0.42)
                             Spacer()
-                            miniStat(label: "В ГОД", value: overview.arr, color: Color(hex: 0xA78BFA), icon: "calendar", prefix: "₽", delay: 0.54)
+                            MiniStat(label: "В ГОД", value: overview.arr, color: Color(hex: 0xA78BFA), icon: "calendar", prefix: "₽", appeared: appeared, delay: 0.54)
                             Spacer()
-                            miniStat(label: "СКОРО", value: Double(overview.upcomingCount), color: .signalWarn, icon: "exclamationmark.triangle", delay: 0.66)
+                            MiniStat(label: "СКОРО", value: Double(overview.upcomingCount), color: .signalWarn, icon: "exclamationmark.triangle", appeared: appeared, delay: 0.66)
                         }
                     }
                 }
-                .padding(22)
+                .padding(16)
             }
         }
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 24)
         .animation(.spring(duration: 0.5).delay(0.1), value: appeared)
     }
+}
 
-    private func trendBadge(_ changePct: Double) -> some View {
+private struct TrendBadge: View {
+    let changePct: Double
+
+    var body: some View {
         let isUp = changePct >= 0
-        return HStack(spacing: 3) {
+        HStack(spacing: 3) {
             Image(systemName: isUp ? "arrow.up.right" : "arrow.down.right")
                 .font(.system(size: 10, weight: .bold))
             Text(String(format: "%.1f%%", abs(changePct)))
@@ -184,23 +203,33 @@ struct AnalyticsView: View {
         .background((isUp ? Color.signalDanger : Color.signalPrimary).opacity(0.12))
         .clipShape(Capsule())
     }
+}
 
-    private func miniStat(label: String, value: Double, color: Color, icon: String, prefix: String = "", delay: Double = 0) -> some View {
-        VStack(spacing: 5) {
+private struct MiniStat: View {
+    let label: String
+    let value: Double
+    let color: Color
+    let icon: String
+    var prefix: String = ""
+    let appeared: Bool
+    var delay: Double = 0
+
+    var body: some View {
+        VStack(spacing: 3) {
             AnimatedNumber(
                 value: value,
                 prefix: prefix,
-                font: .system(size: 18, weight: .heavy, design: .monospaced)
+                font: .system(size: 13, weight: .heavy, design: .monospaced)
             )
             .foregroundStyle(color)
-            .shadow(color: color.opacity(0.3), radius: 6)
+            .shadow(color: color.opacity(0.3), radius: 4)
 
-            HStack(spacing: 3) {
+            HStack(spacing: 2) {
                 Image(systemName: icon)
-                    .font(.system(size: 8, weight: .medium))
+                    .font(.system(size: 7, weight: .medium))
                 Text(label)
-                    .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                    .tracking(0.5)
+                    .font(.system(size: 7, weight: .semibold, design: .monospaced))
+                    .tracking(0.3)
             }
             .foregroundStyle(Color.textMuted.opacity(0.5))
         }
@@ -208,79 +237,78 @@ struct AnalyticsView: View {
         .offset(y: appeared ? 0 : 10)
         .animation(.spring(duration: 0.5, bounce: 0.2).delay(delay), value: appeared)
     }
+}
 
-    // MARK: - Budget Radar
+// MARK: - Budget Radar
 
-    private var budgetRadar: some View {
+private struct AnalyticsBudgetRadar: View {
+    let vm: AnalyticsViewModel
+    let appeared: Bool
+
+    var body: some View {
         let healthColor: Color = vm.budgetHealthScore > 70 ? .signalPrimary : vm.budgetHealthScore > 40 ? .signalWarn : .signalDanger
 
-        return HStack(spacing: 10) {
-            radarCard(
-                label: "Здоровье бюджета",
-                value: vm.budgetHealthScore,
-                suffix: "/100",
-                color: healthColor,
-                icon: "shield.checkered",
-                gauge: vm.budgetHealthScore
-            )
-            radarCard(
-                label: "Оптимизация",
-                value: vm.optimizationPotential,
-                suffix: "%",
-                color: .signalSecondary,
-                icon: "target",
-                gauge: vm.optimizationPotential
-            )
-            radarCard(
-                label: "Плотность",
-                value: vm.subscriptionDensity,
-                suffix: "/кат",
-                color: Color(hex: 0xA78BFA),
-                icon: "circle.hexagongrid",
-                gauge: min(100, vm.subscriptionDensity * 20),
-                decimals: 1
-            )
+        HStack(spacing: 8) {
+            RadarCard(label: "Здоровье бюджета", value: vm.budgetHealthScore, suffix: "/100", color: healthColor, icon: "shield.checkered", gauge: vm.budgetHealthScore)
+            RadarCard(label: "Оптимизация", value: vm.optimizationPotential, suffix: "%", color: .signalSecondary, icon: "target", gauge: vm.optimizationPotential)
+            RadarCard(label: "Плотность", value: vm.subscriptionDensity, suffix: "/кат", color: Color(hex: 0xA78BFA), icon: "circle.hexagongrid", gauge: min(100, vm.subscriptionDensity * 20), decimals: 1)
         }
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 20)
         .animation(.spring(duration: 0.5).delay(0.15), value: appeared)
     }
+}
 
-    private func radarCard(label: String, value: Double, suffix: String, color: Color, icon: String, gauge: Double, decimals: Int = 0) -> some View {
+private struct RadarCard: View {
+    let label: String
+    let value: Double
+    let suffix: String
+    let color: Color
+    let icon: String
+    let gauge: Double
+    var decimals: Int = 0
+
+    var body: some View {
         HudPanel(accent: color) {
-            HStack(spacing: 10) {
-                CircularGauge(value: gauge, color: color, size: 42, lineWidth: 3)
+            VStack(spacing: 6) {
+                CircularGauge(value: gauge, color: color, size: 34, lineWidth: 2.5)
                     .overlay {
                         Image(systemName: icon)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(color.opacity(0.7))
                     }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    AnimatedNumber(
-                        value: value,
-                        suffix: suffix,
-                        font: .system(size: 16, weight: .heavy, design: .monospaced),
-                        decimals: decimals
-                    )
-                    .foregroundStyle(color)
-                    .shadow(color: color.opacity(0.3), radius: 4)
+                AnimatedNumber(
+                    value: value,
+                    suffix: suffix,
+                    font: .system(size: 12, weight: .heavy, design: .monospaced),
+                    decimals: decimals
+                )
+                .foregroundStyle(color)
+                .shadow(color: color.opacity(0.3), radius: 3)
 
-                    Text(label)
-                        .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                        .tracking(0.4)
-                        .textCase(.uppercase)
-                        .foregroundStyle(Color.textMuted)
-                        .lineLimit(1)
-                }
+                Text(label)
+                    .font(.system(size: 7, weight: .semibold, design: .monospaced))
+                    .tracking(0.3)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Color.textMuted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
-            .padding(12)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 10)
         }
     }
+}
 
-    // MARK: - Donut + Accordion
+// MARK: - Donut + Accordion
 
-    private var donutAndAccordion: some View {
+private struct AnalyticsDonutSection: View {
+    @Bindable var vm: AnalyticsViewModel
+    let appeared: Bool
+
+    var body: some View {
         VStack(spacing: 14) {
             // Donut
             HudPanel(accent: .signalSecondary) {
@@ -295,7 +323,7 @@ struct AnalyticsView: View {
                     if vm.isChartLoading {
                         shimmerRect(height: 260)
                     } else if !vm.categories.isEmpty {
-                        donutChart
+                        DonutChartView(vm: vm)
                     }
                 }
                 .padding(18)
@@ -304,7 +332,7 @@ struct AnalyticsView: View {
             // Expansion panel
             if let cat = vm.selectedCategory,
                let item = vm.categories.first(where: { $0.category == cat }) {
-                donutExpansionPanel(category: cat, item: item)
+                DonutExpansionPanel(vm: vm, category: cat, item: item, appeared: appeared)
                     .transition(.asymmetric(
                         insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.97, anchor: .top)),
                         removal: .opacity.combined(with: .scale(scale: 0.98, anchor: .top))
@@ -321,7 +349,7 @@ struct AnalyticsView: View {
                             ForEach(0..<4, id: \.self) { _ in shimmerRect(height: 32) }
                         }
                     } else {
-                        categoryAccordion
+                        CategoryAccordionView(vm: vm)
                     }
                 }
                 .padding(18)
@@ -332,22 +360,19 @@ struct AnalyticsView: View {
         .offset(y: appeared ? 0 : 24)
         .animation(.spring(duration: 0.5).delay(0.2), value: appeared)
     }
+}
 
-    // MARK: - Donut Chart
+// MARK: - Donut Chart
 
-    private var donutChart: some View {
+private struct DonutChartView: View {
+    @Bindable var vm: AnalyticsViewModel
+
+    var body: some View {
         ZStack {
-            // Orbit ring
             Circle()
                 .stroke(style: StrokeStyle(lineWidth: 0.5, dash: [3, 8]))
                 .foregroundStyle(Color.signalPrimary.opacity(0.06))
                 .frame(width: 240, height: 240)
-                .rotationEffect(.degrees(orbitAngle))
-                .onAppear {
-                    withAnimation(.linear(duration: 60).repeatForever(autoreverses: false)) {
-                        orbitAngle = 360
-                    }
-                }
 
             Chart(vm.categories) { item in
                 SectorMark(
@@ -378,12 +403,11 @@ struct AnalyticsView: View {
                 }
             }
             .frame(height: 240)
+            .drawingGroup()
             .sensoryFeedback(.selection, trigger: vm.selectedCategory)
         }
         .frame(height: 260)
     }
-
-    @State private var orbitAngle: Double = 0
 
     private func sectorOpacity(for category: String) -> Double {
         if vm.selectedCategory == nil { return 1.0 }
@@ -414,7 +438,6 @@ struct AnalyticsView: View {
                         font: .system(size: 17, weight: .heavy, design: .monospaced)
                     )
                     .foregroundStyle(Color.textPrimary)
-
                     Text("ВСЕГО/МЕС")
                         .font(.system(size: 9, weight: .semibold, design: .monospaced))
                         .tracking(1)
@@ -456,17 +479,25 @@ struct AnalyticsView: View {
             cumulative += sectorAngle
         }
     }
+}
 
-    // MARK: - Donut Expansion Panel
+// MARK: - Donut Expansion Panel
 
-    private func donutExpansionPanel(category: String, item: CategoryItem) -> some View {
+private struct DonutExpansionPanel: View {
+    @Bindable var vm: AnalyticsViewModel
+    let category: String
+    let item: CategoryItem
+    let appeared: Bool
+
+    var body: some View {
         let catServices = vm.services(for: category)
         let catTotal = catServices.reduce(0.0) { $0 + $1.monthlyAmount }
+        let itemColor = Color(hexString: item.color)
 
-        return HudPanel(accent: Color(hexString: item.color)) {
+        HudPanel(accent: itemColor) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    CategoryIconView(category: category, size: 16, color: Color(hexString: item.color))
+                    CategoryIconView(category: category, size: 16, color: itemColor)
                     Text(category)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Color.textPrimary)
@@ -502,12 +533,11 @@ struct AnalyticsView: View {
                                 RoundedRectangle(cornerRadius: 2)
                                     .fill(
                                         LinearGradient(
-                                            colors: [Color(hexString: item.color).opacity(0.6), Color(hexString: item.color)],
+                                            colors: [itemColor.opacity(0.6), itemColor],
                                             startPoint: .leading, endPoint: .trailing
                                         )
                                     )
                                     .frame(width: geo.size.width * share, height: 3)
-                                    .shadow(color: Color(hexString: item.color).opacity(0.3), radius: 4)
                             }
                             .frame(height: 3)
                             .background(Color.white.opacity(0.04))
@@ -521,14 +551,18 @@ struct AnalyticsView: View {
             .padding(16)
         }
     }
+}
 
-    // MARK: - Category Accordion
+// MARK: - Category Accordion
 
-    private var categoryAccordion: some View {
+private struct CategoryAccordionView: View {
+    @Bindable var vm: AnalyticsViewModel
+
+    var body: some View {
         VStack(spacing: 6) {
             let maxTotal = vm.categories.first?.total ?? 1
 
-            ForEach(Array(vm.categories.prefix(8).enumerated()), id: \.element.id) { idx, item in
+            ForEach(Array(vm.categories.prefix(8).enumerated()), id: \.element.id) { _, item in
                 let isOpen = vm.selectedCategory == item.category
                 let catServices = vm.services(for: item.category)
                 let itemColor = Color(hexString: item.color)
@@ -630,17 +664,21 @@ struct AnalyticsView: View {
             }
         }
     }
+}
 
-    // MARK: - Area Chart
+// MARK: - Area Chart
 
-    private var areaChartSection: some View {
+private struct AnalyticsAreaChartSection: View {
+    let vm: AnalyticsViewModel
+    let appeared: Bool
+
+    var body: some View {
         Group {
             if !vm.periods.isEmpty && vm.periods.contains(where: { $0.total > 0 }) {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         sectionLabel("Динамика расходов", icon: "chart.xyaxis.line")
                         Spacer()
-                        // Legend
                         HStack(spacing: 12) {
                             HStack(spacing: 4) {
                                 RoundedRectangle(cornerRadius: 1)
@@ -662,62 +700,9 @@ struct AnalyticsView: View {
                     }
 
                     HudPanel(accent: .signalPrimary) {
-                        Chart(vm.periodsWithAvg) { item in
-                            AreaMark(
-                                x: .value("Период", item.period),
-                                y: .value("Сумма", item.total)
-                            )
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [Color.signalPrimary.opacity(0.25), Color.signalPrimary.opacity(0.05), .clear],
-                                    startPoint: .top, endPoint: .bottom
-                                )
-                            )
-                            .interpolationMethod(.catmullRom)
-
-                            LineMark(
-                                x: .value("Период", item.period),
-                                y: .value("Сумма", item.total)
-                            )
-                            .foregroundStyle(Color.signalPrimary)
-                            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                            .interpolationMethod(.catmullRom)
-
-                            // Moving average (dashed)
-                            LineMark(
-                                x: .value("Период", item.period),
-                                y: .value("Среднее", item.movingAvg)
-                            )
-                            .foregroundStyle(Color.signalSecondary.opacity(0.4))
-                            .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [6, 4]))
-                            .interpolationMethod(.catmullRom)
-
-                            // Points
-                            PointMark(
-                                x: .value("Период", item.period),
-                                y: .value("Сумма", item.total)
-                            )
-                            .foregroundStyle(Color.signalPrimary)
-                            .symbolSize(item.period == vm.periodsWithAvg.last?.period ? 40 : 16)
-                        }
-                        .chartXAxis {
-                            AxisMarks(values: .automatic) { _ in
-                                AxisValueLabel()
-                                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                                    .foregroundStyle(Color.textMuted)
-                            }
-                        }
-                        .chartYAxis {
-                            AxisMarks(position: .leading, values: .automatic) { _ in
-                                AxisValueLabel()
-                                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                                    .foregroundStyle(Color.textMuted.opacity(0.5))
-                                AxisGridLine()
-                                    .foregroundStyle(Color.signalPrimary.opacity(0.04))
-                            }
-                        }
-                        .frame(height: 200)
-                        .padding(16)
+                        AreaChartContent(periodsWithAvg: vm.periodsWithAvg)
+                            .frame(height: 180)
+                            .padding(12)
                     }
                 }
             } else if vm.isLoading || vm.isChartLoading {
@@ -730,50 +715,102 @@ struct AnalyticsView: View {
         .offset(y: appeared ? 0 : 24)
         .animation(.spring(duration: 0.5).delay(0.25), value: appeared)
     }
+}
 
-    // MARK: - Bar Chart
+private struct AreaChartContent: View {
+    let periodsWithAvg: [PeriodItemWithAvg]
 
-    private var barChartSection: some View {
+    var body: some View {
+        let shortPeriods = periodsWithAvg.map { item in
+            (item, shortLabel: Self.shortenPeriod(item.period))
+        }
+
+        Chart(periodsWithAvg) { item in
+            AreaMark(
+                x: .value("Период", Self.shortenPeriod(item.period)),
+                y: .value("Сумма", item.total)
+            )
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [Color.signalPrimary.opacity(0.25), Color.signalPrimary.opacity(0.05), .clear],
+                    startPoint: .top, endPoint: .bottom
+                )
+            )
+            .interpolationMethod(.catmullRom)
+
+            LineMark(
+                x: .value("Период", Self.shortenPeriod(item.period)),
+                y: .value("Сумма", item.total)
+            )
+            .foregroundStyle(Color.signalPrimary)
+            .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            .interpolationMethod(.catmullRom)
+
+            LineMark(
+                x: .value("Период", Self.shortenPeriod(item.period)),
+                y: .value("Среднее", item.movingAvg)
+            )
+            .foregroundStyle(Color.signalSecondary.opacity(0.4))
+            .lineStyle(StrokeStyle(lineWidth: 1, lineCap: .round, dash: [5, 3]))
+            .interpolationMethod(.catmullRom)
+
+            PointMark(
+                x: .value("Период", Self.shortenPeriod(item.period)),
+                y: .value("Сумма", item.total)
+            )
+            .foregroundStyle(Color.signalPrimary)
+            .symbolSize(item.period == periodsWithAvg.last?.period ? 30 : 12)
+        }
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 5)) { _ in
+                AxisValueLabel()
+                    .font(.system(size: 8, weight: .medium, design: .monospaced))
+                    .foregroundStyle(Color.textMuted)
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { _ in
+                AxisValueLabel()
+                    .font(.system(size: 8, weight: .medium, design: .monospaced))
+                    .foregroundStyle(Color.textMuted.opacity(0.5))
+                AxisGridLine()
+                    .foregroundStyle(Color.signalPrimary.opacity(0.04))
+            }
+        }
+        .drawingGroup()
+    }
+
+    /// "2025-03-01" → "мар", "2025-03" → "мар"
+    private static func shortenPeriod(_ period: String) -> String {
+        let months = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"]
+        let parts = period.split(separator: "-")
+        guard parts.count >= 2, let m = Int(parts[1]), m >= 1, m <= 12 else {
+            // fallback: last 5 chars
+            return String(period.suffix(5))
+        }
+        if parts.count >= 3 {
+            // "2025-03-01" → "мар 01"
+            return "\(months[m - 1])"
+        }
+        return months[m - 1]
+    }
+}
+
+// MARK: - Bar Chart
+
+private struct AnalyticsBarChartSection: View {
+    let vm: AnalyticsViewModel
+    let appeared: Bool
+
+    var body: some View {
         Group {
             if !vm.services.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     sectionLabel("Топ сервисов по стоимости", icon: "chart.bar.fill")
 
                     HudPanel(accent: .signalSecondary) {
-                        let ranked = vm.rankedServices.prefix(10)
-                        Chart(Array(ranked), id: \.service.merchant) { entry in
-                            BarMark(
-                                x: .value("Сумма", entry.service.monthlyAmount),
-                                y: .value("Сервис", entry.service.merchant)
-                            )
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [Color(hexString: entry.service.color).opacity(0.85), Color(hexString: entry.service.color).opacity(0.35)],
-                                    startPoint: .leading, endPoint: .trailing
-                                )
-                            )
-                            .cornerRadius(6)
-                            .annotation(position: .trailing, spacing: 6) {
-                                HStack(spacing: 4) {
-                                    if entry.rank <= 3 {
-                                        medalBadge(rank: entry.rank)
-                                    }
-                                    Text("₽\(Int(entry.service.monthlyAmount))")
-                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(Color.textSecondary)
-                                }
-                            }
-                        }
-                        .chartXAxis(.hidden)
-                        .chartYAxis {
-                            AxisMarks(values: .automatic) { _ in
-                                AxisValueLabel()
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(Color.textPrimary.opacity(0.6))
-                            }
-                        }
-                        .frame(height: CGFloat(min(ranked.count, 10)) * 38 + 16)
-                        .padding(16)
+                        BarChartContent(ranked: Array(vm.rankedServices.prefix(8)))
+                            .padding(12)
                     }
                 }
             } else if vm.isLoading || vm.isChartLoading {
@@ -784,10 +821,54 @@ struct AnalyticsView: View {
         .offset(y: appeared ? 0 : 24)
         .animation(.spring(duration: 0.5).delay(0.3), value: appeared)
     }
+}
 
-    private func medalBadge(rank: Int) -> some View {
+private struct BarChartContent: View {
+    let ranked: [(service: ServiceItem, rank: Int)]
+
+    var body: some View {
+        Chart(ranked, id: \.service.merchant) { entry in
+            BarMark(
+                x: .value("Сумма", entry.service.monthlyAmount),
+                y: .value("Сервис", entry.service.merchant)
+            )
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [Color(hexString: entry.service.color).opacity(0.85), Color(hexString: entry.service.color).opacity(0.35)],
+                    startPoint: .leading, endPoint: .trailing
+                )
+            )
+            .cornerRadius(6)
+            .annotation(position: .trailing, spacing: 6) {
+                HStack(spacing: 4) {
+                    if entry.rank <= 3 {
+                        MedalBadge(rank: entry.rank)
+                    }
+                    Text("₽\(Int(entry.service.monthlyAmount))")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Color.textSecondary)
+                }
+            }
+        }
+        .chartXAxis(.hidden)
+        .chartYAxis {
+            AxisMarks(values: .automatic) { _ in
+                AxisValueLabel()
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.textPrimary.opacity(0.6))
+            }
+        }
+        .frame(height: CGFloat(min(ranked.count, 8)) * 34 + 12)
+        .drawingGroup()
+    }
+}
+
+private struct MedalBadge: View {
+    let rank: Int
+
+    var body: some View {
         let color: Color = rank == 1 ? Color(hex: 0xFFD700) : rank == 2 ? Color(hex: 0xC0C0C0) : Color(hex: 0xCD7F32)
-        return ZStack {
+        ZStack {
             Circle().fill(color.opacity(0.15)).frame(width: 16, height: 16)
             Circle().stroke(color, lineWidth: 1).frame(width: 16, height: 16)
             Text("#\(rank)")
@@ -795,16 +876,20 @@ struct AnalyticsView: View {
                 .foregroundStyle(color)
         }
     }
+}
 
-    // MARK: - Recommendations
+// MARK: - Recommendations
 
-    private var recommendationsSection: some View {
+private struct AnalyticsRecommendationsSection: View {
+    let vm: AnalyticsViewModel
+    let appeared: Bool
+
+    var body: some View {
         Group {
             if !vm.recommendations.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     sectionLabel("Рекомендации", icon: "lightbulb.fill")
 
-                    // Savings counter
                     HudPanel(accent: .signalPrimary) {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
@@ -830,7 +915,7 @@ struct AnalyticsView: View {
                     }
 
                     ForEach(Array(vm.recommendations.prefix(5).enumerated()), id: \.element.id) { idx, rec in
-                        recoCard(rec: rec, index: idx)
+                        RecoCard(rec: rec, index: idx)
                     }
                 }
             }
@@ -839,38 +924,37 @@ struct AnalyticsView: View {
         .offset(y: appeared ? 0 : 24)
         .animation(.spring(duration: 0.5).delay(0.35), value: appeared)
     }
+}
 
-    private func recoCard(rec: RecommendationItem, index: Int) -> some View {
+private struct RecoCard: View {
+    let rec: RecommendationItem
+    let index: Int
+
+    var body: some View {
         let color = recoColor(rec.type)
         let isHigh = rec.priority == .HIGH
 
-        return HudPanel(accent: color) {
+        HudPanel(accent: color) {
             HStack(alignment: .top, spacing: 10) {
-                // Priority left indicator
                 Rectangle()
                     .fill(
                         LinearGradient(colors: [color.opacity(0.8), color.opacity(0.1)],
                                        startPoint: .top, endPoint: .bottom)
                     )
                     .frame(width: 3)
-                    .opacity(isHigh ? alarmOpacity : 1)
 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         Image(systemName: recoIcon(rec.type))
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(color)
-
                         Text(rec.merchant)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Color.textPrimary)
-
                         if isHigh {
                             NeonDot(color: .signalDanger, size: 5, pulsing: true)
                         }
-
                         Spacer()
-
                         Text(recoLabel(rec.type))
                             .font(.system(size: 9, weight: .semibold, design: .monospaced))
                             .tracking(0.3)
@@ -905,8 +989,6 @@ struct AnalyticsView: View {
         }
     }
 
-    @State private var alarmOpacity: Double = 1.0
-
     private func recoColor(_ type: RecoType) -> Color {
         switch type {
         case .CANCEL: .signalDanger
@@ -933,17 +1015,20 @@ struct AnalyticsView: View {
         case .CONSOLIDATE: "Дубликат"
         }
     }
+}
 
-    // MARK: - Scores
+// MARK: - Scores
 
-    private var scoresSection: some View {
+private struct AnalyticsScoresSection: View {
+    @Bindable var vm: AnalyticsViewModel
+    let appeared: Bool
+
+    var body: some View {
         Group {
             if !vm.scores.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     sectionLabel("Здоровье подписок", icon: "heart.text.square.fill")
-
-                    // Filter tabs
-                    scoreFilterPicker
+                    ScoreFilterPicker(vm: vm)
 
                     if vm.filteredScores.isEmpty {
                         HudPanel(accent: .signalPrimary) {
@@ -954,8 +1039,8 @@ struct AnalyticsView: View {
                                 .padding(24)
                         }
                     } else {
-                        ForEach(Array(vm.filteredScores.prefix(6).enumerated()), id: \.element.id) { idx, score in
-                            scoreCard(score: score)
+                        ForEach(Array(vm.filteredScores.prefix(6).enumerated()), id: \.element.id) { _, score in
+                            ScoreCard(score: score)
                                 .transition(.scale.combined(with: .opacity))
                         }
                     }
@@ -980,8 +1065,12 @@ struct AnalyticsView: View {
         .offset(y: appeared ? 0 : 24)
         .animation(.spring(duration: 0.5).delay(0.4), value: appeared)
     }
+}
 
-    private var scoreFilterPicker: some View {
+private struct ScoreFilterPicker: View {
+    @Bindable var vm: AnalyticsViewModel
+
+    var body: some View {
         HStack(spacing: 2) {
             ForEach(ScoreFilter.allCases) { f in
                 Button {
@@ -1002,14 +1091,17 @@ struct AnalyticsView: View {
             }
         }
     }
+}
 
-    private func scoreCard(score: ScoreItem) -> some View {
+private struct ScoreCard: View {
+    let score: ScoreItem
+
+    var body: some View {
         let riskColor = churnColor(score.churnRisk)
         let isHigh = score.churnRisk == .HIGH
 
-        return HudPanel(accent: riskColor) {
+        HudPanel(accent: riskColor) {
             HStack(spacing: 12) {
-                // Priority border
                 Rectangle()
                     .fill(
                         LinearGradient(colors: [riskColor.opacity(0.8), riskColor.opacity(0.1)],
@@ -1023,14 +1115,12 @@ struct AnalyticsView: View {
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(Color.textPrimary.opacity(0.85))
                             .lineLimit(1)
-
                         if isHigh {
                             NeonDot(color: .signalDanger, size: 5, pulsing: true)
                         } else if score.churnRisk == .MEDIUM {
                             NeonDot(color: .signalWarn, size: 5)
                         }
                     }
-
                     Text("\(score.label) · ₽\(Int(score.monthlyAmount))/мес")
                         .font(.system(size: 10, weight: .regular, design: .monospaced))
                         .foregroundStyle(Color.textMuted)
@@ -1038,7 +1128,6 @@ struct AnalyticsView: View {
 
                 Spacer()
 
-                // Circular gauge
                 CircularGauge(value: Double(score.valueScore), color: riskColor, size: 42, lineWidth: 3, style: .semi)
                     .overlay {
                         Text("\(score.valueScore)")
@@ -1047,7 +1136,6 @@ struct AnalyticsView: View {
                             .offset(y: -2)
                     }
 
-                // Risk badge
                 Text(churnRiskLabel(score.churnRisk))
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
                     .foregroundStyle(riskColor)
@@ -1080,73 +1168,64 @@ struct AnalyticsView: View {
         case .HIGH: "Высокий"
         }
     }
+}
 
-    // MARK: - Helpers
+// MARK: - Shared Helpers
 
-    private func sectionLabel(_ text: String, icon: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.signalPrimary.opacity(0.7))
-            Text(text)
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .tracking(0.8)
-                .textCase(.uppercase)
-                .foregroundStyle(Color.textMuted.opacity(0.6))
-            Rectangle()
+private func sectionLabel(_ text: String, icon: String) -> some View {
+    HStack(spacing: 8) {
+        Image(systemName: icon)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(Color.signalPrimary.opacity(0.7))
+        Text(text)
+            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+            .tracking(0.8)
+            .textCase(.uppercase)
+            .foregroundStyle(Color.textMuted.opacity(0.6))
+        Rectangle()
+            .fill(
+                LinearGradient(
+                    colors: [Color.signalPrimary.opacity(0.15), .clear],
+                    startPoint: .leading, endPoint: .trailing
+                )
+            )
+            .frame(height: 1)
+    }
+}
+
+private func emptyChart(message: String, sub: String) -> some View {
+    HudPanel(accent: .signalPrimary) {
+        VStack(spacing: 8) {
+            Image(systemName: "antenna.radiowaves.left.and.right.slash")
+                .font(.system(size: 28))
+                .foregroundStyle(Color.textMuted.opacity(0.2))
+            Text(message)
+                .font(.system(size: 14))
+                .foregroundStyle(Color.textMuted.opacity(0.4))
+            Text(sub)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(Color.textMuted.opacity(0.25))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(32)
+    }
+}
+
+private func shimmerRect(height: CGFloat) -> some View {
+    RoundedRectangle(cornerRadius: 16)
+        .fill(Color.spaceHull.opacity(0.2))
+        .frame(height: height)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
                 .fill(
                     LinearGradient(
-                        colors: [Color.signalPrimary.opacity(0.15), .clear],
+                        colors: [.clear, Color.signalPrimary.opacity(0.04), .clear],
                         startPoint: .leading, endPoint: .trailing
                     )
                 )
-                .frame(height: 1)
-        }
-    }
-
-    private func emptyChart(message: String, sub: String) -> some View {
-        HudPanel(accent: .signalPrimary) {
-            VStack(spacing: 8) {
-                Image(systemName: "antenna.radiowaves.left.and.right.slash")
-                    .font(.system(size: 28))
-                    .foregroundStyle(Color.textMuted.opacity(0.2))
-                Text(message)
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.textMuted.opacity(0.4))
-                Text(sub)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(Color.textMuted.opacity(0.25))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(32)
-        }
-    }
-
-    private var loadingState: some View {
-        VStack(spacing: 16) {
-            OrbitIndicator(size: 60, duration: 3)
-            Text("Обработка телеметрии...")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Color.textSecondary)
-        }
-    }
-
-    private func shimmerRect(height: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: 16)
-            .fill(Color.spaceHull.opacity(0.2))
-            .frame(height: height)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(
-                        LinearGradient(
-                            colors: [.clear, Color.signalPrimary.opacity(0.04), .clear],
-                            startPoint: .leading, endPoint: .trailing
-                        )
-                    )
-                    .modifier(ShimmerEffect())
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
+                .modifier(ShimmerEffect())
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
 }
 
 // MARK: - Shimmer
