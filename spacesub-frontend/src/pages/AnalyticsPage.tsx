@@ -1102,27 +1102,7 @@ export function AnalyticsPage() {
   const trendUp = (overview?.trend.changePct ?? 0) >= 0;
   const trendAbs = Math.abs(overview?.trend.changePct ?? 0);
 
-  // Group services by category for bar chart
-  const groupedServices = useMemo(() => {
-    const groups: { category: string; color: string; services: ServiceItem[] }[] = [];
-    const catMap = new Map<string, ServiceItem[]>();
-    for (const s of services) {
-      const arr = catMap.get(s.category) ?? [];
-      arr.push(s);
-      catMap.set(s.category, arr);
-    }
-    for (const [category, svcs] of catMap.entries()) {
-      groups.push({ category, color: svcs[0].color, services: svcs });
-    }
-    groups.sort((a, b) => {
-      const sumA = a.services.reduce((s, sv) => s + sv.monthlyAmount, 0);
-      const sumB = b.services.reduce((s, sv) => s + sv.monthlyAmount, 0);
-      return sumB - sumA;
-    });
-    return groups;
-  }, [services]);
-
-  // Flatten grouped services for bar chart rendering with rankings
+  // Ranked services for bar chart with medals
   const rankedServices = useMemo(() => {
     const all = [...services].sort((a, b) => b.monthlyAmount - a.monthlyAmount);
     return all.map((s, i) => ({ ...s, rank: i + 1 }));
@@ -1446,7 +1426,11 @@ export function AnalyticsPage() {
                           axisLine={{ stroke: 'rgba(0,212,170,0.08)' }} tickLine={false}
                           tickFormatter={(v: number) => `₽${v.toLocaleString('ru-RU')}`} />
                         <YAxis type="category" dataKey="merchant" width={110}
-                          tick={({ x, y, payload }: { x: number; y: number; payload: { value: string } }) => {
+                          tick={(props: Record<string, unknown>) => {
+                            const x = Number(props.x ?? 0);
+                            const y = Number(props.y ?? 0);
+                            const payload = props.payload as { value: string } | undefined;
+                            if (!payload) return <g />;
                             const svc = rankedServices.find(s => s.merchant === payload.value);
                             const rank = svc?.rank ?? 0;
                             const medalColor = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '';
