@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CountUp from 'react-countup';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
-  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Line,
   BarChart, Bar,
 } from 'recharts';
 import api from '../services/api';
@@ -42,6 +42,10 @@ interface PeriodItem {
   momGrowthPct: number | null;
 }
 
+interface PeriodItemWithAvg extends PeriodItem {
+  movingAvg: number;
+}
+
 interface RecommendationItem {
   type: 'CANCEL' | 'REVIEW' | 'DOWNGRADE' | 'CONSOLIDATE';
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
@@ -77,7 +81,37 @@ function getPeriodDates(key: PeriodKey): { from: string; to: string } {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-// ─── SVG Icons (HUD style — thin strokes, technical feel) ───
+// ─── SVG Category Icons ───
+
+function CategoryIcon({ category, size = 16, color = 'currentColor' }: { category: string; size?: number; color?: string }) {
+  const s = size;
+  const props = { width: s, height: s, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+
+  switch (category) {
+    case 'Развлечения':
+      return <svg {...props}><rect x="2" y="4" width="20" height="14" rx="2" /><polygon points="10,8 10,14 15,11" fill={color} opacity={0.6} stroke="none" /></svg>;
+    case 'Музыка':
+      return <svg {...props}><rect x="6" y="10" width="3" height="8" rx="1" opacity={0.7} /><rect x="11" y="6" width="3" height="12" rx="1" /><rect x="16" y="8" width="3" height="10" rx="1" opacity={0.7} /></svg>;
+    case 'Продуктивность':
+      return <svg {...props}><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="13" y="3" width="8" height="8" rx="1.5" opacity={0.6} /><rect x="3" y="13" width="8" height="8" rx="1.5" opacity={0.6} /><rect x="13" y="13" width="8" height="8" rx="1.5" /></svg>;
+    case 'Облако и хостинг':
+      return <svg {...props}><path d="M18 10a4 4 0 00-7.5-2A3.5 3.5 0 004 11.5 3 3 0 005 17h12a3 3 0 001-5.8z" /><polyline points="12 13 12 9" /><polyline points="10 11 12 9 14 11" /></svg>;
+    case 'Безопасность':
+      return <svg {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><rect x="10" y="10" width="4" height="5" rx="1" /><circle cx="12" cy="8" r="2" /></svg>;
+    case 'Образование':
+      return <svg {...props}><path d="M2 12l10-5 10 5-10 5z" /><path d="M6 14v4c0 1 3 3 6 3s6-2 6-3v-4" /><line x1="22" y1="12" x2="22" y2="18" /></svg>;
+    case 'Игры':
+      return <svg {...props}><rect x="2" y="6" width="20" height="12" rx="4" /><circle cx="8" cy="12" r="1.5" fill={color} opacity={0.5} stroke="none" /><circle cx="16" cy="10" r="1" fill={color} opacity={0.5} stroke="none" /><circle cx="18" cy="12" r="1" fill={color} opacity={0.5} stroke="none" /><circle cx="16" cy="14" r="1" fill={color} opacity={0.5} stroke="none" /></svg>;
+    case 'Фитнес':
+      return <svg {...props}><polyline points="2 12 6 12 8 8 12 16 14 12 18 12 20 10 22 12" /></svg>;
+    case 'Новости':
+      return <svg {...props}><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="7" y1="8" x2="17" y2="8" /><line x1="7" y1="12" x2="14" y2="12" opacity={0.6} /><line x1="7" y1="16" x2="12" y2="16" opacity={0.4} /></svg>;
+    default:
+      return <svg {...props}><circle cx="6" cy="12" r="1.5" fill={color} opacity={0.5} stroke="none" /><circle cx="12" cy="12" r="1.5" fill={color} opacity={0.5} stroke="none" /><circle cx="18" cy="12" r="1.5" fill={color} opacity={0.5} stroke="none" /></svg>;
+  }
+}
+
+// ─── SVG HUD Icons ───
 
 function RadarIcon({ size = 20 }: { size?: number }) {
   return (
@@ -180,6 +214,28 @@ function SparkleIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+function ChevronIcon({ size = 12, rotated = false }: { size?: number; rotated?: boolean }) {
+  return (
+    <svg
+      width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      style={{ transition: 'transform 0.25s ease', transform: rotated ? 'rotate(90deg)' : 'rotate(0deg)' }}
+    >
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}
+
+function TargetIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <circle cx="12" cy="12" r="10" opacity="0.3" />
+      <circle cx="12" cy="12" r="6" opacity="0.5" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+    </svg>
+  );
+}
+
 // ─── Animations ───
 
 const stagger = {
@@ -233,12 +289,10 @@ function HudPanel({ children, className = '', glowing = false, accent = '#00d4aa
       className={`station-panel ${glowing ? 'station-panel-glow' : ''} ${className}`}
       style={{ position: 'relative', overflow: 'hidden' }}
     >
-      {/* Top accent beam */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: 1,
         background: `linear-gradient(90deg, transparent 10%, ${accent}50 50%, transparent 90%)`,
       }} />
-      {/* HUD corners */}
       <HudCorner position="tl" />
       <HudCorner position="tr" />
       <HudCorner position="bl" />
@@ -248,14 +302,16 @@ function HudPanel({ children, className = '', glowing = false, accent = '#00d4aa
   );
 }
 
-// ─── Glass Tooltip (HUD style) ───
+// ─── Glass Tooltip ───
 
 function GlassTooltip({ active, payload, label }: {
   active?: boolean;
-  payload?: Array<{ value: number; name?: string }>;
+  payload?: Array<{ value: number; name?: string; dataKey?: string }>;
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
+  const main = payload.find(p => p.dataKey === 'total') ?? payload[0];
+  const avg = payload.find(p => p.dataKey === 'movingAvg');
   return (
     <div style={{
       background: 'rgba(6,16,30,0.95)',
@@ -271,8 +327,13 @@ function GlassTooltip({ active, payload, label }: {
         </p>
       )}
       <p style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: '#00d4aa', textShadow: '0 0 8px rgba(0,212,170,0.3)' }}>
-        ₽{payload[0].value.toLocaleString('ru-RU')}
+        ₽{main.value.toLocaleString('ru-RU')}
       </p>
+      {avg && (
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(14,165,233,0.6)', marginTop: 2 }}>
+          Среднее: ₽{Math.round(avg.value).toLocaleString('ru-RU')}
+        </p>
+      )}
     </div>
   );
 }
@@ -302,6 +363,14 @@ const RECO_COLORS: Record<string, { text: string; bg: string; border: string; gl
 const RISK_COLOR: Record<string, string> = { LOW: '#00d4aa', MEDIUM: '#f59e0b', HIGH: '#ef4444' };
 const RISK_LABEL: Record<string, string> = { LOW: 'Низкий', MEDIUM: 'Средний', HIGH: 'Высокий' };
 
+function computeMovingAvg(data: PeriodItem[]): PeriodItemWithAvg[] {
+  return data.map((item, i) => {
+    const window = data.slice(Math.max(0, i - 2), i + 1);
+    const avg = window.reduce((s, w) => s + w.total, 0) / window.length;
+    return { ...item, movingAvg: Math.round(avg) };
+  });
+}
+
 // ─── Skeleton ───
 
 function Skeleton({ h = 20, w = '100%', r = 8 }: { h?: number; w?: number | string; r?: number }) {
@@ -315,7 +384,7 @@ function Skeleton({ h = 20, w = '100%', r = 8 }: { h?: number; w?: number | stri
   );
 }
 
-// ─── Period Tabs (HUD style segmented control) ───
+// ─── Period Tabs ───
 
 function PeriodTabs({ active, onChange }: { active: PeriodKey; onChange: (k: PeriodKey) => void }) {
   return (
@@ -357,38 +426,68 @@ function PeriodTabs({ active, onChange }: { active: PeriodKey; onChange: (k: Per
   );
 }
 
-// ─── Interactive Donut (with neon glow effect) ───
+// ─── Interactive Donut with Category Icons ───
 
-function InteractiveDonut({ data }: { data: CategoryItem[] }) {
-  const [active, setActive] = useState<number | null>(null);
+const RADIAN = Math.PI / 180;
+
+function InteractiveDonut({ data, selectedCategory, onSelectCategory }: {
+  data: CategoryItem[];
+  selectedCategory: string | null;
+  onSelectCategory: (cat: string | null) => void;
+}) {
+  const [hovered, setHovered] = useState<number | null>(null);
 
   if (data.length === 0) {
     return (
-      <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: 'rgba(200,214,229,0.3)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
         Нет данных
       </div>
     );
   }
 
-  const shown = active !== null ? data[active] : null;
+  const selectedIdx = selectedCategory ? data.findIndex(d => d.category === selectedCategory) : null;
+  const activeIdx = hovered ?? selectedIdx;
+  const shown = activeIdx !== null && activeIdx >= 0 ? data[activeIdx] : null;
   const total = data.reduce((s, d) => s + d.total, 0);
+
+  // Calculate mid-angles for icon placement
+  let startAngle = 90;
+  const iconPositions = data.map((item) => {
+    const angle = (item.percent / 100) * 360;
+    const midAngle = startAngle + angle / 2;
+    startAngle += angle;
+    const r = 122;
+    const cx = 150;
+    const cy = 130;
+    const x = cx + r * Math.cos(-midAngle * RADIAN);
+    const y = cy + r * Math.sin(-midAngle * RADIAN);
+    return { x, y, midAngle };
+  });
 
   return (
     <div style={{ position: 'relative' }}>
-      {/* Glow ring behind chart */}
+      {/* Glow ring */}
       <div style={{
-        position: 'absolute', top: '50%', left: '50%', width: 200, height: 200,
+        position: 'absolute', top: '50%', left: '50%', width: 210, height: 210,
         transform: 'translate(-50%, -50%)',
         borderRadius: '50%',
         background: shown
-          ? `radial-gradient(circle, ${shown.color}15 0%, transparent 70%)`
+          ? `radial-gradient(circle, ${shown.color}18 0%, transparent 70%)`
           : 'radial-gradient(circle, rgba(0,212,170,0.06) 0%, transparent 70%)',
         transition: 'background 0.3s ease',
         pointerEvents: 'none',
       }} />
 
-      <ResponsiveContainer width="100%" height={240}>
+      {/* Orbit ring */}
+      <svg style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none' }}
+        width="260" height="260" viewBox="0 0 260 260">
+        <circle cx="130" cy="130" r="120" fill="none" stroke="rgba(0,212,170,0.06)"
+          strokeWidth="0.5" strokeDasharray="3 8"
+          style={{ animation: 'spin-slow 60s linear infinite' }} />
+      </svg>
+
+      <ResponsiveContainer width="100%" height={260}>
         <PieChart>
           <Pie
             data={data}
@@ -402,34 +501,57 @@ function InteractiveDonut({ data }: { data: CategoryItem[] }) {
             cornerRadius={3}
             animationBegin={200}
             animationDuration={1000}
-            onMouseEnter={(_, idx) => setActive(idx)}
-            onMouseLeave={() => setActive(null)}
+            onMouseEnter={(_, idx) => setHovered(idx)}
+            onMouseLeave={() => setHovered(null)}
+            onClick={(_, idx) => {
+              const cat = data[idx]?.category;
+              onSelectCategory(selectedCategory === cat ? null : cat);
+            }}
           >
-            {data.map((entry, i) => (
-              <Cell
-                key={i}
-                fill={entry.color}
-                opacity={active === null || active === i ? 1 : 0.25}
-                stroke="transparent"
-                style={{
-                  cursor: 'pointer',
-                  filter: active === i ? `drop-shadow(0 0 12px ${entry.color}90)` : 'none',
-                  transition: 'all 0.2s ease-out',
-                }}
-              />
-            ))}
+            {data.map((entry, i) => {
+              const isSelected = selectedCategory === entry.category;
+              const isHovered = hovered === i;
+              const dimmed = (selectedCategory && !isSelected && hovered === null) || (hovered !== null && hovered !== i);
+              return (
+                <Cell
+                  key={i}
+                  fill={entry.color}
+                  opacity={dimmed ? 0.2 : 1}
+                  stroke="transparent"
+                  style={{
+                    cursor: 'pointer',
+                    filter: (isSelected || isHovered) ? `drop-shadow(0 0 14px ${entry.color}90)` : 'none',
+                    transition: 'all 0.25s ease-out',
+                  }}
+                />
+              );
+            })}
           </Pie>
-          <Tooltip content={<GlassTooltip />} />
         </PieChart>
       </ResponsiveContainer>
 
-      {/* Center text with HUD ring */}
+      {/* Category icons on sectors */}
+      <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+        viewBox="0 0 300 260">
+        {data.map((item, i) => {
+          if (item.percent < 5) return null;
+          const pos = iconPositions[i];
+          const isActive = activeIdx === i;
+          return (
+            <g key={item.category} transform={`translate(${pos.x - 8}, ${pos.y - 8})`}
+              style={{ opacity: isActive ? 1 : 0.5, transition: 'opacity 0.2s', filter: isActive ? `drop-shadow(0 0 4px ${item.color})` : 'none' }}>
+              <CategoryIcon category={item.category} size={16} color={item.color} />
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Center text */}
       <div style={{
         position: 'absolute', top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
         textAlign: 'center', pointerEvents: 'none',
       }}>
-        {/* Inner decorative ring */}
         <div style={{
           position: 'absolute', top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
@@ -477,63 +599,323 @@ function InteractiveDonut({ data }: { data: CategoryItem[] }) {
   );
 }
 
-// ─── Category Progress List (with HUD markers) ───
+// ─── Donut Expansion Panel ───
 
-function CategoryList({ data }: { data: CategoryItem[] }) {
+function DonutExpansionPanel({ category, services, color, onClose }: {
+  category: string;
+  services: ServiceItem[];
+  color: string;
+  onClose: () => void;
+}) {
+  const catServices = services.filter(s => s.category === category);
+  const catTotal = catServices.reduce((s, sv) => s + sv.monthlyAmount, 0);
+
+  return (
+    <motion.div
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: 'auto', opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
+      style={{ overflow: 'hidden' }}
+    >
+      <HudPanel accent={color} className="mt-3">
+        <div style={{ padding: '16px 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <CategoryIcon category={category} size={18} color={color} />
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: 'rgba(200,214,229,0.85)' }}>
+                {category}
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(200,214,229,0.35)' }}>
+                {catServices.length} подписок · ₽{Math.round(catTotal).toLocaleString('ru-RU')}/мес
+              </span>
+            </div>
+            <button onClick={onClose} style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(200,214,229,0.3)',
+              padding: 4, lineHeight: 1, fontSize: 16,
+            }}>
+              ✕
+            </button>
+          </div>
+
+          {catServices.length === 0 ? (
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(200,214,229,0.3)' }}>
+              Нет подписок в этой категории
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {catServices.map((svc, i) => {
+                const share = catTotal > 0 ? (svc.monthlyAmount / catTotal) * 100 : 0;
+                return (
+                  <motion.div key={svc.merchant}
+                    initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(200,214,229,0.7)' }}>
+                        {svc.merchant}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600, color: 'rgba(200,214,229,0.8)' }}>
+                        ₽{Math.round(svc.monthlyAmount).toLocaleString('ru-RU')}/мес
+                      </span>
+                    </div>
+                    <div style={{ height: 3, background: 'rgba(255,255,255,0.04)', borderRadius: 2, overflow: 'hidden' }}>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${share}%` }}
+                        transition={{ duration: 0.6, delay: i * 0.04 }}
+                        style={{
+                          height: '100%', borderRadius: 2,
+                          background: `linear-gradient(90deg, ${color}80, ${color})`,
+                          boxShadow: `0 0 6px ${color}30`,
+                        }}
+                      />
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </HudPanel>
+    </motion.div>
+  );
+}
+
+// ─── Category Accordion List ───
+
+function CategoryAccordion({ data, services, selectedCategory, onSelectCategory }: {
+  data: CategoryItem[];
+  services: ServiceItem[];
+  selectedCategory: string | null;
+  onSelectCategory: (cat: string | null) => void;
+}) {
   if (data.length === 0) return null;
   const max = data[0].total;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {data.slice(0, 6).map((item, i) => (
-        <motion.div key={item.category}
-          initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.06, type: 'spring', stiffness: 300, damping: 24 }}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {data.slice(0, 8).map((item, i) => {
+        const isOpen = selectedCategory === item.category;
+        const catServices = services.filter(s => s.category === item.category);
+
+        return (
+          <motion.div key={item.category}
+            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.06, type: 'spring', stiffness: 300, damping: 24 }}
+          >
+            <div
+              onClick={() => onSelectCategory(isOpen ? null : item.category)}
+              style={{ cursor: 'pointer', padding: '6px 0' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: item.color, flexShrink: 0,
+                    boxShadow: `0 0 8px ${item.color}80, 0 0 2px ${item.color}`,
+                  }} />
+                  <CategoryIcon category={item.category} size={14} color={item.color} />
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.85)' }}>
+                    {item.category}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(200,214,229,0.4)', letterSpacing: '0.02em' }}>
+                    {item.percent}%
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: '#e2e8f0', minWidth: 72, textAlign: 'right' }}>
+                    ₽{Math.round(item.total).toLocaleString('ru-RU')}
+                  </span>
+                  <span style={{ color: 'rgba(200,214,229,0.3)' }}>
+                    <ChevronIcon size={12} rotated={isOpen} />
+                  </span>
+                </div>
+              </div>
+              <div style={{ height: 5, background: 'rgba(255,255,255,0.04)', borderRadius: 4, overflow: 'hidden', position: 'relative' }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(item.total / max) * 100}%` }}
+                  transition={{ duration: 0.8, delay: i * 0.06, ease: 'easeOut' }}
+                  style={{
+                    height: '100%', borderRadius: 4,
+                    background: `linear-gradient(90deg, ${item.color}cc, ${item.color})`,
+                    boxShadow: `0 0 12px ${item.color}40, 0 1px 4px ${item.color}30`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {isOpen && catServices.length > 0 && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div style={{
+                    marginLeft: 18, paddingLeft: 12, marginTop: 4, marginBottom: 8,
+                    borderLeft: `2px solid ${item.color}40`,
+                  }}>
+                    <p style={{
+                      fontFamily: 'var(--font-mono)', fontSize: 9, color: `${item.color}60`,
+                      letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8,
+                    }}>
+                      СКАНИРОВАНИЕ · {catServices.length} ОБЪЕКТОВ
+                    </p>
+                    {catServices.map((svc, si) => (
+                      <motion.div key={svc.merchant}
+                        initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: si * 0.04 }}
+                        style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '5px 0',
+                          borderBottom: si < catServices.length - 1 ? `1px solid ${item.color}08` : 'none',
+                        }}
+                      >
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(200,214,229,0.6)' }}>
+                          {svc.merchant}
+                        </span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600, color: 'rgba(200,214,229,0.7)' }}>
+                          ₽{Math.round(svc.monthlyAmount).toLocaleString('ru-RU')}
+                        </span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Budget Radar Cards ───
+
+function BudgetRadarSection({ overview, categories, recommendations }: {
+  overview: Overview;
+  categories: CategoryItem[];
+  recommendations: RecommendationItem[];
+}) {
+  const totalSavings = recommendations.reduce((s, r) => s + r.potentialSavings, 0);
+  const highCount = recommendations.filter(r => r.priority === 'HIGH').length;
+  const medCount = recommendations.filter(r => r.priority === 'MEDIUM').length;
+  const healthScore = Math.max(0, Math.min(100, 100 - highCount * 20 - medCount * 10));
+  const optimizationPct = overview.periodTotal > 0 ? Math.min(100, Math.round((totalSavings / 12) / overview.periodTotal * 100)) : 0;
+  const catCount = categories.length || 1;
+  const density = Math.round((overview.activeCount / catCount) * 10) / 10;
+
+  const healthColor = healthScore > 70 ? '#00d4aa' : healthScore > 40 ? '#f59e0b' : '#ef4444';
+
+  const cards = [
+    {
+      label: 'Здоровье бюджета',
+      value: healthScore,
+      suffix: '/100',
+      color: healthColor,
+      icon: <ShieldCheckIcon size={16} />,
+      gauge: healthScore,
+    },
+    {
+      label: 'Потенциал оптимизации',
+      value: optimizationPct,
+      suffix: '%',
+      color: '#0ea5e9',
+      icon: <TargetIcon size={16} />,
+      gauge: optimizationPct,
+    },
+    {
+      label: 'Плотность подписок',
+      value: density,
+      suffix: '/кат',
+      color: '#a78bfa',
+      icon: <OrbitIcon size={16} />,
+      gauge: Math.min(100, density * 20),
+    },
+  ];
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }} className="analytics-grid-3">
+      {cards.map((card, i) => (
+        <motion.div key={card.label}
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 + i * 0.08 }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {/* Glowing dot */}
-              <div style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: item.color, flexShrink: 0,
-                boxShadow: `0 0 8px ${item.color}80, 0 0 2px ${item.color}`,
-              }} />
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.85)' }}>
-                {item.category}
-              </span>
+          <HudPanel accent={card.color}>
+            <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+              {/* Circular gauge */}
+              <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>
+                <svg width="48" height="48" viewBox="0 0 48 48">
+                  <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="3" />
+                  <circle cx="24" cy="24" r="20" fill="none"
+                    stroke={card.color} strokeWidth="3" strokeLinecap="round"
+                    strokeDasharray={`${(card.gauge / 100) * 125.6} 125.6`}
+                    transform="rotate(-90 24 24)"
+                    style={{ filter: `drop-shadow(0 0 4px ${card.color}60)`, transition: 'stroke-dasharray 1s ease-out' }}
+                  />
+                </svg>
+                <span style={{
+                  position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                  color: card.color, opacity: 0.7,
+                }}>
+                  {card.icon}
+                </span>
+              </div>
+              <div>
+                <p style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 800, color: card.color, lineHeight: 1,
+                  textShadow: `0 0 8px ${card.color}30`,
+                }}>
+                  <CountUp end={card.value} duration={1.2} decimals={card.value % 1 !== 0 ? 1 : 0} useEasing />
+                  <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.5, marginLeft: 2 }}>{card.suffix}</span>
+                </p>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(200,214,229,0.35)', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 4 }}>
+                  {card.label}
+                </p>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(200,214,229,0.4)', letterSpacing: '0.02em' }}>
-                {item.percent}%
-              </span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: '#e2e8f0', minWidth: 72, textAlign: 'right' }}>
-                ₽{Math.round(item.total).toLocaleString('ru-RU')}
-              </span>
-            </div>
-          </div>
-          {/* Progress bar with neon glow */}
-          <div style={{ height: 5, background: 'rgba(255,255,255,0.04)', borderRadius: 4, overflow: 'hidden', position: 'relative' }}>
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${(item.total / max) * 100}%` }}
-              transition={{ duration: 0.8, delay: i * 0.06, ease: 'easeOut' }}
-              style={{
-                height: '100%', borderRadius: 4,
-                background: `linear-gradient(90deg, ${item.color}cc, ${item.color})`,
-                boxShadow: `0 0 12px ${item.color}40, 0 1px 4px ${item.color}30`,
-              }}
-            />
-          </div>
+          </HudPanel>
         </motion.div>
       ))}
     </div>
   );
 }
 
-// ─── Health Score Gauge Card (HUD style) ───
+// ─── Trend Sparkline ───
+
+function TrendSparkline({ data, color }: { data: PeriodItem[]; color: string }) {
+  if (data.length < 2) return null;
+  const vals = data.slice(-6).map(d => d.total);
+  const max = Math.max(...vals);
+  const min = Math.min(...vals);
+  const range = max - min || 1;
+  const w = 80;
+  const h = 22;
+  const points = vals.map((v, i) => {
+    const x = (i / (vals.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <svg width={w} height={h} style={{ display: 'block' }}>
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+        style={{ filter: `drop-shadow(0 0 3px ${color}50)` }} />
+      <circle cx={parseFloat(points.split(' ').pop()!.split(',')[0])} cy={parseFloat(points.split(' ').pop()!.split(',')[1])} r="2.5"
+        fill={color} style={{ filter: `drop-shadow(0 0 4px ${color})` }} />
+    </svg>
+  );
+}
+
+// ─── Score Circular Gauge ───
 
 function ScoreGauge({ valueScore, churnRisk, merchant, label, monthlyAmount }: ScoreItem) {
   const color = RISK_COLOR[churnRisk];
+  const isHigh = churnRisk === 'HIGH';
 
   return (
     <motion.div
@@ -547,51 +929,70 @@ function ScoreGauge({ valueScore, churnRisk, merchant, label, monthlyAmount }: S
         background: `linear-gradient(90deg, transparent, ${color}40, transparent)`,
       }} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      {/* Priority left border */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, bottom: 0, width: 3,
+        background: `linear-gradient(180deg, ${color}80, ${color}10)`,
+        animation: isHigh ? 'alarm-pulse 1.5s ease-in-out infinite' : 'none',
+      }} />
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'rgba(200,214,229,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {merchant}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'rgba(200,214,229,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {merchant}
+            </p>
+            {/* Alarm dot for HIGH risk */}
+            {isHigh && (
+              <span style={{
+                width: 6, height: 6, borderRadius: '50%', background: '#ef4444',
+                boxShadow: '0 0 6px rgba(239,68,68,0.6)',
+                animation: 'alarm-pulse 1.5s ease-in-out infinite',
+                flexShrink: 0,
+              }} />
+            )}
+            {churnRisk === 'MEDIUM' && (
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+            )}
+          </div>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(200,214,229,0.3)', marginTop: 2, letterSpacing: '0.03em' }}>
-            {label} &middot; ₽{monthlyAmount.toLocaleString('ru-RU')}/мес
+            {label} · ₽{monthlyAmount.toLocaleString('ru-RU')}/мес
           </p>
         </div>
+
+        {/* Circular gauge */}
+        <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+          <svg width="44" height="44" viewBox="0 0 44 44">
+            <path d="M 6 34 A 16 16 0 1 1 38 34" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" strokeLinecap="round" />
+            <path d="M 6 34 A 16 16 0 1 1 38 34" fill="none"
+              stroke={color} strokeWidth="3" strokeLinecap="round"
+              strokeDasharray={`${(valueScore / 100) * 82} 82`}
+              style={{ filter: `drop-shadow(0 0 4px ${color}60)`, transition: 'stroke-dasharray 0.8s ease-out' }}
+            />
+          </svg>
+          <span style={{
+            position: 'absolute', top: '46%', left: '50%', transform: 'translate(-50%, -50%)',
+            fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 800, color,
+            textShadow: `0 0 6px ${color}40`,
+          }}>
+            {valueScore}
+          </span>
+        </div>
+
         <span style={{
           fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600,
           padding: '2px 8px', borderRadius: 6,
           background: `${color}15`, color, border: `1px solid ${color}30`,
-          flexShrink: 0, marginLeft: 8,
+          flexShrink: 0,
         }}>
           {RISK_LABEL[churnRisk]}
-        </span>
-      </div>
-
-      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden' }}>
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${valueScore}%` }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            style={{
-              height: '100%', borderRadius: 4,
-              background: `linear-gradient(90deg, ${color}99, ${color})`,
-              boxShadow: `0 0 10px ${color}40`,
-            }}
-          />
-        </div>
-        <span style={{
-          fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 800, color,
-          textShadow: `0 0 8px ${color}40`,
-          minWidth: 30, textAlign: 'right',
-        }}>
-          {valueScore}
         </span>
       </div>
     </motion.div>
   );
 }
 
-// ─── Section Header (HUD tech label) ───
+// ─── Section Header ───
 
 function SectionLabel({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) {
   return (
@@ -611,6 +1012,33 @@ function SectionLabel({ children, icon }: { children: React.ReactNode; icon?: Re
   );
 }
 
+// ─── Score Filter Tabs ───
+
+type ScoreFilter = 'all' | 'risky' | 'healthy';
+
+function ScoreFilterTabs({ active, onChange }: { active: ScoreFilter; onChange: (f: ScoreFilter) => void }) {
+  const tabs: { key: ScoreFilter; label: string }[] = [
+    { key: 'all', label: 'Все' },
+    { key: 'risky', label: 'Проблемные' },
+    { key: 'healthy', label: 'Здоровые' },
+  ];
+  return (
+    <div style={{ display: 'inline-flex', gap: 2, marginBottom: 10 }}>
+      {tabs.map(t => (
+        <button key={t.key} onClick={() => onChange(t.key)} style={{
+          padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
+          fontFamily: 'var(--font-mono)', fontSize: 10,
+          color: active === t.key ? '#06101e' : 'rgba(200,214,229,0.4)',
+          background: active === t.key ? 'linear-gradient(135deg, #00d4aa, #0ea5e9)' : 'rgba(0,212,170,0.05)',
+          transition: 'all 0.2s',
+        }}>
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ─── Page ───
 
 export function AnalyticsPage() {
@@ -623,6 +1051,8 @@ export function AnalyticsPage() {
   const [scores, setScores] = useState<ScoreItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [scoreFilter, setScoreFilter] = useState<ScoreFilter>('all');
 
   const load = useCallback(async (p: PeriodKey, initial = false) => {
     if (initial) setLoading(true); else setChartLoading(true);
@@ -633,7 +1063,7 @@ export function AnalyticsPage() {
       const [ov, cat, svc, per, rec, scr] = await Promise.all([
         api.get<Overview>(`/analytics/overview?${q}`),
         api.get<CategoryItem[]>(`/analytics/by-category?${q}`),
-        api.get<ServiceItem[]>(`/analytics/by-service?limit=8&${q}`),
+        api.get<ServiceItem[]>(`/analytics/by-service?limit=15&${q}`),
         api.get<PeriodItem[]>(`/analytics/by-period?${q}`),
         api.get<RecommendationItem[]>('/analytics/recommendations'),
         api.get<ScoreItem[]>('/analytics/scores'),
@@ -655,11 +1085,48 @@ export function AnalyticsPage() {
 
   const handlePeriod = (p: PeriodKey) => {
     setPeriod(p);
+    setSelectedCategory(null);
     load(p);
   };
 
+  const periodsWithAvg = useMemo(() => computeMovingAvg(periods), [periods]);
+
+  const filteredScores = useMemo(() => {
+    if (scoreFilter === 'risky') return scores.filter(s => s.churnRisk === 'HIGH' || s.churnRisk === 'MEDIUM');
+    if (scoreFilter === 'healthy') return scores.filter(s => s.churnRisk === 'LOW');
+    return scores;
+  }, [scores, scoreFilter]);
+
+  const totalSavings = useMemo(() => recommendations.reduce((s, r) => s + r.potentialSavings, 0), [recommendations]);
+
   const trendUp = (overview?.trend.changePct ?? 0) >= 0;
   const trendAbs = Math.abs(overview?.trend.changePct ?? 0);
+
+  // Group services by category for bar chart
+  const groupedServices = useMemo(() => {
+    const groups: { category: string; color: string; services: ServiceItem[] }[] = [];
+    const catMap = new Map<string, ServiceItem[]>();
+    for (const s of services) {
+      const arr = catMap.get(s.category) ?? [];
+      arr.push(s);
+      catMap.set(s.category, arr);
+    }
+    for (const [category, svcs] of catMap.entries()) {
+      groups.push({ category, color: svcs[0].color, services: svcs });
+    }
+    groups.sort((a, b) => {
+      const sumA = a.services.reduce((s, sv) => s + sv.monthlyAmount, 0);
+      const sumB = b.services.reduce((s, sv) => s + sv.monthlyAmount, 0);
+      return sumB - sumA;
+    });
+    return groups;
+  }, [services]);
+
+  // Flatten grouped services for bar chart rendering with rankings
+  const rankedServices = useMemo(() => {
+    const all = [...services].sort((a, b) => b.monthlyAmount - a.monthlyAmount);
+    return all.map((s, i) => ({ ...s, rank: i + 1 }));
+  }, [services]);
 
   if (loading) {
     return (
@@ -667,9 +1134,10 @@ export function AnalyticsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Skeleton h={40} w="30%" />
           <Skeleton h={28} w="50%" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
-            {[...Array(4)].map((_, i) => <Skeleton key={i} h={110} r={16} />)}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+            {[...Array(3)].map((_, i) => <Skeleton key={i} h={80} r={16} />)}
           </div>
+          <Skeleton h={180} r={16} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Skeleton h={300} r={16} />
             <Skeleton h={300} r={16} />
@@ -713,7 +1181,7 @@ export function AnalyticsPage() {
         <motion.div variants={stagger} initial="hidden" animate="visible">
 
           {/* ── Header + Period Tabs ── */}
-          <motion.div variants={fadeUp} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+          <motion.div variants={fadeUp} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                 <span style={{ color: '#00d4aa', opacity: 0.7 }}><RadarIcon size={28} /></span>
@@ -726,7 +1194,7 @@ export function AnalyticsPage() {
                 </h1>
               </div>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(200,214,229,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                ТЕЛЕМЕТРИЯ РАСХОДОВ &middot; ДИАГНОСТИКА &middot; РЕКОМЕНДАЦИИ
+                ТЕЛЕМЕТРИЯ РАСХОДОВ · ДИАГНОСТИКА · РЕКОМЕНДАЦИИ
               </p>
             </div>
             <PeriodTabs active={period} onChange={handlePeriod} />
@@ -736,13 +1204,31 @@ export function AnalyticsPage() {
           <motion.div variants={fadeUp}>
             <HudPanel glowing accent="#00d4aa">
               <ScanLine />
+
+              {/* Particle stars */}
+              <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} style={{
+                    position: 'absolute',
+                    width: i % 2 === 0 ? 1.5 : 1,
+                    height: i % 2 === 0 ? 1.5 : 1,
+                    borderRadius: '50%',
+                    background: 'rgba(200,214,229,0.15)',
+                    top: `${15 + (i * 13) % 70}%`,
+                    left: `${5 + (i * 17) % 90}%`,
+                    animation: `drift ${18 + i * 4}s ease-in-out infinite alternate`,
+                    animationDelay: `${i * -3}s`,
+                  }} />
+                ))}
+              </div>
+
               <div style={{ padding: '24px 28px', position: 'relative', zIndex: 3 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20 }}>
                   <div>
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(200,214,229,0.3)', marginBottom: 8, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                       Потрачено за период
                     </p>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                       <span style={{
                         fontFamily: 'var(--font-mono)', fontSize: 44, fontWeight: 800, color: '#e2e8f0', lineHeight: 1,
                         textShadow: '0 0 20px rgba(226,232,240,0.1)',
@@ -750,18 +1236,21 @@ export function AnalyticsPage() {
                         ₽<CountUp end={overview?.periodTotal ?? 0} duration={1.4} separator=" " useEasing />
                       </span>
                       {overview && overview.trend.changePct !== 0 && (
-                        <motion.span
-                          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }}
-                          style={{
-                            fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700,
-                            color: trendUp ? '#ef4444' : '#00d4aa',
-                            background: trendUp ? 'rgba(239,68,68,0.1)' : 'rgba(0,212,170,0.1)',
-                            border: `1px solid ${trendUp ? 'rgba(239,68,68,0.2)' : 'rgba(0,212,170,0.2)'}`,
-                            padding: '4px 12px', borderRadius: 6,
-                            textShadow: `0 0 6px ${trendUp ? 'rgba(239,68,68,0.3)' : 'rgba(0,212,170,0.3)'}`,
-                          }}>
-                          {trendUp ? '↑' : '↓'} {trendAbs}%
-                        </motion.span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <motion.span
+                            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }}
+                            style={{
+                              fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700,
+                              color: trendUp ? '#ef4444' : '#00d4aa',
+                              background: trendUp ? 'rgba(239,68,68,0.1)' : 'rgba(0,212,170,0.1)',
+                              border: `1px solid ${trendUp ? 'rgba(239,68,68,0.2)' : 'rgba(0,212,170,0.2)'}`,
+                              padding: '4px 12px', borderRadius: 6,
+                              textShadow: `0 0 6px ${trendUp ? 'rgba(239,68,68,0.3)' : 'rgba(0,212,170,0.3)'}`,
+                            }}>
+                            {trendUp ? '↑' : '↓'} {trendAbs}%
+                          </motion.span>
+                          <TrendSparkline data={periods} color={trendUp ? '#ef4444' : '#00d4aa'} />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -771,7 +1260,7 @@ export function AnalyticsPage() {
                     {heroStats.map((stat, i) => (
                       <motion.div key={stat.label}
                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 + i * 0.1 }}
+                        transition={{ delay: 0.3 + i * 0.15 }}
                         style={{ textAlign: 'center' }}>
                         <p style={{
                           fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 800, color: stat.color, lineHeight: 1,
@@ -793,43 +1282,82 @@ export function AnalyticsPage() {
             </HudPanel>
           </motion.div>
 
-          <div style={{ height: 20 }} />
+          <div style={{ height: 16 }} />
 
-          {/* ── Donut + Category List ── */}
+          {/* ── Budget Radar ── */}
+          {overview && (
+            <motion.div variants={fadeUp} style={{ marginBottom: 16 }}>
+              <BudgetRadarSection overview={overview} categories={categories} recommendations={recommendations} />
+            </motion.div>
+          )}
+
+          {/* ── Donut + Category Accordion ── */}
           <motion.div variants={fadeUp}
             style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}
             className="analytics-grid-2">
-            <HudPanel accent="#0ea5e9">
-              <div style={{ padding: '20px 22px' }}>
-                <SectionLabel icon={<OrbitIcon size={14} />}>Категории</SectionLabel>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(200,214,229,0.2)', marginBottom: 8, letterSpacing: '0.08em' }}>
-                  НАВЕДИТЕ НА СЕКТОР
-                </p>
-                {chartLoading ? <Skeleton h={240} r={110} /> : <InteractiveDonut data={categories} />}
-              </div>
-            </HudPanel>
+            <div>
+              <HudPanel accent="#0ea5e9">
+                <div style={{ padding: '20px 22px' }}>
+                  <SectionLabel icon={<OrbitIcon size={14} />}>Категории</SectionLabel>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(200,214,229,0.2)', marginBottom: 8, letterSpacing: '0.08em' }}>
+                    НАЖМИТЕ НА СЕКТОР ДЛЯ ДЕТАЛИЗАЦИИ
+                  </p>
+                  {chartLoading ? <Skeleton h={260} r={110} /> : (
+                    <InteractiveDonut
+                      data={categories}
+                      selectedCategory={selectedCategory}
+                      onSelectCategory={setSelectedCategory}
+                    />
+                  )}
+                </div>
+              </HudPanel>
+
+              {/* Donut expansion panel */}
+              <AnimatePresence>
+                {selectedCategory && (
+                  <DonutExpansionPanel
+                    category={selectedCategory}
+                    services={services}
+                    color={categories.find(c => c.category === selectedCategory)?.color ?? '#00d4aa'}
+                    onClose={() => setSelectedCategory(null)}
+                  />
+                )}
+              </AnimatePresence>
+            </div>
 
             <HudPanel accent="#a78bfa">
               <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '100%' }}>
                 <SectionLabel icon={<TelemetryIcon size={14} />}>Распределение</SectionLabel>
                 {chartLoading
                   ? <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>{[...Array(5)].map((_, i) => <Skeleton key={i} h={34} r={6} />)}</div>
-                  : <CategoryList data={categories} />
+                  : <CategoryAccordion
+                      data={categories}
+                      services={services}
+                      selectedCategory={selectedCategory}
+                      onSelectCategory={setSelectedCategory}
+                    />
                 }
               </div>
             </HudPanel>
           </motion.div>
 
-          {/* ── Area Chart ── */}
+          {/* ── Area Chart with dual trace ── */}
           <motion.div variants={fadeUp} style={{ marginBottom: 16 }}>
             <HudPanel accent="#00d4aa">
               <div style={{ padding: '20px 22px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <SectionLabel icon={<DataFlowIcon size={14} />}>Динамика расходов</SectionLabel>
                   {!chartLoading && periods.some((p) => p.total > 0) && (
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(200,214,229,0.25)', letterSpacing: '0.05em' }}>
-                      {periods.length} ПЕРИОДОВ
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ width: 16, height: 2, background: '#00d4aa', borderRadius: 1 }} />
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(200,214,229,0.3)' }}>Расходы</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ width: 16, height: 2, background: '#0ea5e9', borderRadius: 1, opacity: 0.5 }} />
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(200,214,229,0.3)' }}>Среднее</span>
+                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -845,7 +1373,7 @@ export function AnalyticsPage() {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={220}>
-                    <AreaChart data={periods} margin={{ top: 10, right: 8, left: -10, bottom: 0 }}>
+                    <AreaChart data={periodsWithAvg} margin={{ top: 10, right: 8, left: -10, bottom: 0 }}>
                       <defs>
                         <linearGradient id="areaGradHud" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor="#00d4aa" stopOpacity={0.25} />
@@ -878,6 +1406,9 @@ export function AnalyticsPage() {
                           style: { filter: 'drop-shadow(0 0 6px rgba(0,212,170,0.5))' } as React.CSSProperties,
                         }}
                       />
+                      <Line type="monotone" dataKey="movingAvg" stroke="#0ea5e9" strokeWidth={1.5}
+                        strokeDasharray="6 4" dot={false} strokeOpacity={0.4}
+                        animationDuration={1400} />
                     </AreaChart>
                   </ResponsiveContainer>
                 )}
@@ -885,17 +1416,17 @@ export function AnalyticsPage() {
             </HudPanel>
           </motion.div>
 
-          {/* ── Bar Chart ── */}
-          {services.length > 0 && (
+          {/* ── Bar Chart with rankings ── */}
+          {rankedServices.length > 0 && (
             <motion.div variants={fadeUp} style={{ marginBottom: 16 }}>
               <HudPanel accent="#0ea5e9">
                 <div style={{ padding: '20px 22px' }}>
                   <SectionLabel icon={<SignalTowerIcon size={14} />}>Топ сервисов по стоимости</SectionLabel>
-                  {chartLoading ? <Skeleton h={services.length * 42} r={8} /> : (
-                    <ResponsiveContainer width="100%" height={Math.max(200, services.length * 44)}>
-                      <BarChart data={services} layout="vertical" margin={{ top: 0, right: 12, left: 8, bottom: 0 }}>
+                  {chartLoading ? <Skeleton h={rankedServices.length * 42} r={8} /> : (
+                    <ResponsiveContainer width="100%" height={Math.max(200, Math.min(rankedServices.length, 10) * 44)}>
+                      <BarChart data={rankedServices.slice(0, 10)} layout="vertical" margin={{ top: 0, right: 12, left: 8, bottom: 0 }}>
                         <defs>
-                          {services.map((s) => (
+                          {rankedServices.slice(0, 10).map((s) => (
                             <linearGradient key={s.merchant} id={`hud-bg-${s.merchant.replace(/\s/g,'')}`} x1="0" y1="0" x2="1" y2="0">
                               <stop offset="0%" stopColor={s.color} stopOpacity={0.85} />
                               <stop offset="100%" stopColor={s.color} stopOpacity={0.35} />
@@ -914,13 +1445,34 @@ export function AnalyticsPage() {
                           tick={{ fill: 'rgba(200,214,229,0.25)', fontSize: 11, fontFamily: 'var(--font-mono)' }}
                           axisLine={{ stroke: 'rgba(0,212,170,0.08)' }} tickLine={false}
                           tickFormatter={(v: number) => `₽${v.toLocaleString('ru-RU')}`} />
-                        <YAxis type="category" dataKey="merchant" width={95}
-                          tick={{ fill: 'rgba(200,214,229,0.6)', fontSize: 12, fontFamily: 'var(--font-body)' }}
+                        <YAxis type="category" dataKey="merchant" width={110}
+                          tick={({ x, y, payload }: { x: number; y: number; payload: { value: string } }) => {
+                            const svc = rankedServices.find(s => s.merchant === payload.value);
+                            const rank = svc?.rank ?? 0;
+                            const medalColor = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '';
+                            return (
+                              <g transform={`translate(${x},${y})`}>
+                                {rank <= 3 && (
+                                  <circle cx={-105} cy={0} r={8} fill={`${medalColor}20`} stroke={medalColor} strokeWidth={1} />
+                                )}
+                                {rank <= 3 && (
+                                  <text x={-105} y={1} textAnchor="middle" dominantBaseline="central"
+                                    fill={medalColor} fontSize={8} fontFamily="var(--font-mono)" fontWeight={700}>
+                                    #{rank}
+                                  </text>
+                                )}
+                                <text x={rank <= 3 ? -92 : -105} y={0} textAnchor="start" dominantBaseline="central"
+                                  fill="rgba(200,214,229,0.6)" fontSize={12} fontFamily="var(--font-body)">
+                                  {payload.value.length > 12 ? payload.value.slice(0, 12) + '...' : payload.value}
+                                </text>
+                              </g>
+                            );
+                          }}
                           axisLine={false} tickLine={false} />
                         <Tooltip content={<GlassTooltip />} />
                         <Bar dataKey="monthlyAmount" radius={[0, 6, 6, 0]} animationDuration={1000}
                           filter="url(#barGlow)">
-                          {services.map((s) => (
+                          {rankedServices.slice(0, 10).map((s) => (
                             <Cell key={s.merchant} fill={`url(#hud-bg-${s.merchant.replace(/\s/g,'')})`} />
                           ))}
                         </Bar>
@@ -938,20 +1490,42 @@ export function AnalyticsPage() {
             {/* Recommendations */}
             <motion.div variants={fadeUp}>
               <SectionLabel icon={<WarningTriangleIcon size={14} />}>Рекомендации</SectionLabel>
+
+              {/* Total savings counter */}
+              {recommendations.length > 0 && (
+                <HudPanel accent="#00d4aa" className="mb-3">
+                  <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <p style={{
+                        fontFamily: 'var(--font-mono)', fontSize: 24, fontWeight: 800, color: '#00d4aa', lineHeight: 1,
+                        textShadow: '0 0 12px rgba(0,212,170,0.3)',
+                      }}>
+                        −₽<CountUp end={Math.round(totalSavings)} duration={1.4} separator=" " useEasing />
+                      </p>
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(200,214,229,0.3)', marginTop: 4, letterSpacing: '0.05em' }}>
+                        ПОТЕНЦИАЛЬНАЯ ЭКОНОМИЯ В ГОД
+                      </p>
+                    </div>
+                    <span style={{ color: '#00d4aa', opacity: 0.4 }}><SparkleIcon size={24} /></span>
+                  </div>
+                </HudPanel>
+              )}
+
               {recommendations.length === 0 ? (
                 <HudPanel accent="#00d4aa">
                   <div style={{ padding: '28px', textAlign: 'center' }}>
                     <span style={{ color: '#00d4aa', opacity: 0.6 }}><SparkleIcon size={28} /></span>
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.4)', marginTop: 10 }}>
-                      Всё отлично — замечаний нет
+                      Все отлично — замечаний нет
                     </p>
                   </div>
                 </HudPanel>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {recommendations.slice(0, 4).map((rec, i) => {
+                  {recommendations.slice(0, 5).map((rec, i) => {
                     const cfg = RECO_COLORS[rec.type];
                     const Icon = RECO_ICONS[rec.type];
+                    const isHighPriority = rec.priority === 'HIGH';
                     return (
                       <motion.div key={i} className="station-panel"
                         style={{
@@ -962,10 +1536,19 @@ export function AnalyticsPage() {
                         initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.08 }}
                       >
+                        {/* Top accent */}
                         <div style={{
                           position: 'absolute', top: 0, left: 0, right: 0, height: 1,
                           background: `linear-gradient(90deg, transparent, ${cfg.border}, transparent)`,
                         }} />
+
+                        {/* Priority left border */}
+                        <div style={{
+                          position: 'absolute', top: 0, left: 0, bottom: 0, width: 3,
+                          background: `linear-gradient(180deg, ${cfg.text}80, ${cfg.text}10)`,
+                          animation: isHighPriority ? 'alarm-pulse 1.5s ease-in-out infinite' : 'none',
+                        }} />
+
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
                           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', minWidth: 0 }}>
                             <span style={{ color: cfg.text, flexShrink: 0, marginTop: 2 }}>{Icon && <Icon size={16} />}</span>
@@ -1009,6 +1592,11 @@ export function AnalyticsPage() {
             {/* Scores */}
             <motion.div variants={fadeUp}>
               <SectionLabel icon={<ShieldCheckIcon size={14} />}>Здоровье подписок</SectionLabel>
+
+              {scores.length > 0 && (
+                <ScoreFilterTabs active={scoreFilter} onChange={setScoreFilter} />
+              )}
+
               {scores.length === 0 ? (
                 <HudPanel accent="#00d4aa">
                   <div style={{ padding: '28px', textAlign: 'center' }}>
@@ -1020,13 +1608,21 @@ export function AnalyticsPage() {
                 </HudPanel>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {scores.slice(0, 5).map((sc, i) => (
-                    <motion.div key={i}
-                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.07 }}>
-                      <ScoreGauge {...sc} />
-                    </motion.div>
-                  ))}
+                  <AnimatePresence mode="popLayout">
+                    {filteredScores.slice(0, 6).map((sc, i) => (
+                      <motion.div key={sc.subscriptionId}
+                        layout
+                        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ delay: i * 0.05 }}>
+                        <ScoreGauge {...sc} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                  {filteredScores.length === 0 && (
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.3)', textAlign: 'center', padding: 20 }}>
+                      Нет подписок в этой категории
+                    </p>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -1040,8 +1636,33 @@ export function AnalyticsPage() {
           0% { background-position: 200% 0; }
           100% { background-position: -200% 0; }
         }
+        @keyframes spin-slow {
+          from { transform-origin: center; transform: rotate(0deg); }
+          to { transform-origin: center; transform: rotate(360deg); }
+        }
+        @keyframes drift {
+          0% { transform: translate(0, 0); opacity: 0.08; }
+          50% { opacity: 0.18; }
+          100% { transform: translate(20px, -15px); opacity: 0.05; }
+        }
+        @keyframes alarm-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        @keyframes live-pulse {
+          0%, 100% { r: 4; opacity: 0.8; }
+          50% { r: 7; opacity: 0.4; }
+        }
+        @media (max-width: 768px) {
+          .analytics-grid-2 { grid-template-columns: 1fr !important; }
+          .analytics-grid-3 { grid-template-columns: 1fr !important; }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+          .analytics-grid-3 { grid-template-columns: repeat(3, 1fr) !important; }
+        }
         @media (max-width: 640px) {
           .analytics-grid-2 { grid-template-columns: 1fr !important; }
+          .analytics-grid-3 { grid-template-columns: 1fr !important; }
         }
         @media (prefers-reduced-motion: reduce) {
           *, *::before, *::after {
