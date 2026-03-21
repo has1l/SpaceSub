@@ -42,6 +42,7 @@
     "class-validator": "^0.14.3",
     "helmet": "^8.1.0",
     "joi": "^18.0.2",
+    "openai": "^6.32.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "prisma": "^6.19.2",

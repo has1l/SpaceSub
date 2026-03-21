@@ -623,6 +623,9 @@ export function AnalyticsPage() {
   const [scores, setScores] = useState<ScoreItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
+  const [aiInsight, setAiInsight] = useState<{ text: string; generatedAt: string } | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const load = useCallback(async (p: PeriodKey, initial = false) => {
     if (initial) setLoading(true); else setChartLoading(true);
@@ -656,6 +659,24 @@ export function AnalyticsPage() {
   const handlePeriod = (p: PeriodKey) => {
     setPeriod(p);
     load(p);
+    setAiInsight(null);
+    setAiError(null);
+  };
+
+  const fetchAiInsight = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    const { from, to } = getPeriodDates(period);
+    try {
+      const res = await api.get<{ text: string; generatedAt: string }>(
+        `/analytics/ai-insight?from=${from}&to=${to}`,
+      );
+      setAiInsight(res.data);
+    } catch {
+      setAiError('Не удалось получить AI-анализ. Попробуйте позже.');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const trendUp = (overview?.trend.changePct ?? 0) >= 0;
@@ -1031,6 +1052,172 @@ export function AnalyticsPage() {
               )}
             </motion.div>
           </div>
+
+          {/* ── AI Insight ── */}
+          <motion.div variants={fadeUp} style={{ marginTop: 20 }}>
+            <HudPanel accent="#a78bfa" glowing={!!aiInsight}>
+              <div style={{ padding: '24px 26px' }}>
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: aiInsight ? 16 : 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2a4 4 0 014 4c0 1.95-1.4 3.58-3.25 3.93" />
+                      <path d="M8 6a4 4 0 018 0" opacity="0.4" />
+                      <rect x="8" y="12" width="8" height="8" rx="2" />
+                      <line x1="12" y1="10" x2="12" y2="12" />
+                      <line x1="10" y1="20" x2="10" y2="22" />
+                      <line x1="14" y1="20" x2="14" y2="22" />
+                    </svg>
+                    <span style={{
+                      fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600,
+                      color: 'rgba(200,214,229,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase',
+                    }}>
+                      AI-анализ расходов
+                    </span>
+                    <span style={{
+                      fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600,
+                      padding: '2px 8px', borderRadius: 6,
+                      background: 'rgba(167,139,250,0.12)', color: '#a78bfa',
+                      border: '1px solid rgba(167,139,250,0.25)',
+                      letterSpacing: '0.08em',
+                    }}>
+                      BETA
+                    </span>
+                  </div>
+                  {aiInsight && (
+                    <span style={{
+                      fontFamily: 'var(--font-mono)', fontSize: 9,
+                      color: 'rgba(200,214,229,0.25)', letterSpacing: '0.03em',
+                    }}>
+                      {new Date(aiInsight.generatedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {/* Idle state */}
+                  {!aiInsight && !aiLoading && !aiError && (
+                    <motion.div
+                      key="idle"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      style={{ textAlign: 'center', padding: '20px 0' }}
+                    >
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.4)', marginBottom: 16 }}>
+                        Искусственный интеллект проанализирует ваши подписки и даст персональные рекомендации
+                      </p>
+                      <motion.button
+                        onClick={fetchAiInsight}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        className="btn-signal"
+                        style={{
+                          padding: '10px 28px', fontSize: 13,
+                          fontFamily: 'var(--font-body)',
+                          display: 'inline-flex', alignItems: 'center', gap: 8,
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z" />
+                        </svg>
+                        Получить анализ
+                      </motion.button>
+                    </motion.div>
+                  )}
+
+                  {/* Loading state */}
+                  {aiLoading && (
+                    <motion.div
+                      key="loading"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      style={{ padding: '20px 0' }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                            style={{ color: '#a78bfa' }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z" />
+                            </svg>
+                          </motion.div>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#a78bfa' }}>
+                            Анализируем ваши расходы...
+                          </span>
+                        </div>
+                        <Skeleton h={14} w="90%" r={4} />
+                        <Skeleton h={14} w="75%" r={4} />
+                        <Skeleton h={14} w="85%" r={4} />
+                        <Skeleton h={14} w="60%" r={4} />
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Error state */}
+                  {aiError && !aiLoading && (
+                    <motion.div
+                      key="error"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      style={{ textAlign: 'center', padding: '20px 0' }}
+                    >
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#ef4444', marginBottom: 12 }}>
+                        {aiError}
+                      </p>
+                      <motion.button
+                        onClick={fetchAiInsight}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        className="btn-ghost"
+                        style={{ padding: '8px 20px', fontSize: 12, fontFamily: 'var(--font-body)' }}
+                      >
+                        Попробовать снова
+                      </motion.button>
+                    </motion.div>
+                  )}
+
+                  {/* Result state */}
+                  {aiInsight && !aiLoading && (
+                    <motion.div
+                      key="result"
+                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    >
+                      <div style={{
+                        fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.7,
+                        color: 'rgba(200,214,229,0.8)',
+                        whiteSpace: 'pre-wrap',
+                      }}>
+                        {aiInsight.text}
+                      </div>
+                      <div style={{
+                        marginTop: 16, paddingTop: 12,
+                        borderTop: '1px solid rgba(167,139,250,0.1)',
+                        display: 'flex', justifyContent: 'center',
+                      }}>
+                        <motion.button
+                          onClick={fetchAiInsight}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
+                          className="btn-ghost"
+                          style={{
+                            padding: '8px 20px', fontSize: 12,
+                            fontFamily: 'var(--font-body)',
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <polyline points="23 4 23 10 17 10" />
+                            <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
+                          </svg>
+                          Обновить анализ
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </HudPanel>
+          </motion.div>
 
         </motion.div>
       </div>

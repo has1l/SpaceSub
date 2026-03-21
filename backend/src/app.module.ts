@@ -15,6 +15,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { IntegrationModule } from './integration/integration.module';
 import { BankIntegrationModule } from './bank-integration/bank-integration.module';
 import { DetectedSubscriptionsModule } from './detected-subscriptions/detected-subscriptions.module';
+import { AiInsightModule } from './ai-insight/ai-insight.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -34,6 +35,7 @@ import { HealthController } from './health.controller';
         FLEX_BANK_OAUTH_CLIENT_SECRET: Joi.string().required(),
         FLEX_BANK_OAUTH_REDIRECT_URI: Joi.string().required(),
         TOKEN_ENCRYPTION_KEY: Joi.string().hex().length(64).required(),
+        OPENAI_API_KEY: Joi.string().optional().allow(''),
         PORT: Joi.number().default(3000),
       }),
     }),
@@ -50,6 +52,7 @@ import { HealthController } from './health.controller';
     IntegrationModule,
     BankIntegrationModule,
     DetectedSubscriptionsModule,
+    AiInsightModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
