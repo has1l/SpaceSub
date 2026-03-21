@@ -286,7 +286,7 @@ function fmtMonth(key: string) {
   return ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][parseInt(month,10)-1] ?? key;
 }
 
-const RECO_ICONS: Record<string, (props: { size?: number }) => JSX.Element> = {
+const RECO_ICONS: Record<string, (props: { size?: number }) => React.ReactNode> = {
   CANCEL: WarningTriangleIcon,
   REVIEW: WarningTriangleIcon,
   DOWNGRADE: DowngradeIcon,
