@@ -117,27 +117,6 @@ function SummaryBlock({ summary }: { summary: SubscriptionSummary }) {
       ),
     },
     {
-      label: 'В месяц',
-      value: formatCurrency(summary.monthlyTotal, 'RUB'),
-      color: 'var(--signal-secondary)',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
-        </svg>
-      ),
-    },
-    {
-      label: 'В год',
-      value: formatCurrency(summary.yearlyTotal, 'RUB'),
-      color: '#a78bfa',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
-      ),
-    },
-    {
       label: 'Скоро списание',
       value: String(summary.upcomingNext7Days.length),
       color: 'var(--signal-warn)',
@@ -152,7 +131,7 @@ function SummaryBlock({ summary }: { summary: SubscriptionSummary }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+    <div className="grid grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
       {cards.map((card, i) => (
         <motion.div
           key={card.label}
