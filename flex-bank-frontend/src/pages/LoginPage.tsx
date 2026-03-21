@@ -6,12 +6,6 @@ import { useCursorGlow } from '../hooks/useCursorGlow';
 import { API_BASE } from '../services/api';
 import CosmicBackground from '../components/CosmicBackground';
 
-const stagger = { animate: { transition: { staggerChildren: 0.15, delayChildren: 0.3 } } };
-const fadeUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] as const } },
-};
-
 export default function LoginPage() {
   const { isAuthenticated, setToken } = useAuth();
   const navigate = useNavigate();
@@ -24,66 +18,64 @@ export default function LoginPage() {
       navigate('/dashboard', { replace: true });
       return;
     }
-    if (isAuthenticated) navigate('/dashboard', { replace: true });
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
   }, [isAuthenticated, searchParams, setToken, navigate]);
 
   useCursorGlow();
 
+  const handleLogin = () => {
+    window.location.href = `${API_BASE}/auth/yandex`;
+  };
+
   return (
-    <div className="min-h-svh flex items-center justify-center px-6">
+    <div className="min-h-svh flex items-center justify-center px-4">
       <CosmicBackground />
 
       <motion.div
-        className="text-center relative z-10 max-w-sm w-full"
-        variants={stagger}
-        initial="initial"
-        animate="animate"
+        className="text-center relative z-10"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       >
-        {/* Logo */}
-        <motion.div variants={fadeUp} className="mb-8 flex justify-center">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center animate-float"
-               style={{ background: 'rgba(212, 168, 83, 0.1)', border: '1px solid rgba(212, 168, 83, 0.15)' }}>
-            <span className="text-3xl font-bold font-display text-accent-gold">F</span>
+        <div className="mb-8">
+          <div className="relative w-20 h-20 md:w-28 md:h-28 mx-auto mb-6 md:mb-8">
+            <div className="orbital-ring w-24 h-24 md:w-36 md:h-36 -top-2 -left-2 md:-top-4 md:-left-4" />
+            <div
+              className="absolute inset-0 rounded-3xl glow-stellar animate-pulse-glow-stellar flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #4F7CFF, #7B61FF)' }}
+            >
+              <span className="text-2xl md:text-4xl font-black text-white tracking-tight"
+                    style={{ fontFamily: 'var(--font-display)' }}>F</span>
+            </div>
           </div>
-        </motion.div>
 
-        {/* Blurred teaser number */}
-        <motion.div
-          variants={fadeUp}
-          className="font-display font-extralight text-[80px] leading-none tracking-tighter select-none mb-2"
-          style={{ color: 'rgba(212, 168, 83, 0.2)', animation: 'breathe 6s ease-in-out infinite' }}
-        >
-          ₽ 247 832
-        </motion.div>
+          <h1 className="text-4xl md:text-6xl font-black mb-4 gradient-text-cosmic tracking-tight"
+              style={{ fontFamily: 'var(--font-display)' }}>
+            Flex Банк
+          </h1>
+          <p className="text-text-nebula text-base md:text-lg font-light tracking-wide"
+             style={{ fontFamily: 'var(--font-body)' }}>
+            Умные финансы. Элегантный контроль.
+          </p>
+        </div>
 
-        {/* Title */}
-        <motion.h1 variants={fadeUp} className="text-2xl font-semibold font-display text-text-primary mb-1">
-          Flex Банк
-        </motion.h1>
-
-        <motion.p variants={fadeUp} className="text-sm text-text-secondary mb-12">
-          Финансы на орбите
-        </motion.p>
-
-        {/* Login button */}
         <motion.button
-          variants={fadeUp}
-          onClick={() => { window.location.href = `${API_BASE}/auth/yandex`; }}
-          className="w-full py-4 rounded-2xl bg-accent-blue text-white font-semibold text-base cursor-pointer
-                     shadow-[0_4px_24px_rgba(59,111,232,0.25)] hover:shadow-[0_6px_32px_rgba(59,111,232,0.35)]
-                     active:scale-[0.97] transition-all duration-200"
+          onClick={handleLogin}
+          className="btn-stellar px-8 py-3.5 md:px-12 md:py-4 text-base md:text-lg rounded-2xl tracking-wide"
+          style={{ fontFamily: 'var(--font-body)' }}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
         >
           Войти через Яндекс
         </motion.button>
 
-        <motion.p variants={fadeUp} className="text-xs text-text-tertiary mt-6">
-          Авторизация через Яндекс ID
-        </motion.p>
+        <p className="text-text-void text-sm mt-8 font-light"
+           style={{ fontFamily: 'var(--font-body)' }}>
+          Безопасная авторизация через Яндекс ID
+        </p>
       </motion.div>
-
-      {/* Glow behind button */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/4 w-[300px] h-[300px] rounded-full pointer-events-none z-0"
-           style={{ background: 'radial-gradient(circle, rgba(59,111,232,0.06) 0%, transparent 70%)' }} />
     </div>
   );
 }

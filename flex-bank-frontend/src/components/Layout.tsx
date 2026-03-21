@@ -5,10 +5,10 @@ import { useCursorGlow } from '../hooks/useCursorGlow';
 import CosmicBackground from './CosmicBackground';
 
 const navItems = [
-  { to: '/dashboard', label: 'Главная', icon: IconDashboard },
-  { to: '/transactions', label: 'Операции', icon: IconTransactions },
-  { to: '/analytics', label: 'Аналитика', icon: IconAnalytics },
-  { to: '/connect', label: 'Код', icon: IconConnect },
+  { to: '/dashboard', label: 'Главная', icon: NavIconDashboard },
+  { to: '/transactions', label: 'Операции', icon: NavIconTransactions },
+  { to: '/analytics', label: 'Аналитика', icon: NavIconAnalytics },
+  { to: '/connect', label: 'Код', icon: NavIconConnect },
 ];
 
 export default function Layout() {
@@ -20,61 +20,87 @@ export default function Layout() {
     <div className="min-h-svh">
       <CosmicBackground />
 
-      {/* Desktop Sidebar */}
-      <nav className="sidebar-nav fixed left-0 top-0 bottom-0 w-[72px] flex-col items-center py-6 z-50 border-r"
-           style={{ background: 'var(--color-surface-primary)', borderColor: 'var(--color-border-subtle)' }}>
-        <NavLink to="/dashboard" className="flex items-center justify-center mb-8">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm font-display"
-               style={{ background: 'rgba(212, 168, 83, 0.1)', color: 'var(--color-accent-gold)' }}>
-            F
+      {/* Desktop Navigation — hidden on mobile via CSS */}
+      <nav className="top-nav sticky top-0 z-50 border-b"
+           style={{
+             background: 'rgba(5, 5, 16, 0.75)',
+             backdropFilter: 'blur(24px) saturate(1.2)',
+             borderColor: 'rgba(79, 124, 255, 0.06)',
+           }}>
+        <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
+          <NavLink to="/dashboard" className="flex items-center gap-3 group">
+            <div className="relative">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm text-white"
+                   style={{ background: 'linear-gradient(135deg, #4F7CFF, #7B61FF)', fontFamily: 'var(--font-display)' }}>
+                F
+              </div>
+              <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                   style={{ boxShadow: '0 0 20px rgba(79, 124, 255, 0.4)' }} />
+            </div>
+            <span className="text-lg font-display font-bold gradient-text-cosmic tracking-tight"
+                  style={{ fontFamily: 'var(--font-display)' }}>
+              Flex Банк
+            </span>
+          </NavLink>
+
+          <div className="flex items-center gap-1">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2 ${
+                    isActive
+                      ? 'text-text-stellar'
+                      : 'text-text-void hover:text-text-nebula'
+                  }`
+                }
+                style={({ isActive }) =>
+                  isActive
+                    ? {
+                        background: 'rgba(79, 124, 255, 0.1)',
+                        boxShadow: 'inset 0 1px 0 rgba(79, 124, 255, 0.1)',
+                      }
+                    : {}
+                }
+              >
+                <item.icon />
+                <span style={{ fontFamily: 'var(--font-body)' }}>{item.label}</span>
+              </NavLink>
+            ))}
           </div>
-        </NavLink>
 
-        <div className="flex flex-col items-center gap-2 flex-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
-                  isActive ? 'text-accent-blue' : 'text-text-tertiary hover:text-text-secondary hover:bg-surface-interactive'
-                }`
-              }
-              style={({ isActive }) =>
-                isActive ? { background: 'rgba(59, 111, 232, 0.1)' } : {}
-              }
-              title={item.label}
-            >
-              <item.icon size={18} />
-            </NavLink>
-          ))}
+          <button
+            onClick={logout}
+            className="text-text-void hover:text-aurora-red transition-colors duration-300 text-sm cursor-pointer flex items-center gap-1.5"
+            style={{ fontFamily: 'var(--font-body)' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Выйти
+          </button>
         </div>
-
-        <button
-          onClick={logout}
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-text-tertiary hover:text-accent-red transition-colors duration-200 cursor-pointer"
-          title="Выйти"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-        </button>
       </nav>
 
-      {/* Mobile Header */}
+      {/* Mobile header — visible on mobile via CSS */}
       <div className="mobile-header items-center justify-between px-4 pt-3 pb-2 relative z-10">
         <NavLink to="/dashboard" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs font-display"
-               style={{ background: 'rgba(212, 168, 83, 0.1)', color: 'var(--color-accent-gold)' }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white"
+               style={{ background: 'linear-gradient(135deg, #4F7CFF, #7B61FF)', fontFamily: 'var(--font-display)' }}>
             F
           </div>
-          <span className="text-sm font-bold font-display gradient-text-gold">
+          <span className="text-sm font-bold gradient-text-cosmic"
+                style={{ fontFamily: 'var(--font-display)' }}>
             Flex Банк
           </span>
         </NavLink>
-        <button onClick={logout} className="p-2 rounded-lg cursor-pointer text-text-tertiary hover:text-accent-red transition-colors">
+        <button
+          onClick={logout}
+          className="p-2 rounded-lg cursor-pointer text-text-void"
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
             <polyline points="16 17 21 12 16 7" />
@@ -83,8 +109,8 @@ export default function Layout() {
         </button>
       </div>
 
-      {/* Content */}
-      <main className="main-content max-w-5xl mx-auto px-4 py-4 relative z-10 lg:px-8">
+      {/* Content — bottom padding for mobile nav via CSS */}
+      <main className="main-content max-w-[1200px] mx-auto px-4 py-4 relative z-10">
         <AnimatePresence mode="sync" initial={false}>
           <motion.div
             key={location.pathname}
@@ -97,13 +123,15 @@ export default function Layout() {
         </AnimatePresence>
       </main>
 
-      {/* Mobile Bottom Nav */}
+      {/* Mobile bottom nav — hidden on desktop via CSS */}
       <nav className="bottom-nav">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
+            className={({ isActive }) =>
+              `bottom-nav-item ${isActive ? 'active' : ''}`
+            }
           >
             <item.icon size={20} />
             <span>{item.label}</span>
@@ -115,9 +143,9 @@ export default function Layout() {
 }
 
 /* --- Nav Icons --- */
-function IconDashboard({ size = 18 }: { size?: number }) {
+function NavIconDashboard({ size = 15 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="9" rx="1" />
       <rect x="14" y="3" width="7" height="5" rx="1" />
       <rect x="14" y="12" width="7" height="9" rx="1" />
@@ -126,27 +154,28 @@ function IconDashboard({ size = 18 }: { size?: number }) {
   );
 }
 
-function IconTransactions({ size = 18 }: { size?: number }) {
+function NavIconTransactions({ size = 15 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="12" y1="1" x2="12" y2="23" />
       <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
     </svg>
   );
 }
 
-function IconAnalytics({ size = 18 }: { size?: number }) {
+function NavIconAnalytics({ size = 15 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21.21 15.89A10 10 0 118 2.83" />
-      <path d="M22 12A10 10 0 0012 2v10z" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
     </svg>
   );
 }
 
-function IconConnect({ size = 18 }: { size?: number }) {
+function NavIconConnect({ size = 15 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
       <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
     </svg>
