@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Put,
   Param,
@@ -11,6 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NotificationsService } from './notifications.service';
+import { NotificationType } from '@prisma/client';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
@@ -46,6 +48,17 @@ export class NotificationsController {
   async markAllAsRead(@Request() req: { user: { id: string } }) {
     await this.notificationsService.markAllAsRead(req.user.id);
     return { success: true };
+  }
+
+  @Post('test')
+  @ApiOperation({ summary: 'Create a test notification' })
+  async createTest(@Request() req: { user: { id: string } }) {
+    return this.notificationsService.create({
+      userId: req.user.id,
+      type: NotificationType.BILLING_REMINDER,
+      title: 'Тестовое уведомление',
+      message: 'Это тестовое уведомление для проверки системы',
+    });
   }
 
   @Get('settings')
