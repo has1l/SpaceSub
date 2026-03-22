@@ -53,25 +53,19 @@ export class EmailService {
   ): Promise<void> {
     if (!this.transporter) return;
 
-    try {
-      // Resolve hostname to IPv4 to avoid Railway IPv6 ETIMEDOUT
-      const ipv4 = await this.resolveIPv4(this.smtpHost);
-      if (ipv4 !== this.smtpHost) {
-        this.createTransporter(ipv4);
-      }
-
-      await this.transporter.sendMail({
-        from: this.from,
-        to,
-        subject: `SpaceSub: ${title}`,
-        html: this.buildTemplate(title, message),
-      });
-      this.logger.log(`Email sent to ${to}: ${title}`);
-    } catch (error) {
-      this.logger.error(
-        `Email failed to ${to}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+    // Resolve hostname to IPv4 to avoid Railway IPv6 ETIMEDOUT
+    const ipv4 = await this.resolveIPv4(this.smtpHost);
+    if (ipv4 !== this.smtpHost) {
+      this.createTransporter(ipv4);
     }
+
+    await this.transporter.sendMail({
+      from: this.from,
+      to,
+      subject: `SpaceSub: ${title}`,
+      html: this.buildTemplate(title, message),
+    });
+    this.logger.log(`Email sent to ${to}: ${title}`);
   }
 
   private resolveIPv4(hostname: string): Promise<string> {

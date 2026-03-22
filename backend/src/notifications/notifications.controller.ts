@@ -76,12 +76,19 @@ export class NotificationsController {
     });
 
     const emailEnabled = this.emailService.isEnabled();
+    let emailError: string | null = null;
+    let emailSent = false;
+
     if (user?.email && emailEnabled) {
-      // Fire and forget — don't block the response
-      this.emailService.sendNotificationEmail(user.email, title, message).catch(() => {});
+      try {
+        await this.emailService.sendNotificationEmail(user.email, title, message);
+        emailSent = true;
+      } catch (err) {
+        emailError = err instanceof Error ? err.message : String(err);
+      }
     }
 
-    return { ...notification, emailEnabled, userEmail: user?.email };
+    return { ...notification, emailEnabled, emailSent, emailError, userEmail: user?.email };
   }
 
   @Get('settings')
