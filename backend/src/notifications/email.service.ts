@@ -1,53 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
-import * as dns from 'dns';
+import axios from 'axios';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: nodemailer.Transporter | null = null;
-  private from: string = '';
-  private smtpHost: string = '';
-  private smtpPort: number = 465;
-  private smtpUser: string = '';
-  private smtpPass: string = '';
+  private readonly apiKey: string | undefined;
+  private readonly fromEmail: string;
 
   constructor(private config: ConfigService) {
-    const user = this.config.get<string>('SMTP_USER');
-    const pass = this.config.get<string>('SMTP_PASS');
+    this.apiKey = this.config.get<string>('RESEND_API_KEY');
+    this.fromEmail = this.config.get<string>(
+      'RESEND_FROM',
+      'SpaceSub <onboarding@resend.dev>',
+    );
 
-    if (user && pass) {
-      this.smtpHost = this.config.get<string>('SMTP_HOST', 'smtp.yandex.ru');
-      this.smtpPort = this.config.get<number>('SMTP_PORT', 465);
-      this.smtpUser = user;
-      this.smtpPass = pass;
-      this.from = this.config.get<string>('SMTP_FROM', `SpaceSub <${user}>`);
-      this.createTransporter(this.smtpHost);
-      this.logger.log(`Email service enabled, from: ${this.from}`);
+    if (this.apiKey) {
+      this.logger.log(`Email service enabled (Resend), from: ${this.fromEmail}`);
     } else {
-      this.logger.warn('Email service disabled — SMTP_USER/SMTP_PASS not set');
+      this.logger.warn('Email service disabled — RESEND_API_KEY not set');
     }
   }
 
-  private createTransporter(host: string): void {
-    const useSSL = this.smtpPort === 465;
-    this.transporter = nodemailer.createTransport({
-      host,
-      port: this.smtpPort,
-      secure: useSSL,
-      auth: { user: this.smtpUser, pass: this.smtpPass },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 15000,
-      tls: {
-        servername: this.smtpHost,
-      },
-    });
-  }
-
   isEnabled(): boolean {
-    return this.transporter !== null;
+    return !!this.apiKey;
   }
 
   async sendNotificationEmail(
@@ -55,33 +31,26 @@ export class EmailService {
     title: string,
     message: string,
   ): Promise<void> {
-    if (!this.transporter) return;
+    if (!this.apiKey) return;
 
-    // Resolve hostname to IPv4 to avoid Railway IPv6 ETIMEDOUT
-    const ipv4 = await this.resolveIPv4(this.smtpHost);
-    if (ipv4 !== this.smtpHost) {
-      this.createTransporter(ipv4);
-    }
+    const { data } = await axios.post(
+      'https://api.resend.com/emails',
+      {
+        from: this.fromEmail,
+        to: [to],
+        subject: `SpaceSub: ${title}`,
+        html: this.buildTemplate(title, message),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 15000,
+      },
+    );
 
-    await this.transporter.sendMail({
-      from: this.from,
-      to,
-      subject: `SpaceSub: ${title}`,
-      html: this.buildTemplate(title, message),
-    });
-    this.logger.log(`Email sent to ${to}: ${title}`);
-  }
-
-  private resolveIPv4(hostname: string): Promise<string> {
-    return new Promise((resolve) => {
-      dns.lookup(hostname, { family: 4 }, (err, address) => {
-        if (err || !address) {
-          resolve(hostname); // fallback to hostname
-        } else {
-          resolve(address);
-        }
-      });
-    });
+    this.logger.log(`Email sent to ${to}: ${title} (id: ${data?.id})`);
   }
 
   private buildTemplate(title: string, message: string): string {
