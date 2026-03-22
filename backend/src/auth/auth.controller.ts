@@ -80,6 +80,25 @@ export class AuthController {
       return res.redirect(`spacesub://auth/callback?token=${result.accessToken}`);
     }
 
+    if (stateResult.platform === 'android') {
+      // Chrome на Android не обрабатывает кастомные схемы через 302 redirect.
+      // Отдаём HTML-страницу с JS-редиректом через intent:// URI.
+      const token = result.accessToken;
+      const intentUri =
+        `intent://auth/callback?token=${token}` +
+        `#Intent;scheme=spacesub;package=dev.squad52.spacesub;end`;
+      return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>SpaceSub</title>
+        <style>body{background:#050510;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:16px}
+        a{color:#00D4AA;font-size:18px;text-decoration:none;padding:12px 24px;border:1px solid #00D4AA;border-radius:12px}</style>
+        </head><body>
+        <p>Перенаправление в SpaceSub...</p>
+        <a href="${intentUri}">Открыть SpaceSub</a>
+        <script>window.location.replace("${intentUri}");</script>
+        </body></html>`);
+    }
+
     const frontendUrl = this.configService.get('FRONTEND_URL') || 'http://localhost:5174';
     return res.redirect(`${frontendUrl}/auth/callback?token=${result.accessToken}`);
   }
