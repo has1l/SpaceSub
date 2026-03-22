@@ -38,6 +38,15 @@ function AnalyticsIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+function ForecastIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.5 1.5L10 11l-2.7-6L1 7.5" />
+      <path d="M14.5 1.5L7.3 8.5" opacity="0.5" />
+    </svg>
+  );
+}
+
 function ConnectIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
@@ -240,6 +249,7 @@ export function Layout() {
                 <NavLink to="/dashboard" icon={<DashboardIcon />}>Панель</NavLink>
                 <NavLink to="/subscriptions" icon={<SubscriptionsIcon />}>Подписки</NavLink>
                 <NavLink to="/analytics" icon={<AnalyticsIcon />}>Аналитика</NavLink>
+                <NavLink to="/forecast" icon={<ForecastIcon />}>Прогноз</NavLink>
                 <NavLink to="/connect-flex" icon={<ConnectIcon />}>Подключение</NavLink>
               </div>
             </div>
@@ -346,8 +356,8 @@ export function Layout() {
             <BottomNavItem to="/dashboard" label="Панель" icon={<DashboardIcon size={20} />} />
             <BottomNavItem to="/subscriptions" label="Подписки" icon={<SubscriptionsIcon size={20} />} />
             <BottomNavItem to="/analytics" label="Аналитика" icon={<AnalyticsIcon size={20} />} />
+            <BottomNavItem to="/forecast" label="Прогноз" icon={<ForecastIcon size={20} />} />
             <BottomNavItem to="/notifications" label="Сигналы" icon={<BellNavIcon size={20} />} badge={unreadCount} />
-            <BottomNavItem to="/connect-flex" label="Банк" icon={<ConnectIcon size={20} />} />
           </nav>
         )}
       </div>

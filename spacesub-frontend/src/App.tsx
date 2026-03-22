@@ -9,6 +9,7 @@ import { ConnectFlex } from "./pages/ConnectFlex";
 import { SubscriptionsPage } from "./pages/SubscriptionsPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
+import { ForecastPage } from "./pages/ForecastPage";
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
               <Route path="/subscriptions" element={<SubscriptionsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/forecast" element={<ForecastPage />} />
               <Route path="/connect-flex" element={<ConnectFlex />} />
             </Route>
           </Route>

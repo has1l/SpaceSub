@@ -16,7 +16,7 @@ interface AppNotification {
 
 /* ── Helpers ── */
 
-const TYPE_CONFIG: Record<string, { icon: JSX.Element; color: string }> = {
+const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string }> = {
   BILLING_REMINDER: {
     icon: <BellIcon />,
     color: 'var(--signal-primary)',
