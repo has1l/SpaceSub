@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.squad52.spacesub.models.*
 import dev.squad52.spacesub.networking.RetrofitClient
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,12 +44,19 @@ class AnalyticsViewModel(application: Application) : AndroidViewModel(applicatio
             _isLoading.value = true
             _error.value = null
             try {
-                _overview.value = api.getAnalyticsOverview()
-                _categories.value = api.getAnalyticsByCategory()
-                _services.value = api.getAnalyticsByService()
-                _periods.value = api.getAnalyticsByPeriod()
-                _scores.value = api.getAnalyticsScores()
-                _recommendations.value = api.getAnalyticsRecommendations()
+                val overviewD = async { runCatching { api.getAnalyticsOverview() }.getOrNull() }
+                val categoriesD = async { runCatching { api.getAnalyticsByCategory() }.getOrDefault(emptyList()) }
+                val servicesD = async { runCatching { api.getAnalyticsByService() }.getOrDefault(emptyList()) }
+                val periodsD = async { runCatching { api.getAnalyticsByPeriod() }.getOrDefault(emptyList()) }
+                val scoresD = async { runCatching { api.getAnalyticsScores() }.getOrDefault(emptyList()) }
+                val recosD = async { runCatching { api.getAnalyticsRecommendations() }.getOrDefault(emptyList()) }
+
+                _overview.value = overviewD.await()
+                _categories.value = categoriesD.await()
+                _services.value = servicesD.await()
+                _periods.value = periodsD.await()
+                _scores.value = scoresD.await()
+                _recommendations.value = recosD.await()
             } catch (e: Exception) {
                 _error.value = "Ошибка загрузки: ${e.message}"
             } finally {

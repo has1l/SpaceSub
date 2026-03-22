@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dev.squad52.spacesub.models.DetectedSubscription
 import dev.squad52.spacesub.models.SubscriptionSummary
 import dev.squad52.spacesub.networking.RetrofitClient
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,9 +36,13 @@ class SubscriptionsViewModel(application: Application) : AndroidViewModel(applic
             _isLoading.value = true
             _error.value = null
             try {
-                _summary.value = api.getDetectedSubscriptionsSummary()
-                _active.value = api.getDetectedSubscriptionsActive()
-                _upcoming.value = api.getDetectedSubscriptionsUpcoming()
+                val summaryD = async { runCatching { api.getDetectedSubscriptionsSummary() }.getOrNull() }
+                val activeD = async { runCatching { api.getDetectedSubscriptionsActive() }.getOrDefault(emptyList()) }
+                val upcomingD = async { runCatching { api.getDetectedSubscriptionsUpcoming() }.getOrDefault(emptyList()) }
+
+                _summary.value = summaryD.await()
+                _active.value = activeD.await()
+                _upcoming.value = upcomingD.await()
             } catch (e: Exception) {
                 _error.value = "Ошибка загрузки: ${e.message}"
             } finally {

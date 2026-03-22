@@ -55,8 +55,8 @@ data class DetectedSubscription(
 )
 
 data class SubscriptionSummary(
-    val activeCount: Int,
-    val monthlyTotal: Double,
-    val yearlyTotal: Double,
-    val upcomingNext7Days: List<DetectedSubscription>
+    val activeCount: Int = 0,
+    val monthlyTotal: Double = 0.0,
+    val yearlyTotal: Double = 0.0,
+    val upcomingNext7Days: List<DetectedSubscription> = emptyList()
 )

@@ -118,7 +118,7 @@ fun SubscriptionsScreen(viewModel: SubscriptionsViewModel) {
                             color = TextPrimary
                         )
                     }
-                    items(upcoming, key = { it.id }) { sub ->
+                    items(upcoming, key = { "upcoming_${it.id}" }) { sub ->
                         UpcomingSubCard(sub)
                     }
                 }
@@ -144,7 +144,7 @@ fun SubscriptionsScreen(viewModel: SubscriptionsViewModel) {
                             )
                         }
                     }
-                    items(active, key = { it.id }) { sub ->
+                    items(active, key = { "active_${it.id}" }) { sub ->
                         DetectedSubCard(sub)
                     }
                 }

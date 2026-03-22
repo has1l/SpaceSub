@@ -1,6 +1,7 @@
 package dev.squad52.spacesub.viewmodels
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import dev.squad52.spacesub.auth.TokenManager
@@ -27,8 +28,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun startLogin() {
-        YandexAuthHelper.startAuth(getApplication())
+    fun startLogin(activityContext: Context) {
+        YandexAuthHelper.startAuth(activityContext)
     }
 
     fun handleAuthCallback(uri: Uri): Boolean {

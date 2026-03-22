@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
                 if (isLoggedIn) {
                     MainNavigation(onLogout = { authViewModel.logout() })
                 } else {
-                    LoginScreen(onLogin = { authViewModel.startLogin() })
+                    LoginScreen(onLogin = { authViewModel.startLogin(this@MainActivity) })
                 }
             }
         }

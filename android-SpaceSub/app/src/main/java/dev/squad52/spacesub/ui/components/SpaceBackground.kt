@@ -15,17 +15,20 @@ import dev.squad52.spacesub.ui.theme.SpaceBlack
 import dev.squad52.spacesub.ui.theme.SpaceDarkBlue
 import kotlin.random.Random
 
+private data class Star(val x: Float, val y: Float, val radius: Float, val alpha: Float)
+
 @Composable
 fun SpaceBackground(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
     val stars = remember {
-        List(80) {
-            Triple(
-                Random.nextFloat(),
-                Random.nextFloat(),
-                Random.nextFloat() * 1.5f + 0.5f
+        List(40) {
+            Star(
+                x = Random.nextFloat(),
+                y = Random.nextFloat(),
+                radius = Random.nextFloat() * 1.2f + 0.4f,
+                alpha = Random.nextFloat() * 0.3f + 0.1f
             )
         }
     }
@@ -40,11 +43,11 @@ fun SpaceBackground(
             )
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            stars.forEach { (x, y, radius) ->
+            stars.forEach { star ->
                 drawCircle(
-                    color = Color.White.copy(alpha = Random.nextFloat() * 0.4f + 0.1f),
-                    radius = radius,
-                    center = Offset(x * size.width, y * size.height)
+                    color = Color.White.copy(alpha = star.alpha),
+                    radius = star.radius,
+                    center = Offset(star.x * size.width, star.y * size.height)
                 )
             }
         }
