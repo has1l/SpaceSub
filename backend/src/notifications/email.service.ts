@@ -31,14 +31,18 @@ export class EmailService {
   }
 
   private createTransporter(host: string): void {
+    const useSSL = this.smtpPort === 465;
     this.transporter = nodemailer.createTransport({
       host,
       port: this.smtpPort,
-      secure: true,
+      secure: useSSL,
       auth: { user: this.smtpUser, pass: this.smtpPass },
       connectionTimeout: 15000,
       greetingTimeout: 15000,
       socketTimeout: 15000,
+      tls: {
+        servername: this.smtpHost,
+      },
     });
   }
 
