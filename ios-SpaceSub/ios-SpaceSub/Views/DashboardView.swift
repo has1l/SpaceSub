@@ -5,16 +5,22 @@ struct DashboardView: View {
     var auth: AuthViewModel
     @Binding var selectedTab: AppTab
     @State private var vm = DashboardViewModel()
+    @State private var notifVM = NotificationsViewModel()
     @State private var showBankConnectedBanner = false
 
     var body: some View {
+        NavigationStack {
         ZStack {
             SpaceBackground()
 
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: SpaceMetrics.sectionSpacing) {
 
-                    DashboardHeaderView(onLogout: { auth.logout() })
+                    DashboardHeaderView(
+                        onLogout: { auth.logout() },
+                        auth: auth,
+                        unreadCount: notifVM.unreadCount
+                    )
 
                     if showBankConnectedBanner {
                         BankConnectedBanner(onDismiss: { showBankConnectedBanner = false })
@@ -51,8 +57,14 @@ struct DashboardView: View {
                 LoadingOverlayView(text: "Сканирование орбиты...")
             }
         }
-        .onAppear { vm.onUnauthorized = { auth.handleUnauthorized() } }
+        .onAppear {
+            vm.onUnauthorized = { auth.handleUnauthorized() }
+            notifVM.onUnauthorized = { auth.handleUnauthorized() }
+        }
         .task { await vm.loadDashboard() }
+        .task { await notifVM.loadUnreadCount() }
+        .toolbar(.hidden, for: .navigationBar)
+        }
     }
 }
 
@@ -60,6 +72,8 @@ struct DashboardView: View {
 
 private struct DashboardHeaderView: View {
     let onLogout: () -> Void
+    var auth: AuthViewModel
+    var unreadCount: Int
 
     var body: some View {
         HStack {
@@ -85,6 +99,28 @@ private struct DashboardHeaderView: View {
             }
 
             Spacer()
+
+            NavigationLink(destination: NotificationsView(auth: auth)) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "bell.fill")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(unreadCount > 0 ? Color.signalPrimary : Color.textMuted)
+                        .padding(10)
+                        .background(Color.signalPrimary.opacity(0.06))
+                        .clipShape(Circle())
+
+                    if unreadCount > 0 {
+                        Text("\(unreadCount)")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.signalDanger)
+                            .clipShape(Capsule())
+                            .offset(x: 4, y: -2)
+                    }
+                }
+            }
 
             Button(action: onLogout) {
                 Image(systemName: "rectangle.portrait.and.arrow.right")

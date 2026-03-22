@@ -5,6 +5,7 @@ enum HTTPMethod: String, Sendable {
     case post = "POST"
     case put = "PUT"
     case delete = "DELETE"
+    case patch = "PATCH"
 }
 
 struct APIEndpoint: Sendable {
@@ -137,6 +138,34 @@ extension APIEndpoint {
 
     static func detectedSubscriptionsSummary() -> APIEndpoint {
         APIEndpoint(path: "/detected-subscriptions/summary")
+    }
+}
+
+// MARK: - Notification Endpoints
+
+extension APIEndpoint {
+    static func notifications() -> APIEndpoint {
+        APIEndpoint(path: "/notifications")
+    }
+
+    static func unreadCount() -> APIEndpoint {
+        APIEndpoint(path: "/notifications/unread-count")
+    }
+
+    static func markRead(id: String) -> APIEndpoint {
+        APIEndpoint(path: "/notifications/\(id)/read", method: .patch)
+    }
+
+    static func markAllRead() -> APIEndpoint {
+        APIEndpoint(path: "/notifications/read-all", method: .patch)
+    }
+
+    static func notificationSettings() -> APIEndpoint {
+        APIEndpoint(path: "/notifications/settings")
+    }
+
+    static func updateNotificationSettings(_ body: AppNotificationSettings) -> APIEndpoint {
+        APIEndpoint(path: "/notifications/settings", method: .put, body: body)
     }
 }
 

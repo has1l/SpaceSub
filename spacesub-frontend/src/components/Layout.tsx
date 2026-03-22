@@ -1,8 +1,10 @@
+import { useEffect, useState, useCallback } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { Starfield } from './Starfield';
 import { SatelliteIcon } from './SatelliteIcon';
+import api from '../services/api';
 
 /* ── Icons ── */
 
@@ -41,6 +43,15 @@ function ConnectIcon({ size = 16 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
       <path d="M6.67 8.67a3.33 3.33 0 005.03.36l2-2a3.33 3.33 0 00-4.71-4.71L8.14 3.17" />
       <path d="M9.33 7.33a3.33 3.33 0 00-5.03-.36l-2 2a3.33 3.33 0 004.71 4.71l.84-.84" />
+    </svg>
+  );
+}
+
+function BellNavIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 5.33A4 4 0 0 0 4 5.33c0 4.67-2 6-2 6h12s-2-1.33-2-6" />
+      <path d="M9.15 14a1.33 1.33 0 0 1-2.3 0" />
     </svg>
   );
 }
@@ -88,14 +99,84 @@ function NavLink({ to, children, icon }: { to: string; children: React.ReactNode
 
 /* ── Bottom Nav Item (mobile) ── */
 
-function BottomNavItem({ to, label, icon }: { to: string; label: string; icon: React.ReactNode }) {
+function BottomNavItem({ to, label, icon, badge }: { to: string; label: string; icon: React.ReactNode; badge?: number }) {
   const { pathname } = useLocation();
   const active = pathname === to;
 
   return (
-    <Link to={to} className={`bottom-nav-item ${active ? 'active' : ''}`}>
-      {icon}
+    <Link to={to} className={`bottom-nav-item ${active ? 'active' : ''}`} style={{ position: 'relative' }}>
+      <span style={{ position: 'relative' }}>
+        {icon}
+        {badge !== undefined && badge > 0 && (
+          <span
+            style={{
+              position: 'absolute',
+              top: -4,
+              right: -6,
+              minWidth: 14,
+              height: 14,
+              borderRadius: 999,
+              background: 'var(--signal-danger)',
+              color: '#fff',
+              fontSize: 8,
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 3px',
+              lineHeight: 1,
+            }}
+          >
+            {badge}
+          </span>
+        )}
+      </span>
       <span>{label}</span>
+    </Link>
+  );
+}
+
+/* ── Notification Bell (desktop) ── */
+
+function NotificationBell({ count }: { count: number }) {
+  const { pathname } = useLocation();
+  const active = pathname === '/notifications';
+
+  return (
+    <Link
+      to="/notifications"
+      className="relative flex items-center justify-center rounded-lg transition-all duration-300"
+      style={{
+        width: 34,
+        height: 34,
+        color: active ? 'var(--signal-primary)' : count > 0 ? 'var(--signal-primary)' : 'rgba(200,214,229,0.35)',
+        background: active ? 'rgba(0,212,170,0.06)' : 'transparent',
+      }}
+    >
+      <BellNavIcon size={16} />
+      {count > 0 && (
+        <span
+          style={{
+            position: 'absolute',
+            top: 3,
+            right: 3,
+            minWidth: 16,
+            height: 16,
+            borderRadius: 999,
+            background: 'var(--signal-danger)',
+            color: '#fff',
+            fontSize: 9,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0 4px',
+            lineHeight: 1,
+          }}
+        >
+          {count}
+        </span>
+      )}
     </Link>
   );
 }
@@ -105,6 +186,30 @@ function BottomNavItem({ to, label, icon }: { to: string; label: string; icon: R
 export function Layout() {
   const { token, logout } = useAuth();
   const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!token) return;
+    try {
+      const { data } = await api.get<{ count: number }>('/notifications/unread-count');
+      setUnreadCount(data.count);
+    } catch {
+      // silent
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 60000);
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
+  // Refresh count when navigating away from notifications page
+  useEffect(() => {
+    if (location.pathname !== '/notifications') {
+      fetchUnreadCount();
+    }
+  }, [location.pathname, fetchUnreadCount]);
 
   return (
     <>
@@ -139,26 +244,29 @@ export function Layout() {
               </div>
             </div>
 
-            <button
-              onClick={logout}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-300 cursor-pointer flex items-center gap-1.5"
-              style={{
-                fontFamily: 'var(--font-mono)',
-                color: 'rgba(200,214,229,0.35)',
-                border: '1px solid rgba(200,214,229,0.06)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'rgba(239,68,68,0.7)';
-                e.currentTarget.style.borderColor = 'rgba(239,68,68,0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'rgba(200,214,229,0.35)';
-                e.currentTarget.style.borderColor = 'rgba(200,214,229,0.06)';
-              }}
-            >
-              <LogoutIcon />
-              Выйти
-            </button>
+            <div className="flex items-center gap-2">
+              <NotificationBell count={unreadCount} />
+              <button
+                onClick={logout}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-300 cursor-pointer flex items-center gap-1.5"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  color: 'rgba(200,214,229,0.35)',
+                  border: '1px solid rgba(200,214,229,0.06)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'rgba(239,68,68,0.7)';
+                  e.currentTarget.style.borderColor = 'rgba(239,68,68,0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'rgba(200,214,229,0.35)';
+                  e.currentTarget.style.borderColor = 'rgba(200,214,229,0.06)';
+                }}
+              >
+                <LogoutIcon />
+                Выйти
+              </button>
+            </div>
           </motion.nav>
         )}
 
@@ -174,13 +282,47 @@ export function Layout() {
                 SpaceSub
               </span>
             </Link>
-            <button
-              onClick={logout}
-              className="p-2 rounded-lg cursor-pointer"
-              style={{ color: 'rgba(200,214,229,0.35)' }}
-            >
-              <LogoutIcon />
-            </button>
+            <div className="flex items-center gap-1">
+              <Link
+                to="/notifications"
+                className="p-2 rounded-lg"
+                style={{
+                  position: 'relative',
+                  color: unreadCount > 0 ? 'var(--signal-primary)' : 'rgba(200,214,229,0.35)',
+                }}
+              >
+                <BellNavIcon size={16} />
+                {unreadCount > 0 && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      minWidth: 14,
+                      height: 14,
+                      borderRadius: 999,
+                      background: 'var(--signal-danger)',
+                      color: '#fff',
+                      fontSize: 8,
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0 3px',
+                    }}
+                  >
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
+              <button
+                onClick={logout}
+                className="p-2 rounded-lg cursor-pointer"
+                style={{ color: 'rgba(200,214,229,0.35)' }}
+              >
+                <LogoutIcon />
+              </button>
+            </div>
           </div>
         )}
 
@@ -204,6 +346,7 @@ export function Layout() {
             <BottomNavItem to="/dashboard" label="Панель" icon={<DashboardIcon size={20} />} />
             <BottomNavItem to="/subscriptions" label="Подписки" icon={<SubscriptionsIcon size={20} />} />
             <BottomNavItem to="/analytics" label="Аналитика" icon={<AnalyticsIcon size={20} />} />
+            <BottomNavItem to="/notifications" label="Сигналы" icon={<BellNavIcon size={20} />} badge={unreadCount} />
             <BottomNavItem to="/connect-flex" label="Банк" icon={<ConnectIcon size={20} />} />
           </nav>
         )}
