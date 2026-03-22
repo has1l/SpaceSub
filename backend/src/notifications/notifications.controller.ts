@@ -12,6 +12,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NotificationsService } from './notifications.service';
+import { EmailService } from './email.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
 
 @ApiTags('Notifications')
@@ -19,7 +21,11 @@ import { NotificationType } from '@prisma/client';
 @UseGuards(JwtAuthGuard)
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private notificationsService: NotificationsService) {}
+  constructor(
+    private notificationsService: NotificationsService,
+    private emailService: EmailService,
+    private prisma: PrismaService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Get all notifications' })
@@ -51,14 +57,31 @@ export class NotificationsController {
   }
 
   @Post('test')
-  @ApiOperation({ summary: 'Create a test notification' })
+  @ApiOperation({ summary: 'Create a test notification and send email' })
   async createTest(@Request() req: { user: { id: string } }) {
-    return this.notificationsService.create({
+    const title = 'Тестовое уведомление';
+    const message = 'Это тестовое уведомление для проверки системы';
+
+    const notification = await this.notificationsService.create({
       userId: req.user.id,
       type: NotificationType.BILLING_REMINDER,
-      title: 'Тестовое уведомление',
-      message: 'Это тестовое уведомление для проверки системы',
+      title,
+      message,
     });
+
+    // Send email
+    const user = await this.prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { email: true },
+    });
+
+    let emailSent = false;
+    if (user?.email && this.emailService.isEnabled()) {
+      await this.emailService.sendNotificationEmail(user.email, title, message);
+      emailSent = true;
+    }
+
+    return { ...notification, emailSent, emailEnabled: this.emailService.isEnabled() };
   }
 
   @Get('settings')
