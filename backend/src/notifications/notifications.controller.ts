@@ -75,13 +75,13 @@ export class NotificationsController {
       select: { email: true },
     });
 
-    let emailSent = false;
-    if (user?.email && this.emailService.isEnabled()) {
-      await this.emailService.sendNotificationEmail(user.email, title, message);
-      emailSent = true;
+    const emailEnabled = this.emailService.isEnabled();
+    if (user?.email && emailEnabled) {
+      // Fire and forget — don't block the response
+      this.emailService.sendNotificationEmail(user.email, title, message).catch(() => {});
     }
 
-    return { ...notification, emailSent, emailEnabled: this.emailService.isEnabled() };
+    return { ...notification, emailEnabled, userEmail: user?.email };
   }
 
   @Get('settings')

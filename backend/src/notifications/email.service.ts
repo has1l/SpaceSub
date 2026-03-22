@@ -1,29 +1,45 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import * as dns from 'dns';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter: nodemailer.Transporter | null = null;
   private from: string = '';
+  private smtpHost: string = '';
+  private smtpPort: number = 465;
+  private smtpUser: string = '';
+  private smtpPass: string = '';
 
   constructor(private config: ConfigService) {
     const user = this.config.get<string>('SMTP_USER');
     const pass = this.config.get<string>('SMTP_PASS');
 
     if (user && pass) {
-      this.transporter = nodemailer.createTransport({
-        host: this.config.get<string>('SMTP_HOST', 'smtp.yandex.ru'),
-        port: this.config.get<number>('SMTP_PORT', 465),
-        secure: true,
-        auth: { user, pass },
-      });
+      this.smtpHost = this.config.get<string>('SMTP_HOST', 'smtp.yandex.ru');
+      this.smtpPort = this.config.get<number>('SMTP_PORT', 465);
+      this.smtpUser = user;
+      this.smtpPass = pass;
       this.from = this.config.get<string>('SMTP_FROM', `SpaceSub <${user}>`);
+      this.createTransporter(this.smtpHost);
       this.logger.log(`Email service enabled, from: ${this.from}`);
     } else {
       this.logger.warn('Email service disabled — SMTP_USER/SMTP_PASS not set');
     }
+  }
+
+  private createTransporter(host: string): void {
+    this.transporter = nodemailer.createTransport({
+      host,
+      port: this.smtpPort,
+      secure: true,
+      auth: { user: this.smtpUser, pass: this.smtpPass },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 15000,
+    });
   }
 
   isEnabled(): boolean {
@@ -38,6 +54,12 @@ export class EmailService {
     if (!this.transporter) return;
 
     try {
+      // Resolve hostname to IPv4 to avoid Railway IPv6 ETIMEDOUT
+      const ipv4 = await this.resolveIPv4(this.smtpHost);
+      if (ipv4 !== this.smtpHost) {
+        this.createTransporter(ipv4);
+      }
+
       await this.transporter.sendMail({
         from: this.from,
         to,
@@ -50,6 +72,18 @@ export class EmailService {
         `Email failed to ${to}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
+  }
+
+  private resolveIPv4(hostname: string): Promise<string> {
+    return new Promise((resolve) => {
+      dns.lookup(hostname, { family: 4 }, (err, address) => {
+        if (err || !address) {
+          resolve(hostname); // fallback to hostname
+        } else {
+          resolve(address);
+        }
+      });
+    });
   }
 
   private buildTemplate(title: string, message: string): string {
