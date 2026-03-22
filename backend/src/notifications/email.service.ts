@@ -8,11 +8,13 @@ export class EmailService {
   private readonly serviceId: string;
   private readonly templateId: string;
   private readonly publicKey: string;
+  private readonly privateKey: string;
 
   constructor(private config: ConfigService) {
     this.serviceId = this.config.get<string>('EMAILJS_SERVICE_ID', '');
     this.templateId = this.config.get<string>('EMAILJS_TEMPLATE_ID', '');
     this.publicKey = this.config.get<string>('EMAILJS_PUBLIC_KEY', '');
+    this.privateKey = this.config.get<string>('EMAILJS_PRIVATE_KEY', '');
 
     if (this.isEnabled()) {
       this.logger.log('Email service enabled (EmailJS)');
@@ -38,6 +40,7 @@ export class EmailService {
         service_id: this.serviceId,
         template_id: this.templateId,
         user_id: this.publicKey,
+        accessToken: this.privateKey,
         template_params: {
           to_email: to,
           title,

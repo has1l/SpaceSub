@@ -37,6 +37,7 @@ import { HealthController } from './health.controller';
         EMAILJS_SERVICE_ID: Joi.string().optional().allow(''),
         EMAILJS_TEMPLATE_ID: Joi.string().optional().allow(''),
         EMAILJS_PUBLIC_KEY: Joi.string().optional().allow(''),
+        EMAILJS_PRIVATE_KEY: Joi.string().optional().allow(''),
         PORT: Joi.number().default(3000),
       }),
     }),
