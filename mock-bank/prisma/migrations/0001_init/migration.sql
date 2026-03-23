@@ -69,8 +69,31 @@ CREATE INDEX "transactions_account_id_date_idx" ON "mockbank"."transactions"("ac
 -- CreateIndex
 CREATE UNIQUE INDEX "connection_codes_code_hash_key" ON "mockbank"."connection_codes"("code_hash");
 
+-- CreateEnum
+CREATE TYPE "mockbank"."RecurringPaymentStatus" AS ENUM ('ACTIVE', 'CANCELLED');
+
+-- CreateTable
+CREATE TABLE "mockbank"."recurring_payments" (
+    "id" TEXT NOT NULL,
+    "account_id" TEXT NOT NULL,
+    "merchant" TEXT NOT NULL,
+    "amount" DOUBLE PRECISION NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'RUB',
+    "category" "mockbank"."TransactionCategory" NOT NULL DEFAULT 'SUBSCRIPTIONS',
+    "period_days" INTEGER NOT NULL DEFAULT 30,
+    "next_charge_date" TIMESTAMP(3) NOT NULL,
+    "status" "mockbank"."RecurringPaymentStatus" NOT NULL DEFAULT 'ACTIVE',
+    "cancelled_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "recurring_payments_pkey" PRIMARY KEY ("id")
+);
+
 -- AddForeignKey
 ALTER TABLE "mockbank"."accounts" ADD CONSTRAINT "accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "mockbank"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "mockbank"."transactions" ADD CONSTRAINT "transactions_account_id_fkey" FOREIGN KEY ("account_id") REFERENCES "mockbank"."accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "mockbank"."recurring_payments" ADD CONSTRAINT "recurring_payments_account_id_fkey" FOREIGN KEY ("account_id") REFERENCES "mockbank"."accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;

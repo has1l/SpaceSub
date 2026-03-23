@@ -169,18 +169,18 @@ function SummaryBlock({ summary }: { summary: SubscriptionSummary }) {
 /* ── Subscription Card (Detected) ── */
 
 function SubscriptionCard({ sub, index, onDelete }: { sub: DetectedSubscription; index: number; onDelete: (id: string) => void }) {
-  const [deleting, setDeleting] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
-  const handleDelete = async () => {
-    if (!confirmDelete) { setConfirmDelete(true); return; }
-    setDeleting(true);
+  const handleCancel = async () => {
+    if (!confirmCancel) { setConfirmCancel(true); return; }
+    setCancelling(true);
     try {
-      await subscriptionsApi.remove(sub.id);
+      await subscriptionsApi.cancel(sub.id);
       onDelete(sub.id);
     } catch {
-      setDeleting(false);
-      setConfirmDelete(false);
+      setCancelling(false);
+      setConfirmCancel(false);
     }
   };
 
@@ -285,31 +285,33 @@ function SubscriptionCard({ sub, index, onDelete }: { sub: DetectedSubscription;
         ))}
       </div>
 
-      {/* Delete */}
-      <div className="pt-3 mt-3" style={{ borderTop: '1px solid rgba(0,212,170,0.05)' }}>
-        <motion.button
-          onClick={handleDelete}
-          onBlur={() => setConfirmDelete(false)}
-          disabled={deleting}
-          whileTap={{ scale: 0.97 }}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300"
-          style={{
-            fontFamily: 'var(--font-mono)',
-            letterSpacing: '0.02em',
-            color: confirmDelete ? '#fff' : 'rgba(239,68,68,0.6)',
-            background: confirmDelete
-              ? 'linear-gradient(135deg, rgba(239,68,68,0.75), rgba(239,68,68,0.55))'
-              : 'rgba(239,68,68,0.04)',
-            border: `1px solid rgba(239,68,68,${confirmDelete ? '0.35' : '0.08'})`,
-            boxShadow: confirmDelete ? '0 0 20px rgba(239,68,68,0.15)' : 'none',
-            cursor: deleting ? 'wait' : 'pointer',
-            opacity: deleting ? 0.5 : 1,
-          }}
-        >
-          <TrashIcon />
-          {deleting ? 'Удаление...' : confirmDelete ? 'Подтвердить удаление' : 'Удалить'}
-        </motion.button>
-      </div>
+      {/* Cancel subscription */}
+      {sub.isActive && (
+        <div className="pt-3 mt-3" style={{ borderTop: '1px solid rgba(0,212,170,0.05)' }}>
+          <motion.button
+            onClick={handleCancel}
+            onBlur={() => setConfirmCancel(false)}
+            disabled={cancelling}
+            whileTap={{ scale: 0.97 }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.02em',
+              color: confirmCancel ? '#fff' : 'rgba(239,68,68,0.6)',
+              background: confirmCancel
+                ? 'linear-gradient(135deg, rgba(239,68,68,0.75), rgba(239,68,68,0.55))'
+                : 'rgba(239,68,68,0.04)',
+              border: `1px solid rgba(239,68,68,${confirmCancel ? '0.35' : '0.08'})`,
+              boxShadow: confirmCancel ? '0 0 20px rgba(239,68,68,0.15)' : 'none',
+              cursor: cancelling ? 'wait' : 'pointer',
+              opacity: cancelling ? 0.5 : 1,
+            }}
+          >
+            <TrashIcon />
+            {cancelling ? 'Отмена...' : confirmCancel ? 'Подтвердить отмену' : 'Отменить подписку'}
+          </motion.button>
+        </div>
+      )}
     </motion.div>
   );
 }

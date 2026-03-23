@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { BankIntegrationService } from '../bank-integration/bank-integration.service';
 import type { DetectedSubscription } from '@prisma/client';
 import type {
   SubscriptionResponseDto,
@@ -8,7 +9,10 @@ import type {
 
 @Injectable()
 export class DetectedSubscriptionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private bankIntegration: BankIntegrationService,
+  ) {}
 
   async findAll(userId: string): Promise<SubscriptionResponseDto[]> {
     const subs = await this.prisma.detectedSubscription.findMany({
@@ -89,6 +93,32 @@ export class DetectedSubscriptionsService {
       yearlyTotal: Math.round(yearlyTotal * 100) / 100,
       upcomingNext7Days: upcoming,
     };
+  }
+
+  async cancelSubscription(
+    userId: string,
+    id: string,
+  ): Promise<{ cancelled: boolean; bankPaymentId: string | null }> {
+    const sub = await this.prisma.detectedSubscription.findFirst({
+      where: { id, userId },
+    });
+    if (!sub) throw new NotFoundException('Subscription not found');
+
+    // Try to cancel in bank
+    const bankPaymentId =
+      await this.bankIntegration.cancelBankRecurringPayment(
+        userId,
+        sub.merchant,
+        sub.amount.toNumber(),
+      );
+
+    // Mark as inactive regardless
+    await this.prisma.detectedSubscription.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    return { cancelled: true, bankPaymentId };
   }
 
   async remove(userId: string, id: string): Promise<void> {

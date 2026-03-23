@@ -25,7 +25,11 @@ struct SubscriptionsView: View {
                     if vm.active.isEmpty && !vm.isLoading {
                         SubsEmptyState()
                     } else if !vm.active.isEmpty {
-                        SubsActiveSection(active: vm.active)
+                        SubsActiveSection(
+                            active: vm.active,
+                            cancellingId: vm.cancellingId,
+                            onCancel: { id in vm.requestCancel(id: id) }
+                        )
                     }
 
                     if let error = vm.error {
@@ -52,6 +56,19 @@ struct SubscriptionsView: View {
         }
         .onAppear { vm.onUnauthorized = { auth.handleUnauthorized() } }
         .task { await vm.load() }
+        .alert("Отменить подписку?", isPresented: Binding(
+            get: { vm.showCancelConfirm },
+            set: { if !$0 { vm.dismissCancel() } }
+        )) {
+            Button("Отменить подписку", role: .destructive) {
+                Task { await vm.confirmCancel() }
+            }
+            Button("Назад", role: .cancel) {
+                vm.dismissCancel()
+            }
+        } message: {
+            Text("Автоплатёж в банке будет отменён. Новых списаний не будет.")
+        }
     }
 }
 
@@ -156,6 +173,8 @@ private struct UpcomingSubCard: View {
 
 private struct SubsActiveSection: View {
     let active: [DetectedSubscription]
+    var cancellingId: String?
+    var onCancel: (String) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -166,7 +185,11 @@ private struct SubsActiveSection: View {
             }
 
             ForEach(active) { sub in
-                DetectedSubscriptionCard(sub: sub)
+                DetectedSubscriptionCard(
+                    sub: sub,
+                    isCancelling: cancellingId == sub.id,
+                    onCancel: { onCancel(sub.id) }
+                )
             }
         }
     }
@@ -174,6 +197,8 @@ private struct SubsActiveSection: View {
 
 private struct DetectedSubscriptionCard: View {
     let sub: DetectedSubscription
+    var isCancelling: Bool = false
+    var onCancel: () -> Void = {}
 
     private var days: Int {
         guard let date = DateFormatting.parseISO(sub.nextExpectedCharge) else { return -1 }
@@ -248,6 +273,33 @@ private struct DetectedSubscriptionCard: View {
                         value: "\(Int(sub.confidence * 100))%",
                         warn: lowConfidence
                     )
+                }
+
+                if sub.isActive {
+                    Divider()
+                        .overlay(Color.signalPrimary.opacity(0.05))
+
+                    Button(action: onCancel) {
+                        HStack(spacing: 6) {
+                            if isCancelling {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .tint(Color.signalDanger)
+                            }
+                            Text(isCancelling ? "Отмена..." : "Отменить подписку")
+                                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.signalDanger.opacity(0.06))
+                        .foregroundStyle(Color.signalDanger.opacity(0.7))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.signalDanger.opacity(0.1), lineWidth: 1)
+                        )
+                    }
+                    .disabled(isCancelling)
                 }
             }
         }

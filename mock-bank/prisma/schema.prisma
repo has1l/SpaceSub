@@ -51,8 +51,9 @@ model Account {
   initialBalance Float    @default(0) @map("initial_balance")
   createdAt      DateTime @default(now()) @map("created_at")
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions      Transaction[]
+  recurringPayments RecurringPayment[]
 
   @@map("accounts")
   @@schema("mockbank")
@@ -74,6 +75,32 @@ model Transaction {
 
   @@index([accountId, date])
   @@map("transactions")
+  @@schema("mockbank")
+}
+
+enum RecurringPaymentStatus {
+  ACTIVE
+  CANCELLED
+
+  @@schema("mockbank")
+}
+
+model RecurringPayment {
+  id             String                 @id @default(uuid())
+  accountId      String                 @map("account_id")
+  merchant       String
+  amount         Float
+  currency       String                 @default("RUB")
+  category       TransactionCategory    @default(SUBSCRIPTIONS)
+  periodDays     Int                    @default(30) @map("period_days")
+  nextChargeDate DateTime               @map("next_charge_date")
+  status         RecurringPaymentStatus @default(ACTIVE)
+  cancelledAt    DateTime?              @map("cancelled_at")
+  createdAt      DateTime               @default(now()) @map("created_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("recurring_payments")
   @@schema("mockbank")
 }
 

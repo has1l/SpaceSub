@@ -1,5 +1,6 @@
 package dev.squad52.spacesub.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,12 +17,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +38,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.squad52.spacesub.models.DetectedSubscription
@@ -49,8 +59,51 @@ fun SubscriptionsScreen(viewModel: SubscriptionsViewModel) {
     val upcoming by viewModel.upcoming.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val cancellingId by viewModel.cancellingId.collectAsState()
+
+    var confirmCancelId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) { viewModel.load() }
+
+    // Cancel confirmation dialog
+    if (confirmCancelId != null) {
+        AlertDialog(
+            onDismissRequest = { confirmCancelId = null },
+            title = {
+                Text(
+                    "Отменить подписку?",
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    "Автоплатёж в банке будет отменён. Новых списаний не будет.",
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val id = confirmCancelId
+                        confirmCancelId = null
+                        if (id != null) viewModel.cancelSubscription(id)
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = SignalDanger)
+                ) {
+                    Text("Отменить подписку", fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmCancelId = null }) {
+                    Text("Назад", color = TextMuted)
+                }
+            },
+            containerColor = SpaceCardBg,
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary
+        )
+    }
 
     SpaceBackground {
         if (isLoading && summary == null) {
@@ -145,7 +198,11 @@ fun SubscriptionsScreen(viewModel: SubscriptionsViewModel) {
                         }
                     }
                     items(active, key = { "active_${it.id}" }) { sub ->
-                        DetectedSubCard(sub)
+                        DetectedSubCard(
+                            sub = sub,
+                            isCancelling = cancellingId == sub.id,
+                            onCancel = { confirmCancelId = sub.id }
+                        )
                     }
                 }
 
@@ -209,7 +266,11 @@ private fun UpcomingSubCard(sub: DetectedSubscription) {
 }
 
 @Composable
-private fun DetectedSubCard(sub: DetectedSubscription) {
+private fun DetectedSubCard(
+    sub: DetectedSubscription,
+    isCancelling: Boolean = false,
+    onCancel: () -> Unit = {}
+) {
     val days = daysUntil(sub.nextExpectedCharge)
     val isUpcoming = days in 0..7
     val lowConfidence = sub.confidence < 0.65
@@ -268,6 +329,37 @@ private fun DetectedSubCard(sub: DetectedSubscription) {
             )
             SubMetaRow("Транзакций", "${sub.transactionCount}")
             SubMetaRow("Сила сигнала", "${(sub.confidence * 100).toInt()}%", warn = lowConfidence)
+
+            // Cancel button
+            if (sub.isActive) {
+                HorizontalDivider(color = SignalPrimary.copy(alpha = 0.05f))
+                OutlinedButton(
+                    onClick = onCancel,
+                    enabled = !isCancelling,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, SignalDanger.copy(alpha = 0.15f)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = SignalDanger.copy(alpha = 0.06f),
+                        contentColor = SignalDanger.copy(alpha = 0.7f)
+                    )
+                ) {
+                    if (isCancelling) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            strokeWidth = 2.dp,
+                            color = SignalDanger
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(
+                        text = if (isCancelling) "Отмена..." else "Отменить подписку",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         }
     }
 }

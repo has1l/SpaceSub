@@ -60,3 +60,8 @@ data class SubscriptionSummary(
     val yearlyTotal: Double = 0.0,
     val upcomingNext7Days: List<DetectedSubscription> = emptyList()
 )
+
+data class CancelSubscriptionResponse(
+    val cancelled: Boolean,
+    val bankPaymentId: String?
+)

@@ -2,9 +2,21 @@ import { PrismaClient, TransactionType, TransactionCategory } from '@prisma/clie
 
 const prisma = new PrismaClient();
 
+function daysAgo(n: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  d.setHours(12, 0, 0, 0);
+  return d;
+}
+
+function daysFromNow(n: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  d.setHours(12, 0, 0, 0);
+  return d;
+}
+
 async function main() {
-  // Demo user — will be linked to a real Yandex account on first OAuth login.
-  // This seed creates predictable data for integration testing.
   const user = await prisma.user.upsert({
     where: { yandexId: 'demo-seed-user' },
     update: {},
@@ -17,7 +29,6 @@ async function main() {
 
   console.log(`Seeded user: ${user.id} (${user.email})`);
 
-  // Main checking account
   const checking = await prisma.account.upsert({
     where: { id: 'seed-checking-001' },
     update: {},
@@ -30,7 +41,6 @@ async function main() {
     },
   });
 
-  // Savings account
   const savings = await prisma.account.upsert({
     where: { id: 'seed-savings-001' },
     update: {},
@@ -45,33 +55,80 @@ async function main() {
 
   console.log(`Seeded accounts: ${checking.name}, ${savings.name}`);
 
-  // Demo transactions for the checking account
-  const now = new Date();
-  const transactions = [
-    { days: -1, amount: -199, desc: 'Яндекс Плюс', merchant: 'Yandex', type: TransactionType.EXPENSE, cat: TransactionCategory.SUBSCRIPTIONS },
-    { days: -2, amount: -549, desc: 'Spotify Premium', merchant: 'Spotify', type: TransactionType.EXPENSE, cat: TransactionCategory.SUBSCRIPTIONS },
-    { days: -3, amount: -4500, desc: 'Пятёрочка', merchant: 'Pyaterochka', type: TransactionType.EXPENSE, cat: TransactionCategory.SUPERMARKETS },
-    { days: -4, amount: -299, desc: 'iCloud+ 50GB', merchant: 'Apple', type: TransactionType.EXPENSE, cat: TransactionCategory.DIGITAL_SERVICES },
-    { days: -5, amount: 85000, desc: 'Зарплата', merchant: null, type: TransactionType.INCOME, cat: TransactionCategory.OTHER },
-    { days: -7, amount: -1200, desc: 'Uber поездка', merchant: 'Uber', type: TransactionType.EXPENSE, cat: TransactionCategory.TRANSPORT },
-    { days: -8, amount: -3200, desc: 'Ресторан "Место"', merchant: 'Mesto', type: TransactionType.EXPENSE, cat: TransactionCategory.RESTAURANTS },
-    { days: -10, amount: -890, desc: 'Netflix', merchant: 'Netflix', type: TransactionType.EXPENSE, cat: TransactionCategory.SUBSCRIPTIONS },
-    { days: -12, amount: -15000, desc: 'Перевод на накопительный', merchant: null, type: TransactionType.TRANSFER, cat: TransactionCategory.TRANSFERS },
-    { days: -14, amount: -2100, desc: 'Аптека "Здоровье"', merchant: 'Zdorovye', type: TransactionType.EXPENSE, cat: TransactionCategory.HEALTH },
+  // ── Recurring Payments (subscriptions) ──
+  const subscriptions = [
+    { id: 'seed-rp-yandex',  merchant: 'Yandex',  amount: -199, desc: 'Яндекс Плюс',   periodDays: 30, cat: TransactionCategory.SUBSCRIPTIONS },
+    { id: 'seed-rp-spotify', merchant: 'Spotify', amount: -549, desc: 'Spotify Premium', periodDays: 30, cat: TransactionCategory.SUBSCRIPTIONS },
+    { id: 'seed-rp-netflix', merchant: 'Netflix', amount: -890, desc: 'Netflix',         periodDays: 30, cat: TransactionCategory.SUBSCRIPTIONS },
+    { id: 'seed-rp-icloud',  merchant: 'Apple',   amount: -299, desc: 'iCloud+ 50GB',   periodDays: 30, cat: TransactionCategory.DIGITAL_SERVICES },
   ];
 
-  let created = 0;
-  for (const t of transactions) {
-    const date = new Date(now);
-    date.setDate(date.getDate() + t.days);
+  let rpCreated = 0;
+  let txCreated = 0;
 
-    await prisma.transaction.upsert({
-      where: { id: `seed-tx-${String(-t.days).padStart(3, '0')}` },
+  for (const sub of subscriptions) {
+    // Create recurring payment
+    await prisma.recurringPayment.upsert({
+      where: { id: sub.id },
       update: {},
       create: {
-        id: `seed-tx-${String(-t.days).padStart(3, '0')}`,
+        id: sub.id,
         accountId: checking.id,
-        date,
+        merchant: sub.merchant,
+        amount: sub.amount,
+        category: sub.cat,
+        periodDays: sub.periodDays,
+        nextChargeDate: daysFromNow(sub.periodDays - (txCreated % 7) - 1),
+        status: 'ACTIVE',
+      },
+    });
+    rpCreated++;
+
+    // Generate 3-4 months of transaction history
+    const monthsBack = 4;
+    for (let m = 0; m < monthsBack; m++) {
+      const dayOffset = m * sub.periodDays + (rpCreated * 2); // stagger dates
+      if (dayOffset > 120) break;
+
+      const txId = `seed-rptx-${sub.merchant.toLowerCase()}-${m}`;
+      await prisma.transaction.upsert({
+        where: { id: txId },
+        update: {},
+        create: {
+          id: txId,
+          accountId: checking.id,
+          date: daysAgo(dayOffset),
+          amount: sub.amount,
+          description: sub.desc,
+          merchant: sub.merchant,
+          type: TransactionType.EXPENSE,
+          category: sub.cat,
+        },
+      });
+      txCreated++;
+    }
+  }
+
+  console.log(`Seeded ${rpCreated} recurring payments, ${txCreated} subscription transactions`);
+
+  // ── One-off transactions ──
+  const oneOffs = [
+    { id: 'seed-tx-grocery',    days: -3,  amount: -4500,  desc: 'Пятёрочка',              merchant: 'Pyaterochka', type: TransactionType.EXPENSE,  cat: TransactionCategory.SUPERMARKETS },
+    { id: 'seed-tx-salary',     days: -5,  amount: 85000,  desc: 'Зарплата',               merchant: null,          type: TransactionType.INCOME,   cat: TransactionCategory.OTHER },
+    { id: 'seed-tx-uber',       days: -7,  amount: -1200,  desc: 'Uber поездка',           merchant: 'Uber',        type: TransactionType.EXPENSE,  cat: TransactionCategory.TRANSPORT },
+    { id: 'seed-tx-restaurant', days: -8,  amount: -3200,  desc: 'Ресторан "Место"',       merchant: 'Mesto',       type: TransactionType.EXPENSE,  cat: TransactionCategory.RESTAURANTS },
+    { id: 'seed-tx-transfer',   days: -12, amount: -15000, desc: 'Перевод на накопительный', merchant: null,         type: TransactionType.TRANSFER, cat: TransactionCategory.TRANSFERS },
+    { id: 'seed-tx-pharmacy',   days: -14, amount: -2100,  desc: 'Аптека "Здоровье"',      merchant: 'Zdorovye',    type: TransactionType.EXPENSE,  cat: TransactionCategory.HEALTH },
+  ];
+
+  for (const t of oneOffs) {
+    await prisma.transaction.upsert({
+      where: { id: t.id },
+      update: {},
+      create: {
+        id: t.id,
+        accountId: checking.id,
+        date: daysAgo(-t.days),
         amount: t.amount,
         description: t.desc,
         merchant: t.merchant,
@@ -79,10 +136,9 @@ async function main() {
         category: t.cat,
       },
     });
-    created++;
   }
 
-  console.log(`Seeded ${created} transactions for ${checking.name}`);
+  console.log(`Seeded ${oneOffs.length} one-off transactions`);
 }
 
 main()

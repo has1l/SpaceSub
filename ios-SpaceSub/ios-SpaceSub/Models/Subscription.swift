@@ -81,6 +81,11 @@ nonisolated struct DetectedSubscription: Codable, Identifiable, Sendable {
     let transactionCount: Int
 }
 
+nonisolated struct CancelSubscriptionResponse: Codable, Sendable {
+    let cancelled: Bool
+    let bankPaymentId: String?
+}
+
 nonisolated struct ConfirmSuggestionResponse: Codable, Sendable {
     let subscription: Subscription
     let linkedTransactions: Int

@@ -4,6 +4,8 @@ import axios, { type AxiosInstance } from 'axios';
 import type {
   FlexBankAccount,
   FlexBankTransaction,
+  FlexBankRecurringPayment,
+  FlexBankCancelResult,
 } from '../types/flex-bank.types';
 
 @Injectable()
@@ -41,6 +43,28 @@ export class FlexBankClient {
     const { data } = await this.http.get<FlexBankTransaction[]>(
       `/api/v1/accounts/${accountId}/transactions`,
       { headers: { Authorization: `Bearer ${token}` }, params },
+    );
+    return data;
+  }
+
+  async getRecurringPayments(
+    token: string,
+  ): Promise<FlexBankRecurringPayment[]> {
+    const { data } = await this.http.get<FlexBankRecurringPayment[]>(
+      '/api/v1/recurring-payments',
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    return data;
+  }
+
+  async cancelRecurringPayment(
+    token: string,
+    id: string,
+  ): Promise<FlexBankCancelResult> {
+    const { data } = await this.http.post<FlexBankCancelResult>(
+      `/api/v1/recurring-payments/${id}/cancel`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } },
     );
     return data;
   }

@@ -262,6 +262,74 @@ export class BankIntegrationService {
     return this.toSafeDto(connection);
   }
 
+  async cancelBankRecurringPayment(
+    userId: string,
+    merchant: string,
+    amount: number,
+  ): Promise<string | null> {
+    const connection = await this.prisma.bankConnection.findUnique({
+      where: {
+        userId_provider: { userId, provider: BankProvider.FLEX },
+      },
+    });
+
+    if (!connection || connection.status !== 'CONNECTED') return null;
+
+    let token: string;
+    if (connection.encryptedAccessToken) {
+      token = this.tokenEncryption.decrypt(connection.encryptedAccessToken);
+    } else {
+      token = connection.accessToken;
+    }
+
+    try {
+      const payments =
+        await this.flexBankClient.getRecurringPayments(token);
+
+      // Normalize for matching
+      const normalize = (s: string) =>
+        s.toLowerCase().replace(/[^a-zа-яё0-9]/gi, '');
+      const normalizedMerchant = normalize(merchant);
+      const absAmount = Math.abs(amount);
+
+      // Find matching recurring payment
+      const match = payments
+        .filter((rp) => rp.status === 'ACTIVE')
+        .filter((rp) => normalize(rp.merchant) === normalizedMerchant)
+        .filter((rp) => {
+          const rpAbs = Math.abs(rp.amount);
+          return Math.abs(rpAbs - absAmount) / absAmount <= 0.03;
+        })
+        .sort((a, b) => {
+          // Tie-break: closest amount
+          const diffA = Math.abs(Math.abs(a.amount) - absAmount);
+          const diffB = Math.abs(Math.abs(b.amount) - absAmount);
+          return diffA - diffB;
+        })[0];
+
+      if (!match) {
+        this.logger.warn(
+          `No matching recurring payment found for merchant="${merchant}" amount=${amount}`,
+        );
+        return null;
+      }
+
+      const result = await this.flexBankClient.cancelRecurringPayment(
+        token,
+        match.id,
+      );
+      this.logger.log(
+        `Cancelled recurring payment ${result.id} for merchant="${merchant}"`,
+      );
+      return result.id;
+    } catch (error) {
+      this.logger.error(
+        `Failed to cancel recurring payment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      return null;
+    }
+  }
+
   toSafeDto(connection: {
     id: string;
     provider: BankProvider;

@@ -21,3 +21,22 @@ export interface FlexBankTransaction {
   category: string | null;
   mcc: string | null;
 }
+
+export interface FlexBankRecurringPayment {
+  id: string;
+  merchant: string;
+  amount: number;
+  currency: string;
+  category: string;
+  periodDays: number;
+  nextChargeDate: string;
+  status: 'ACTIVE' | 'CANCELLED';
+  cancelledAt: string | null;
+  createdAt: string;
+}
+
+export interface FlexBankCancelResult {
+  id: string;
+  status: 'CANCELLED';
+  cancelledAt: string;
+}

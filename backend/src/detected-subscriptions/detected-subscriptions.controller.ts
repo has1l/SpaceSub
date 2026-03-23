@@ -1,4 +1,4 @@
-import { Controller, Get, Delete, Param, UseGuards, Request, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, UseGuards, Request, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DetectedSubscriptionsService } from './detected-subscriptions.service';
@@ -32,6 +32,12 @@ export class DetectedSubscriptionsController {
   @ApiOperation({ summary: 'Get subscription summary (totals, counts, upcoming)' })
   getSummary(@Request() req: { user: { id: string } }) {
     return this.service.getSummary(req.user.id);
+  }
+
+  @Post(':id/cancel')
+  @ApiOperation({ summary: 'Cancel a subscription (also cancels bank auto-payment)' })
+  cancel(@Request() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.service.cancelSubscription(req.user.id, id);
   }
 
   @Delete(':id')

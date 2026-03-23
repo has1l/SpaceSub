@@ -32,6 +32,10 @@ final class SubscriptionService {
         try await client.request(.confirmSuggestion(id: id))
     }
 
+    func cancelDetectedSubscription(id: String) async throws -> CancelSubscriptionResponse {
+        try await client.request(.cancelDetectedSubscription(id: id))
+    }
+
     // MARK: - Detected Subscriptions
 
     func fetchDetectedActive() async throws -> [DetectedSubscription] {

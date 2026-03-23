@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Param,
   Query,
   UseGuards,
@@ -10,6 +11,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AccountsService } from '../accounts/accounts.service';
 import { TransactionsService } from '../transactions/transactions.service';
+import { RecurringPaymentsService } from '../recurring-payments/recurring-payments.service';
 
 @ApiTags('API v1 (Bank Integration)')
 @ApiBearerAuth()
@@ -19,6 +21,7 @@ export class ApiV1Controller {
   constructor(
     private accountsService: AccountsService,
     private transactionsService: TransactionsService,
+    private recurringPaymentsService: RecurringPaymentsService,
   ) {}
 
   @Get('accounts')
@@ -69,5 +72,40 @@ export class ApiV1Controller {
       category: t.category,
       mcc: null,
     }));
+  }
+
+  @Get('recurring-payments')
+  @ApiOperation({ summary: 'List recurring payments for user' })
+  async listRecurringPayments(
+    @Request() req: { user: { id: string } },
+  ) {
+    const payments =
+      await this.recurringPaymentsService.findByUser(req.user.id);
+    return payments.map((rp) => ({
+      id: rp.id,
+      merchant: rp.merchant,
+      amount: rp.amount,
+      currency: rp.currency,
+      category: rp.category,
+      periodDays: rp.periodDays,
+      nextChargeDate: rp.nextChargeDate.toISOString(),
+      status: rp.status,
+      cancelledAt: rp.cancelledAt?.toISOString() || null,
+      createdAt: rp.createdAt.toISOString(),
+    }));
+  }
+
+  @Post('recurring-payments/:id/cancel')
+  @ApiOperation({ summary: 'Cancel a recurring payment' })
+  async cancelRecurringPayment(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    const rp = await this.recurringPaymentsService.cancel(id, req.user.id);
+    return {
+      id: rp.id,
+      status: rp.status,
+      cancelledAt: rp.cancelledAt?.toISOString() || null,
+    };
   }
 }

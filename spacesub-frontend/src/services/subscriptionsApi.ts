@@ -67,6 +67,8 @@ export const subscriptionsApi = {
     api.get<SubscriptionSummary>(`${BASE}/summary`).then((r) => r.data),
   remove: (id: string) =>
     api.delete(`${BASE}/${id}`),
+  cancel: (id: string) =>
+    api.post<{ cancelled: boolean; bankPaymentId: string | null }>(`${BASE}/${id}/cancel`).then((r) => r.data),
 };
 
 export const manualSubsApi = {

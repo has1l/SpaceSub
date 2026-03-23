@@ -18,6 +18,42 @@ final class SubscriptionsViewModel {
         self.service = service
     }
 
+    private(set) var cancellingId: String?
+    private(set) var showCancelConfirm = false
+    private var pendingCancelId: String?
+
+    func requestCancel(id: String) {
+        pendingCancelId = id
+        showCancelConfirm = true
+    }
+
+    func dismissCancel() {
+        showCancelConfirm = false
+        pendingCancelId = nil
+    }
+
+    func confirmCancel() async {
+        guard let id = pendingCancelId else { return }
+        showCancelConfirm = false
+        cancellingId = id
+
+        do {
+            _ = try await service.cancelDetectedSubscription(id: id)
+            active.removeAll { $0.id == id }
+            upcoming.removeAll { $0.id == id }
+            if let s = try? await service.fetchSummary() {
+                summary = s
+            }
+        } catch let apiError as APIError where apiError.isUnauthorized {
+            onUnauthorized?()
+        } catch {
+            self.error = error.localizedDescription
+        }
+
+        cancellingId = nil
+        pendingCancelId = nil
+    }
+
     func load() async {
         isLoading = true
         error = nil

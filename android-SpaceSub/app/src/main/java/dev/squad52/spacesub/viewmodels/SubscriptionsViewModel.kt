@@ -31,6 +31,25 @@ class SubscriptionsViewModel(application: Application) : AndroidViewModel(applic
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _cancellingId = MutableStateFlow<String?>(null)
+    val cancellingId: StateFlow<String?> = _cancellingId.asStateFlow()
+
+    fun cancelSubscription(id: String) {
+        viewModelScope.launch {
+            _cancellingId.value = id
+            try {
+                api.cancelDetectedSubscription(id)
+                _active.value = _active.value.filter { it.id != id }
+                _upcoming.value = _upcoming.value.filter { it.id != id }
+                runCatching { _summary.value = api.getDetectedSubscriptionsSummary() }
+            } catch (e: Exception) {
+                _error.value = "Ошибка отмены: ${e.message}"
+            } finally {
+                _cancellingId.value = null
+            }
+        }
+    }
+
     fun load() {
         viewModelScope.launch {
             _isLoading.value = true

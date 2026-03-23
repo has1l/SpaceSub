@@ -139,6 +139,10 @@ extension APIEndpoint {
     static func detectedSubscriptionsSummary() -> APIEndpoint {
         APIEndpoint(path: "/detected-subscriptions/summary")
     }
+
+    static func cancelDetectedSubscription(id: String) -> APIEndpoint {
+        APIEndpoint(path: "/detected-subscriptions/\(id)/cancel", method: .post)
+    }
 }
 
 // MARK: - Notification Endpoints

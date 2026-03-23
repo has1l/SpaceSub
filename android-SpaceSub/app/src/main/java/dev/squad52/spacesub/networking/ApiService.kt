@@ -42,6 +42,9 @@ interface ApiService {
     @GET("detected-subscriptions/summary")
     suspend fun getDetectedSubscriptionsSummary(): SubscriptionSummary
 
+    @POST("detected-subscriptions/{id}/cancel")
+    suspend fun cancelDetectedSubscription(@Path("id") id: String): CancelSubscriptionResponse
+
     // Analytics
     @GET("analytics/overview")
     suspend fun getAnalyticsOverview(
