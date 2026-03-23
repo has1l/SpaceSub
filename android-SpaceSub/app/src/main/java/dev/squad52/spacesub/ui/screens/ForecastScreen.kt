@@ -81,27 +81,29 @@ fun ForecastScreen(viewModel: ForecastViewModel) {
                 if (forecast != null) {
                     // Metric cards
                     item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                MetricCard(
+                                    title = "7 дней",
+                                    value = "${forecast!!.next7DaysTotal.toInt()} ₽",
+                                    accentColor = SignalPrimary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                MetricCard(
+                                    title = "30 дней",
+                                    value = "${forecast!!.next30DaysTotal.toInt()} ₽",
+                                    accentColor = SignalSecondary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                             MetricCard(
-                                title = "7 дней",
-                                value = "${forecast!!.next7DaysTotal.toInt()} ₽",
-                                accentColor = SignalPrimary,
-                                modifier = Modifier.weight(1f)
-                            )
-                            MetricCard(
-                                title = "30 дней",
-                                value = "${forecast!!.next30DaysTotal.toInt()} ₽",
-                                accentColor = SignalSecondary,
-                                modifier = Modifier.weight(1f)
-                            )
-                            MetricCard(
-                                title = "12 мес",
+                                title = "12 месяцев",
                                 value = "${forecast!!.next12MonthsTotal.toInt()} ₽",
                                 accentColor = SignalAccent,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }

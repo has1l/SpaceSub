@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,10 +28,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.squad52.spacesub.R
 import dev.squad52.spacesub.models.BankConnection
 import dev.squad52.spacesub.models.BankConnectionStatus
 import dev.squad52.spacesub.ui.components.FullScreenSpinner
@@ -198,7 +201,12 @@ private fun DashboardHeader(
                 .clickable(onClick = onNotifications),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = if (unreadCount > 0) "🔔" else "🔕", fontSize = 14.sp)
+            Icon(
+                painter = painterResource(id = R.drawable.ic_bell),
+                contentDescription = "Уведомления",
+                modifier = Modifier.size(18.dp),
+                tint = if (unreadCount > 0) SignalPrimary else TextMuted
+            )
             if (unreadCount > 0) {
                 Box(
                     modifier = Modifier
@@ -229,7 +237,12 @@ private fun DashboardHeader(
                 .clickable(onClick = onLogout),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "↪", fontSize = 16.sp, color = TextMuted)
+            Icon(
+                painter = painterResource(id = R.drawable.ic_logout),
+                contentDescription = "Выйти",
+                modifier = Modifier.size(18.dp),
+                tint = TextMuted
+            )
         }
     }
 }

@@ -1,9 +1,11 @@
 package dev.squad52.spacesub.ui.navigation
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -13,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,17 +26,18 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import dev.squad52.spacesub.R
 import dev.squad52.spacesub.ui.screens.*
 import dev.squad52.spacesub.ui.theme.*
 import dev.squad52.spacesub.viewmodels.*
 
-sealed class Screen(val route: String, val label: String, val icon: String) {
-    data object Dashboard : Screen("dashboard", "Панель", "🏠")
-    data object Subscriptions : Screen("subscriptions", "Подписки", "📡")
-    data object Analytics : Screen("analytics", "Аналитика", "📊")
-    data object Forecast : Screen("forecast", "Прогноз", "📈")
-    data object Connect : Screen("connect", "Банк", "🔗")
-    data object Notifications : Screen("notifications", "Уведомления", "🔔")
+sealed class Screen(val route: String, val label: String, @DrawableRes val iconRes: Int) {
+    data object Dashboard : Screen("dashboard", "Панель", R.drawable.ic_dashboard)
+    data object Subscriptions : Screen("subscriptions", "Подписки", R.drawable.ic_subscriptions)
+    data object Analytics : Screen("analytics", "Аналитика", R.drawable.ic_analytics)
+    data object Forecast : Screen("forecast", "Прогноз", R.drawable.ic_forecast)
+    data object Connect : Screen("connect", "Банк", R.drawable.ic_bank)
+    data object Notifications : Screen("notifications", "Уведомления", R.drawable.ic_bell)
 }
 
 private val bottomTabs = listOf(
@@ -67,9 +71,10 @@ fun MainNavigation(onLogout: () -> Unit) {
 
                         NavigationBarItem(
                             icon = {
-                                Text(
-                                    text = screen.icon,
-                                    fontSize = 18.sp
+                                Icon(
+                                    painter = painterResource(id = screen.iconRes),
+                                    contentDescription = screen.label,
+                                    modifier = Modifier.size(22.dp)
                                 )
                             },
                             label = {
