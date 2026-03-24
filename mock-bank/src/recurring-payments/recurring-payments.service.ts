@@ -14,6 +14,11 @@ export class RecurringPaymentsService {
       where: {
         account: { userId },
       },
+      include: {
+        userSubscription: {
+          include: { service: { select: { logoUrl: true } } },
+        },
+      },
       orderBy: { nextChargeDate: 'asc' },
     });
   }

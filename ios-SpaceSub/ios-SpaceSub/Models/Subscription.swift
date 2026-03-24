@@ -79,6 +79,7 @@ nonisolated struct DetectedSubscription: Codable, Identifiable, Sendable {
     let isActive: Bool
     let confidence: Double
     let transactionCount: Int
+    let logoUrl: String?
 }
 
 nonisolated struct CancelSubscriptionResponse: Codable, Sendable {

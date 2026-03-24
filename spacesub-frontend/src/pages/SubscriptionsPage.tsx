@@ -217,7 +217,11 @@ function SubscriptionCard({ sub, index, onDelete }: { sub: DetectedSubscription;
       <div className="flex items-start justify-between mb-3 relative z-10">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <SatelliteIcon size={16} color={sub.isActive ? 'var(--signal-primary)' : 'rgba(200,214,229,0.3)'} />
+            {sub.logoUrl ? (
+              <img src={sub.logoUrl} alt="" className="w-5 h-5 rounded object-contain flex-shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            ) : (
+              <SatelliteIcon size={16} color={sub.isActive ? 'var(--signal-primary)' : 'rgba(200,214,229,0.3)'} />
+            )}
             <h3 className="font-semibold truncate" style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}>
               {sub.merchant}
             </h3>

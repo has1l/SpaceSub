@@ -211,6 +211,17 @@ private struct DetectedSubscriptionCard: View {
         SpaceCard(glowing: sub.isActive) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
+                    if let logoUrl = sub.logoUrl, let url = URL(string: logoUrl) {
+                        AsyncImage(url: url) { image in
+                            image.resizable().aspectRatio(contentMode: .fit)
+                        } placeholder: {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.signalPrimary.opacity(0.1))
+                        }
+                        .frame(width: 32, height: 32)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+
                     VStack(alignment: .leading, spacing: 4) {
                         Text(sub.merchant)
                             .font(.system(size: 15, weight: .semibold))

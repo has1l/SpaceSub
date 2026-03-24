@@ -11,6 +11,7 @@ export class SubscriptionResponseDto {
   isActive: boolean;
   confidence: number;
   transactionCount: number;
+  logoUrl: string | null;
 }
 
 export class SubscriptionSummaryDto {

@@ -11,6 +11,7 @@ export interface DetectedSubscription {
   isActive: boolean;
   confidence: number;
   transactionCount: number;
+  logoUrl: string | null;
 }
 
 export interface SubscriptionSummary {

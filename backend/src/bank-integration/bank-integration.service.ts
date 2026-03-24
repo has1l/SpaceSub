@@ -210,6 +210,7 @@ export class BankIntegrationService {
               isActive: true,
               nextExpectedCharge: new Date(rp.nextChargeDate),
               merchant: rp.merchant,
+              logoUrl: rp.logoUrl || undefined,
             },
             create: {
               userId,
@@ -223,6 +224,7 @@ export class BankIntegrationService {
               confidence: 1.0,
               transactionCount: 0,
               isActive: true,
+              logoUrl: rp.logoUrl || null,
             },
           });
           bankImported++;

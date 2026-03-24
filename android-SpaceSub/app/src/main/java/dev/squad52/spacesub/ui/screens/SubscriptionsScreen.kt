@@ -40,7 +40,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import dev.squad52.spacesub.models.DetectedSubscription
 import dev.squad52.spacesub.ui.components.FullScreenSpinner
 import dev.squad52.spacesub.ui.components.MetricCard
@@ -278,6 +280,17 @@ private fun DetectedSubCard(
     SpaceCard(glowColor = if (sub.isActive) SignalPrimary else null) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(modifier = Modifier.fillMaxWidth()) {
+                if (sub.logoUrl != null) {
+                    AsyncImage(
+                        model = sub.logoUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(6.dp)),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = sub.merchant,

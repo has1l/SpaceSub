@@ -97,6 +97,7 @@ export class ApiV1Controller {
       status: rp.status,
       cancelledAt: rp.cancelledAt?.toISOString() || null,
       createdAt: rp.createdAt.toISOString(),
+      logoUrl: (rp as any).userSubscription?.service?.logoUrl || null,
     }));
   }
 

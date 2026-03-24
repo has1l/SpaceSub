@@ -158,6 +158,7 @@ export class DetectedSubscriptionsService {
       isActive: sub.isActive,
       confidence: sub.confidence,
       transactionCount: sub.transactionCount,
+      logoUrl: (sub as any).logoUrl || null,
     };
   }
 }

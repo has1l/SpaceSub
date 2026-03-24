@@ -33,6 +33,7 @@ export interface FlexBankRecurringPayment {
   status: 'ACTIVE' | 'CANCELLED';
   cancelledAt: string | null;
   createdAt: string;
+  logoUrl: string | null;
 }
 
 export interface FlexBankCancelResult {

@@ -51,7 +51,8 @@ data class DetectedSubscription(
     val nextExpectedCharge: String? = null,
     val isActive: Boolean,
     val confidence: Double,
-    val transactionCount: Int
+    val transactionCount: Int,
+    val logoUrl: String? = null
 )
 
 data class SubscriptionSummary(
