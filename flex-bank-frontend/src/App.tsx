@@ -9,6 +9,7 @@ import AccountPage from './pages/AccountPage';
 import TransactionsPage from './pages/TransactionsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import ConnectionCodePage from './pages/ConnectionCodePage';
+import SubscriptionsPage from './pages/SubscriptionsPage';
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/accounts/:id" element={<AccountPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/subscriptions" element={<SubscriptionsPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/connect" element={<ConnectionCodePage />} />
           </Route>

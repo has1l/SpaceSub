@@ -68,3 +68,29 @@ export const CATEGORY_COLORS: Record<TransactionCategory, string> = {
   OTHER: '#6B7280',
 };
 
+export interface CatalogService {
+  id: string;
+  name: string;
+  merchant: string;
+  description: string;
+  logoUrl: string | null;
+  amount: number;
+  currency: string;
+  periodDays: number;
+  category: TransactionCategory;
+  isSubscribed: boolean;
+}
+
+export interface UserSubscription {
+  id: string;
+  service: CatalogService;
+  status: 'ACTIVE' | 'CANCELLED';
+  subscribedAt: string;
+  cancelledAt: string | null;
+  recurringPayment: {
+    id: string;
+    nextChargeDate: string;
+    status: string;
+  } | null;
+}
+

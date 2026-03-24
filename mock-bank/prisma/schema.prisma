@@ -15,7 +15,8 @@ model User {
   name      String
   createdAt DateTime  @default(now()) @map("created_at")
 
-  accounts Account[]
+  accounts      Account[]
+  subscriptions UserSubscription[]
 
   @@map("users")
   @@schema("mockbank")
@@ -54,6 +55,7 @@ model Account {
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions      Transaction[]
   recurringPayments RecurringPayment[]
+  userSubscriptions UserSubscription[]
 
   @@map("accounts")
   @@schema("mockbank")
@@ -98,9 +100,57 @@ model RecurringPayment {
   cancelledAt    DateTime?              @map("cancelled_at")
   createdAt      DateTime               @default(now()) @map("created_at")
 
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account          Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  userSubscription UserSubscription?
 
   @@map("recurring_payments")
+  @@schema("mockbank")
+}
+
+enum UserSubscriptionStatus {
+  ACTIVE
+  CANCELLED
+
+  @@schema("mockbank")
+}
+
+model ServiceCatalog {
+  id          String              @id @default(uuid())
+  name        String
+  merchant    String              @unique
+  description String
+  logoUrl     String?             @map("logo_url")
+  amount      Float
+  currency    String              @default("RUB")
+  periodDays  Int                 @default(30) @map("period_days")
+  category    TransactionCategory @default(SUBSCRIPTIONS)
+  isActive    Boolean             @default(true) @map("is_active")
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  subscriptions UserSubscription[]
+
+  @@map("service_catalog")
+  @@schema("mockbank")
+}
+
+model UserSubscription {
+  id                 String                 @id @default(uuid())
+  userId             String                 @map("user_id")
+  serviceId          String                 @map("service_id")
+  accountId          String                 @map("account_id")
+  recurringPaymentId String?                @unique @map("recurring_payment_id")
+  status             UserSubscriptionStatus @default(ACTIVE)
+  subscribedAt       DateTime               @default(now()) @map("subscribed_at")
+  cancelledAt        DateTime?              @map("cancelled_at")
+  createdAt          DateTime               @default(now()) @map("created_at")
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service          ServiceCatalog    @relation(fields: [serviceId], references: [id])
+  account          Account           @relation(fields: [accountId], references: [id])
+  recurringPayment RecurringPayment? @relation(fields: [recurringPaymentId], references: [id])
+
+  @@unique([userId, serviceId])
+  @@map("user_subscriptions")
   @@schema("mockbank")
 }
 

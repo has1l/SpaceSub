@@ -172,6 +172,87 @@ export class BankIntegrationService {
         // Don't fail the sync if analyzer fails — transactions are already saved
       }
 
+      // 6. Import bank recurring payments as confidence=1.0
+      try {
+        const recurringPayments =
+          await this.flexBankClient.getRecurringPayments(token);
+        const normalize = (s: string) =>
+          s.toLowerCase().replace(/[^a-zа-яё0-9]/gi, '');
+
+        let bankImported = 0;
+        let bankDeactivated = 0;
+
+        for (const rp of recurringPayments.filter(
+          (r) => r.status === 'ACTIVE',
+        )) {
+          const normalizedMerchant = normalize(rp.merchant);
+          const absAmount = Math.abs(rp.amount);
+          const periodType =
+            rp.periodDays <= 8
+              ? 'WEEKLY'
+              : rp.periodDays <= 35
+                ? 'MONTHLY'
+                : rp.periodDays <= 100
+                  ? 'QUARTERLY'
+                  : 'YEARLY';
+
+          await this.prisma.detectedSubscription.upsert({
+            where: {
+              userId_normalizedMerchant_amount_currency: {
+                userId,
+                normalizedMerchant,
+                amount: absAmount,
+                currency: rp.currency,
+              },
+            },
+            update: {
+              confidence: 1.0,
+              isActive: true,
+              nextExpectedCharge: new Date(rp.nextChargeDate),
+              merchant: rp.merchant,
+            },
+            create: {
+              userId,
+              merchant: rp.merchant,
+              normalizedMerchant,
+              amount: absAmount,
+              currency: rp.currency,
+              periodType,
+              lastChargeDate: new Date(),
+              nextExpectedCharge: new Date(rp.nextChargeDate),
+              confidence: 1.0,
+              transactionCount: 0,
+              isActive: true,
+            },
+          });
+          bankImported++;
+        }
+
+        // Deactivate cancelled bank subscriptions
+        for (const rp of recurringPayments.filter(
+          (r) => r.status === 'CANCELLED',
+        )) {
+          const result = await this.prisma.detectedSubscription.updateMany({
+            where: {
+              userId,
+              normalizedMerchant: normalize(rp.merchant),
+              isActive: true,
+              confidence: 1.0,
+            },
+            data: { isActive: false },
+          });
+          bankDeactivated += result.count;
+        }
+
+        this.logger.log(
+          `Bank subscriptions: imported=${bankImported} deactivated=${bankDeactivated} for user=${userId}`,
+        );
+      } catch (bankSubError) {
+        this.logger.error(
+          `Bank subscription import failed for user=${userId}: ${bankSubError instanceof Error ? bankSubError.message : 'Unknown error'}`,
+        );
+      }
+
       return {
         ok: true,
         provider: 'FLEX',

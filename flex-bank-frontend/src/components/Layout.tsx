@@ -7,6 +7,7 @@ import CosmicBackground from './CosmicBackground';
 const navItems = [
   { to: '/dashboard', label: 'Главная', icon: NavIconDashboard },
   { to: '/transactions', label: 'Операции', icon: NavIconTransactions },
+  { to: '/subscriptions', label: 'Подписки', icon: NavIconSubscriptions },
   { to: '/analytics', label: 'Аналитика', icon: NavIconAnalytics },
   { to: '/connect', label: 'Код', icon: NavIconConnect },
 ];
@@ -169,6 +170,17 @@ function NavIconAnalytics({ size = 15 }: { size?: number }) {
       <circle cx="12" cy="12" r="10" />
       <circle cx="12" cy="12" r="6" />
       <circle cx="12" cy="12" r="2" />
+    </svg>
+  );
+}
+
+function NavIconSubscriptions({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 1l4 4-4 4" />
+      <path d="M3 11V9a4 4 0 014-4h14" />
+      <path d="M7 23l-4-4 4-4" />
+      <path d="M21 13v2a4 4 0 01-4 4H3" />
     </svg>
   );
 }
