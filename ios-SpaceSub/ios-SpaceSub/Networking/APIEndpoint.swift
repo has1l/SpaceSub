@@ -50,6 +50,10 @@ extension APIEndpoint {
         APIEndpoint(path: "/subscriptions", method: .post, body: body)
     }
 
+    static func updateSubscription(id: String, _ body: CreateSubscriptionRequest) -> APIEndpoint {
+        APIEndpoint(path: "/subscriptions/\(id)", method: .put, body: body)
+    }
+
     static func deleteSubscription(id: String) -> APIEndpoint {
         APIEndpoint(path: "/subscriptions/\(id)", method: .delete)
     }

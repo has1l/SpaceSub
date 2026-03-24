@@ -20,6 +20,10 @@ final class SubscriptionService {
         try await client.request(.createSubscription(body))
     }
 
+    func updateSubscription(id: String, _ body: CreateSubscriptionRequest) async throws -> Subscription {
+        try await client.request(.updateSubscription(id: id, body))
+    }
+
     func deleteSubscription(id: String) async throws {
         try await client.requestVoid(.deleteSubscription(id: id))
     }
