@@ -177,10 +177,28 @@ export class BankIntegrationService {
         const recurringPayments =
           await this.flexBankClient.getRecurringPayments(token);
         const normalize = (s: string) =>
-          s.toLowerCase().replace(/[^a-zа-яё0-9]/gi, '');
+          s
+            .toLowerCase()
+            .replace(/[^a-zа-яё0-9]/gi, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
 
         let bankImported = 0;
         let bankDeactivated = 0;
+
+        // Clean up old-format normalizedMerchant records (without spaces)
+        const oldNormalize = (s: string) =>
+          s.toLowerCase().replace(/[^a-zа-яё0-9]/gi, '');
+        for (const rp of recurringPayments) {
+          const oldNorm = oldNormalize(rp.merchant);
+          const newNorm = normalize(rp.merchant);
+          if (oldNorm !== newNorm) {
+            await this.prisma.detectedSubscription.updateMany({
+              where: { userId, normalizedMerchant: oldNorm },
+              data: { normalizedMerchant: newNorm },
+            });
+          }
+        }
 
         for (const rp of recurringPayments.filter(
           (r) => r.status === 'ACTIVE',
@@ -369,9 +387,13 @@ export class BankIntegrationService {
       const payments =
         await this.flexBankClient.getRecurringPayments(token);
 
-      // Normalize for matching
+      // Normalize for matching (must match subscription-analyzer)
       const normalize = (s: string) =>
-        s.toLowerCase().replace(/[^a-zа-яё0-9]/gi, '');
+        s
+          .toLowerCase()
+          .replace(/[^a-zа-яё0-9]/gi, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
       const normalizedMerchant = normalize(merchant);
       const absAmount = Math.abs(amount);
 

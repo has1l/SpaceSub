@@ -33,12 +33,22 @@ export class RecurringPaymentsService {
     if (rp.account.userId !== userId)
       throw new ForbiddenException('Access denied');
 
-    return this.prisma.recurringPayment.update({
-      where: { id },
-      data: {
-        status: 'CANCELLED',
-        cancelledAt: new Date(),
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.recurringPayment.update({
+        where: { id },
+        data: {
+          status: 'CANCELLED',
+          cancelledAt: new Date(),
+        },
+      });
+
+      // Also cancel the associated UserSubscription
+      await tx.userSubscription.updateMany({
+        where: { recurringPaymentId: id },
+        data: { status: 'CANCELLED', cancelledAt: new Date() },
+      });
+
+      return updated;
     });
   }
 }
