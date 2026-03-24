@@ -43,19 +43,26 @@ export class UserSubscriptionsService {
         },
       });
 
-      // Create first transaction (charge)
-      await tx.transaction.create({
-        data: {
-          accountId,
-          date: new Date(),
-          amount: -service.amount,
-          currency: service.currency,
-          description: `Подписка: ${service.name}`,
-          merchant: service.name,
-          type: 'EXPENSE',
-          category: service.category,
-        },
-      });
+      // Generate 4 months of transaction history (as if user was subscribed before)
+      const monthsBack = 4;
+      for (let m = 0; m < monthsBack; m++) {
+        const date = new Date();
+        date.setDate(date.getDate() - m * service.periodDays - Math.floor(Math.random() * 3));
+        date.setHours(12, 0, 0, 0);
+
+        await tx.transaction.create({
+          data: {
+            accountId,
+            date,
+            amount: -service.amount,
+            currency: service.currency,
+            description: `Подписка: ${service.name}`,
+            merchant: service.name,
+            type: 'EXPENSE',
+            category: service.category,
+          },
+        });
+      }
 
       if (existing) {
         // Reactivate cancelled subscription

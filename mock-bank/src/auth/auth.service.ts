@@ -220,7 +220,120 @@ export class AuthService {
       `[AUTH] New user created: dbId=${user.id}, yandexId=${yandexId}, email=${email}`,
     );
 
+    // Auto-provision: account + demo subscriptions + transaction history
+    try {
+      await this.provisionNewUser(user.id);
+    } catch (e) {
+      this.logger.error(`[AUTH] Provision failed: ${e instanceof Error ? e.message : e}`);
+    }
+
     return user;
+  }
+
+  /**
+   * Auto-provision new users with account, subscriptions & transaction history.
+   */
+  private async provisionNewUser(userId: string) {
+    // 1. Create checking account
+    const account = await this.prisma.account.create({
+      data: {
+        userId,
+        name: 'Основной счёт',
+        currency: 'RUB',
+        initialBalance: 150000,
+      },
+    });
+
+    // 2. Pick 4-6 random popular services to subscribe
+    const allServices = await this.prisma.serviceCatalog.findMany({
+      where: { isActive: true, periodDays: 30 },
+      orderBy: { amount: 'asc' },
+    });
+
+    if (allServices.length === 0) return;
+
+    // Shuffle and pick 5
+    const shuffled = allServices.sort(() => Math.random() - 0.5);
+    const picked = shuffled.slice(0, Math.min(5, shuffled.length));
+
+    for (const service of picked) {
+      const rp = await this.prisma.recurringPayment.create({
+        data: {
+          accountId: account.id,
+          merchant: service.name,
+          amount: -service.amount,
+          currency: service.currency,
+          category: service.category,
+          periodDays: service.periodDays,
+          nextChargeDate: new Date(Date.now() + (Math.floor(Math.random() * 25) + 3) * 86400000),
+          status: 'ACTIVE',
+        },
+      });
+
+      await this.prisma.userSubscription.create({
+        data: {
+          userId,
+          serviceId: service.id,
+          accountId: account.id,
+          recurringPaymentId: rp.id,
+          status: 'ACTIVE',
+          subscribedAt: new Date(Date.now() - (Math.floor(Math.random() * 60) + 30) * 86400000),
+        },
+      });
+
+      // Generate 4 months of transaction history
+      for (let m = 0; m < 4; m++) {
+        const date = new Date();
+        date.setDate(date.getDate() - m * service.periodDays - Math.floor(Math.random() * 3));
+        date.setHours(12, 0, 0, 0);
+
+        await this.prisma.transaction.create({
+          data: {
+            accountId: account.id,
+            date,
+            amount: -service.amount,
+            currency: service.currency,
+            description: `Подписка: ${service.name}`,
+            merchant: service.name,
+            type: 'EXPENSE',
+            category: service.category,
+          },
+        });
+      }
+    }
+
+    // 3. Add some one-off transactions for realistic analytics
+    const oneOffs = [
+      { days: 3,  amount: -4500,  desc: 'Пятёрочка',      merchant: 'Pyaterochka', type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
+      { days: 5,  amount: 85000,  desc: 'Зарплата',        merchant: null,          type: 'INCOME' as const,  cat: 'OTHER' as const },
+      { days: 7,  amount: -1200,  desc: 'Яндекс Такси',    merchant: 'Yandex Taxi', type: 'EXPENSE' as const, cat: 'TRANSPORT' as const },
+      { days: 10, amount: -3200,  desc: 'Ресторан',         merchant: 'Restaurant',  type: 'EXPENSE' as const, cat: 'RESTAURANTS' as const },
+      { days: 14, amount: -2100,  desc: 'Аптека',           merchant: 'Pharmacy',    type: 'EXPENSE' as const, cat: 'HEALTH' as const },
+      { days: 35, amount: 85000,  desc: 'Зарплата',         merchant: null,          type: 'INCOME' as const,  cat: 'OTHER' as const },
+      { days: 40, amount: -5600,  desc: 'Перекрёсток',      merchant: 'Perekrestok', type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
+      { days: 50, amount: -1800,  desc: 'Uber поездка',     merchant: 'Uber',        type: 'EXPENSE' as const, cat: 'TRANSPORT' as const },
+      { days: 65, amount: 85000,  desc: 'Зарплата',         merchant: null,          type: 'INCOME' as const,  cat: 'OTHER' as const },
+    ];
+
+    for (const t of oneOffs) {
+      const date = new Date();
+      date.setDate(date.getDate() - t.days);
+      date.setHours(12, 0, 0, 0);
+
+      await this.prisma.transaction.create({
+        data: {
+          accountId: account.id,
+          date,
+          amount: t.amount,
+          description: t.desc,
+          merchant: t.merchant,
+          type: t.type,
+          category: t.cat,
+        },
+      });
+    }
+
+    this.logger.log(`[AUTH] Provisioned user ${userId}: account + ${picked.length} subscriptions + transaction history`);
   }
 
   private async getYandexUserInfo(
