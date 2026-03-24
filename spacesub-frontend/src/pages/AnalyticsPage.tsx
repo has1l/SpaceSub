@@ -971,8 +971,8 @@ function ScoreGauge({ valueScore, churnRisk, merchant, label, monthlyAmount }: S
             />
           </svg>
           <span style={{
-            position: 'absolute', top: '46%', left: '50%', transform: 'translate(-50%, -50%)',
-            fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 800, color,
+            position: 'absolute', top: '55%', left: '50%', transform: 'translate(-50%, -50%)',
+            fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 800, color,
             textShadow: `0 0 6px ${color}40`,
           }}>
             {valueScore}
