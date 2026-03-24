@@ -74,7 +74,8 @@ interface ApiService {
     @GET("analytics/by-period")
     suspend fun getAnalyticsByPeriod(
         @Query("from") from: String? = null,
-        @Query("to") to: String? = null
+        @Query("to") to: String? = null,
+        @Query("granularity") granularity: String? = null
     ): List<PeriodItem>
 
     @GET("analytics/scores")

@@ -716,7 +716,7 @@ private fun CategoryAccordion(categories: List<CategoryItem>) {
 
 @Composable
 private fun PeriodAreaChart(periods: List<PeriodItem>) {
-    SpaceCard(glowColor = SignalSecondary) {
+    SpaceCard(glowColor = SignalPrimary) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // Period labels
             if (periods.size > 1) {
@@ -725,12 +725,12 @@ private fun PeriodAreaChart(periods: List<PeriodItem>) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = periods.first().period.takeLast(5),
+                        text = formatPeriodLabel(periods.first().period),
                         fontSize = 9.sp,
                         color = TextMuted
                     )
                     Text(
-                        text = periods.last().period.takeLast(5),
+                        text = formatPeriodLabel(periods.last().period),
                         fontSize = 9.sp,
                         color = TextMuted
                     )
@@ -739,7 +739,7 @@ private fun PeriodAreaChart(periods: List<PeriodItem>) {
 
             AreaSparkline(
                 data = periods.map { it.total.toFloat() },
-                color = SignalSecondary,
+                color = SignalPrimary,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
@@ -757,7 +757,7 @@ private fun PeriodAreaChart(periods: List<PeriodItem>) {
                         modifier = Modifier
                             .width(14.dp)
                             .height(2.dp)
-                            .background(SignalSecondary, RoundedCornerShape(1.dp))
+                            .background(SignalPrimary, RoundedCornerShape(1.dp))
                     )
                     Text("Расходы", fontSize = 8.sp, color = TextMuted)
                 }
@@ -1030,4 +1030,17 @@ private fun ScoreCard(score: ScoreItem) {
             }
         }
     }
+}
+
+private fun formatPeriodLabel(period: String): String {
+    val months = listOf("янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек")
+    val parts = period.split("-")
+    if (parts.size < 2) return period
+    val second = parts[1]
+    if (second.startsWith("W")) {
+        val week = second.drop(1).toIntOrNull() ?: return period
+        return "Н$week"
+    }
+    val m = second.toIntOrNull() ?: return period
+    return if (m in 1..12) months[m - 1] else period
 }

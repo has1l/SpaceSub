@@ -342,9 +342,12 @@ function GlassTooltip({ active, payload, label }: {
 
 function fmtMonth(key: string) {
   const parts = key.split('-');
-  const month = parts[1];
-  if (!month) return key;
-  return ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][parseInt(month,10)-1] ?? key;
+  if (parts.length < 2) return key;
+  const second = parts[1];
+  if (second.startsWith('W')) return `Н${second.slice(1)}`;
+  const m = parseInt(second, 10);
+  if (!m) return key;
+  return ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][m - 1] ?? key;
 }
 
 const RECO_ICONS: Record<string, (props: { size?: number }) => React.ReactNode> = {
@@ -1058,13 +1061,14 @@ export function AnalyticsPage() {
     if (initial) setLoading(true); else setChartLoading(true);
     const { from, to } = getPeriodDates(p);
     const q = `from=${from}&to=${to}`;
+    const granularity = (p === '7d' || p === '1m') ? 'week' : 'month';
 
     try {
       const [ov, cat, svc, per, rec, scr] = await Promise.all([
         api.get<Overview>(`/analytics/overview?${q}`),
         api.get<CategoryItem[]>(`/analytics/by-category?${q}`),
         api.get<ServiceItem[]>(`/analytics/by-service?limit=15&${q}`),
-        api.get<PeriodItem[]>(`/analytics/by-period?${q}`),
+        api.get<PeriodItem[]>(`/analytics/by-period?${q}&granularity=${granularity}`),
         api.get<RecommendationItem[]>('/analytics/recommendations'),
         api.get<ScoreItem[]>('/analytics/scores'),
       ]);

@@ -74,7 +74,8 @@ class AnalyticsViewModel(application: Application) : AndroidViewModel(applicatio
                 val overviewD = async { runCatching { api.getAnalyticsOverview(from, to) }.getOrNull() }
                 val categoriesD = async { runCatching { api.getAnalyticsByCategory(from, to) }.getOrDefault(emptyList()) }
                 val servicesD = async { runCatching { api.getAnalyticsByService(from = from, to = to) }.getOrDefault(emptyList()) }
-                val periodsD = async { runCatching { api.getAnalyticsByPeriod(from, to) }.getOrDefault(emptyList()) }
+                val granularity = if (_selectedPeriod.value == PeriodPreset.WEEK || _selectedPeriod.value == PeriodPreset.MONTH) "week" else "month"
+                val periodsD = async { runCatching { api.getAnalyticsByPeriod(from, to, granularity) }.getOrDefault(emptyList()) }
                 val scoresD = async { runCatching { api.getAnalyticsScores() }.getOrDefault(emptyList()) }
                 val recosD = async { runCatching { api.getAnalyticsRecommendations() }.getOrDefault(emptyList()) }
 

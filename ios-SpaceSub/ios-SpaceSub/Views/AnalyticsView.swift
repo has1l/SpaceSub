@@ -721,10 +721,6 @@ private struct AreaChartContent: View {
     let periodsWithAvg: [PeriodItemWithAvg]
 
     var body: some View {
-        let shortPeriods = periodsWithAvg.map { item in
-            (item, shortLabel: Self.shortenPeriod(item.period))
-        }
-
         Chart(periodsWithAvg) { item in
             AreaMark(
                 x: .value("Период", Self.shortenPeriod(item.period)),
@@ -743,7 +739,7 @@ private struct AreaChartContent: View {
                 y: .value("Сумма", item.total)
             )
             .foregroundStyle(Color.signalPrimary)
-            .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
             .interpolationMethod(.catmullRom)
 
             LineMark(
@@ -751,15 +747,8 @@ private struct AreaChartContent: View {
                 y: .value("Среднее", item.movingAvg)
             )
             .foregroundStyle(Color.signalSecondary.opacity(0.4))
-            .lineStyle(StrokeStyle(lineWidth: 1, lineCap: .round, dash: [5, 3]))
+            .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [6, 4]))
             .interpolationMethod(.catmullRom)
-
-            PointMark(
-                x: .value("Период", Self.shortenPeriod(item.period)),
-                y: .value("Сумма", item.total)
-            )
-            .foregroundStyle(Color.signalPrimary)
-            .symbolSize(item.period == periodsWithAvg.last?.period ? 30 : 12)
         }
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 5)) { _ in
