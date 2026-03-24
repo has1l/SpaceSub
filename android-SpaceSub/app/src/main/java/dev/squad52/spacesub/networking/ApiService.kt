@@ -16,6 +16,12 @@ interface ApiService {
     @GET("subscriptions/{id}")
     suspend fun getSubscription(@Path("id") id: String): Subscription
 
+    @POST("subscriptions")
+    suspend fun createSubscription(@Body body: CreateSubscriptionRequest): Subscription
+
+    @PUT("subscriptions/{id}")
+    suspend fun updateSubscription(@Path("id") id: String, @Body body: CreateSubscriptionRequest): Subscription
+
     @DELETE("subscriptions/{id}")
     suspend fun deleteSubscription(@Path("id") id: String)
 

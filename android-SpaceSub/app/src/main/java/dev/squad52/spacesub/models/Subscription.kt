@@ -66,3 +66,14 @@ data class CancelSubscriptionResponse(
     val cancelled: Boolean,
     val bankPaymentId: String?
 )
+
+data class CreateSubscriptionRequest(
+    val name: String,
+    val amount: Double,
+    val billingCycle: BillingCycle,
+    val nextBilling: String,
+    val currency: String = "RUB",
+    val category: String? = null,
+    val description: String? = null,
+    val isActive: Boolean = true
+)
