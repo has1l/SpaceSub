@@ -245,7 +245,7 @@ fun SubscriptionsScreen(viewModel: SubscriptionsViewModel) {
                             ) {
                                 MetricCard(
                                     title = "Активных спутников",
-                                    value = "${summary!!.activeCount + manualSubs.count { it.isActive }}",
+                                    value = "${summary!!.activeCount}",
                                     accentColor = SignalPrimary,
                                     modifier = Modifier.weight(1f)
                                 )
