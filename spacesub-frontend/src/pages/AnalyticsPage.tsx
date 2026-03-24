@@ -86,8 +86,10 @@ import {
   MusicalNoteIcon,
   TableCellsIcon,
   CloudIcon,
-  ShieldCheckIcon,
+  ShieldCheckIcon as ShieldCheckHeroIcon,
   AcademicCapIcon,
+  ChevronRightIcon,
+  SparklesIcon as SparklesHeroIcon,
   PuzzlePieceIcon,
   HeartIcon,
   NewspaperIcon,
@@ -109,7 +111,7 @@ const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ className?: string
   'Музыка': MusicalNoteIcon,
   'Продуктивность': TableCellsIcon,
   'Облако и хостинг': CloudIcon,
-  'Безопасность': ShieldCheckIcon,
+  'Безопасность': ShieldCheckHeroIcon,
   'Образование': AcademicCapIcon,
   'Игры': PuzzlePieceIcon,
   'Фитнес': HeartIcon,
@@ -121,32 +123,11 @@ function CategoryIcon({ category, size = 16 }: { category: string; size?: number
   return <Icon className={`w-[${size}px] h-[${size}px]`} style={{ width: size, height: size }} />;
 }
 
-function ShieldCheckIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-      <polyline points="9 12 11 14 15 10" />
-    </svg>
-  );
-}
-
-function SparkleIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z" />
-    </svg>
-  );
-}
-
 function ChevronIcon({ size = 12, rotated = false }: { size?: number; rotated?: boolean }) {
   return (
-    <svg
-      width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      style={{ transition: 'transform 0.25s ease', transform: rotated ? 'rotate(90deg)' : 'rotate(0deg)' }}
-    >
-      <polyline points="9 18 15 12 9 6" />
-    </svg>
+    <ChevronRightIcon
+      style={{ width: size, height: size, transition: 'transform 0.25s ease', transform: rotated ? 'rotate(90deg)' : 'rotate(0deg)' }}
+    />
   );
 }
 
@@ -744,7 +725,7 @@ function BudgetRadarSection({ overview, categories, recommendations }: {
       value: healthScore,
       suffix: '/100',
       color: healthColor,
-      icon: <ShieldCheckIcon size={16} />,
+      icon: <ShieldCheckHeroIcon className="w-4 h-4" />,
       gauge: healthScore,
     },
     {
@@ -1418,7 +1399,7 @@ export function AnalyticsPage() {
                         ПОТЕНЦИАЛЬНАЯ ЭКОНОМИЯ В ГОД
                       </p>
                     </div>
-                    <span style={{ color: '#00d4aa', opacity: 0.4 }}><SparkleIcon size={24} /></span>
+                    <span style={{ color: '#00d4aa', opacity: 0.4 }}><SparklesHeroIcon className="w-6 h-6" /></span>
                   </div>
                 </HudPanel>
               )}
@@ -1426,7 +1407,7 @@ export function AnalyticsPage() {
               {recommendations.length === 0 ? (
                 <HudPanel accent="#00d4aa">
                   <div style={{ padding: '28px', textAlign: 'center' }}>
-                    <span style={{ color: '#00d4aa', opacity: 0.6 }}><SparkleIcon size={28} /></span>
+                    <span style={{ color: '#00d4aa', opacity: 0.6 }}><SparklesHeroIcon className="w-7 h-7" /></span>
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.4)', marginTop: 10 }}>
                       Все отлично — замечаний нет
                     </p>
@@ -1503,7 +1484,7 @@ export function AnalyticsPage() {
 
             {/* Scores */}
             <motion.div variants={fadeUp}>
-              <SectionLabel icon={<ShieldCheckIcon size={14} />}>Здоровье подписок</SectionLabel>
+              <SectionLabel icon={<ShieldCheckHeroIcon className="w-3.5 h-3.5" />}>Здоровье подписок</SectionLabel>
 
               {scores.length > 0 && (
                 <ScoreFilterTabs active={scoreFilter} onChange={setScoreFilter} />

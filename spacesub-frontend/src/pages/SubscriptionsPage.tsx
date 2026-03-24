@@ -51,43 +51,13 @@ function daysUntil(iso: string): number {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-/* ── Icons ── */
-
-function ManualIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  );
-}
-
-function PlusIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
-
-function EditIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-      <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-    </svg>
-  );
-}
+import {
+  PencilSquareIcon,
+  PlusIcon,
+  TrashIcon as TrashIconHero,
+  SignalIcon,
+  ExclamationTriangleIcon,
+} from '@heroicons/react/24/outline';
 
 /* ── Animation variants ── */
 
@@ -108,25 +78,13 @@ function SummaryBlock({ summary }: { summary: SubscriptionSummary }) {
       label: 'Активных спутников',
       value: String(summary.activeCount),
       color: 'var(--signal-primary)',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-          <circle cx="12" cy="12" r="9" />
-          <circle cx="12" cy="12" r="4" />
-          <circle cx="12" cy="3" r="1.5" fill="currentColor" />
-        </svg>
-      ),
+      icon: <SignalIcon className="w-[18px] h-[18px]" />,
     },
     {
       label: 'Скоро списание',
       value: String(summary.upcomingNext7Days.length),
       color: 'var(--signal-warn)',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-          <line x1="12" y1="9" x2="12" y2="13" />
-          <line x1="12" y1="17" x2="12.01" y2="17" />
-        </svg>
-      ),
+      icon: <ExclamationTriangleIcon className="w-[18px] h-[18px]" />,
     },
   ];
 
@@ -311,7 +269,7 @@ function SubscriptionCard({ sub, index, onDelete }: { sub: DetectedSubscription;
               opacity: cancelling ? 0.5 : 1,
             }}
           >
-            <TrashIcon />
+            <TrashIconHero className="w-3 h-3" />
             {cancelling ? 'Отмена...' : confirmCancel ? 'Подтвердить отмену' : 'Отменить подписку'}
           </motion.button>
         </div>
@@ -331,10 +289,7 @@ function UpcomingList({ subs }: { subs: DetectedSubscription[] }) {
         className="text-lg font-semibold mb-4 flex items-center gap-2"
         style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--signal-warn)" strokeWidth="1.5" strokeLinecap="round">
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
+        <ExclamationTriangleIcon className="w-[18px] h-[18px]" style={{ color: 'var(--signal-warn)' }} />
         Ближайшие списания
       </h2>
       <div className="space-y-2">
@@ -493,7 +448,7 @@ function SubscriptionModal({
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: 'var(--signal-primary)',
             }}>
-              {isEdit ? <EditIcon /> : <PlusIcon size={14} />}
+              {isEdit ? <PencilSquareIcon className="w-3.5 h-3.5" /> : <PlusIcon className="w-3.5 h-3.5" />}
             </div>
             <div>
               <h2 style={{
@@ -710,7 +665,7 @@ function ManualSubCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
             <div style={{ color: 'var(--signal-secondary)' }}>
-              <ManualIcon size={15} />
+              <PencilSquareIcon className="w-[15px] h-[15px]" />
             </div>
             <h3 className="font-semibold truncate" style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}>
               {sub.name}
@@ -791,7 +746,7 @@ function ManualSubCard({
             cursor: 'pointer',
           }}
         >
-          <EditIcon />
+          <PencilSquareIcon className="w-3 h-3" />
           Изменить
         </motion.button>
         <motion.button
@@ -813,7 +768,7 @@ function ManualSubCard({
             opacity: deleting ? 0.5 : 1,
           }}
         >
-          <TrashIcon />
+          <TrashIconHero className="w-3 h-3" />
           {deleting ? '...' : confirmDel ? 'Подтвердить' : 'Удалить'}
         </motion.button>
       </div>
@@ -930,7 +885,7 @@ export function SubscriptionsPage() {
           className="btn-signal flex items-center gap-2"
           style={{ padding: '9px 20px', fontSize: 13 }}
         >
-          <PlusIcon size={14} />
+          <PlusIcon className="w-3.5 h-3.5" />
           Добавить
         </motion.button>
       </motion.div>
@@ -1018,7 +973,7 @@ export function SubscriptionsPage() {
           style={{ fontFamily: 'var(--font-display)', color: '#e2e8f0' }}
         >
           <div style={{ color: 'var(--signal-secondary)' }}>
-            <ManualIcon size={18} />
+            <PencilSquareIcon className="w-[18px] h-[18px]" />
           </div>
           Ручные подписки
           <span
@@ -1066,7 +1021,7 @@ export function SubscriptionsPage() {
               className="btn-ghost inline-flex items-center gap-2"
               style={{ padding: '8px 18px', fontSize: 12, borderColor: 'rgba(14,165,233,0.2)', color: 'var(--signal-secondary)' }}
             >
-              <PlusIcon size={13} />
+              <PlusIcon className="w-3 h-3" />
               Добавить вручную
             </motion.button>
           </motion.div>

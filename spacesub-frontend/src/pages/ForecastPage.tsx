@@ -45,47 +45,12 @@ function daysUntil(iso: string): number {
   return Math.round((target.getTime() - now.getTime()) / 86400000);
 }
 
-/* ── Icons ── */
-
-function TrajectoryIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-      <path d="M22 2L15 22l-4-9-9-4z" />
-      <path d="M22 2L11 13" />
-    </svg>
-  );
-}
-
-function CalendarIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-    </svg>
-  );
-}
-
-function RocketIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z" />
-      <path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z" />
-      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
-      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
-    </svg>
-  );
-}
-
-function OrbitClockIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <circle cx="12" cy="12" r="10" opacity="0.4" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
-  );
-}
+import {
+  PaperAirplaneIcon,
+  CalendarDaysIcon,
+  RocketLaunchIcon,
+  ClockIcon,
+} from '@heroicons/react/24/outline';
 
 /* ── Animations ── */
 
@@ -306,7 +271,7 @@ function TimelineNode({ entry, isLast }: { entry: TimelineEntry; isLast: boolean
               </span>
             </div>
             <div className="flex items-center gap-1.5 mt-1.5">
-              <CalendarIcon size={11} />
+              <CalendarDaysIcon className="w-[11px] h-[11px]" />
               <span style={{
                 fontSize: 12, fontFamily: 'var(--font-mono)',
                 color: 'rgba(200,214,229,0.4)',
@@ -357,7 +322,7 @@ function EmptyState() {
         margin: '0 auto 20px',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <TrajectoryIcon size={28} />
+        <PaperAirplaneIcon className="w-7 h-7" />
       </div>
       <p style={{ fontSize: 16, fontWeight: 600, color: 'rgba(200,214,229,0.4)', fontFamily: 'var(--font-display)' }}>
         Нет данных для прогноза
@@ -411,7 +376,7 @@ export function ForecastPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#00D4AA',
           }}>
-            <TrajectoryIcon size={22} />
+            <PaperAirplaneIcon className="w-[22px] h-[22px]" />
           </div>
           <div>
             <h1
@@ -460,19 +425,19 @@ export function ForecastPage() {
             <MetricCard
               label="7 дней"
               value={forecast!.next7DaysTotal}
-              icon={<OrbitClockIcon size={16} />}
+              icon={<ClockIcon className="w-4 h-4" />}
               color="#00D4AA"
             />
             <MetricCard
               label="30 дней"
               value={forecast!.next30DaysTotal}
-              icon={<RocketIcon size={16} />}
+              icon={<RocketLaunchIcon className="w-4 h-4" />}
               color="#0EA5E9"
             />
             <MetricCard
               label="12 месяцев"
               value={forecast!.next12MonthsTotal}
-              icon={<CalendarIcon size={16} />}
+              icon={<CalendarDaysIcon className="w-4 h-4" />}
               color="#F59E0B"
             />
           </div>
@@ -487,7 +452,7 @@ export function ForecastPage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: '#00D4AA',
                 }}>
-                  <OrbitClockIcon size={14} />
+                  <ClockIcon className="w-3.5 h-3.5" />
                 </div>
                 <span style={{
                   fontSize: 15, fontWeight: 600,

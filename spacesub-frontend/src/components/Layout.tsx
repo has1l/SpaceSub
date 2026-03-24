@@ -1,79 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Squares2X2Icon,
+  SignalIcon,
+  PresentationChartLineIcon,
+  ArrowTrendingUpIcon,
+  LinkIcon,
+  BellIcon,
+  ArrowRightOnRectangleIcon,
+} from '@heroicons/react/24/outline';
 import { useAuth } from '../hooks/useAuth';
 import { Starfield } from './Starfield';
 import { SatelliteIcon } from './SatelliteIcon';
 import api from '../services/api';
-
-/* ── Icons ── */
-
-function DashboardIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-      <rect x="1.5" y="1.5" width="5" height="5" rx="1" />
-      <rect x="9.5" y="1.5" width="5" height="5" rx="1" />
-      <rect x="1.5" y="9.5" width="5" height="5" rx="1" />
-      <rect x="9.5" y="9.5" width="5" height="5" rx="1" />
-    </svg>
-  );
-}
-
-function SubscriptionsIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-      <circle cx="8" cy="8" r="6" />
-      <circle cx="8" cy="8" r="3" />
-      <circle cx="8" cy="2" r="1" fill="currentColor" opacity="0.6" />
-    </svg>
-  );
-}
-
-function AnalyticsIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12 L4 8 L7 10 L10 5 L13 7 L15 3" />
-      <path d="M1 14 L15 14" />
-    </svg>
-  );
-}
-
-function ForecastIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14.5 1.5L10 11l-2.7-6L1 7.5" />
-      <path d="M14.5 1.5L7.3 8.5" opacity="0.5" />
-    </svg>
-  );
-}
-
-function ConnectIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-      <path d="M6.67 8.67a3.33 3.33 0 005.03.36l2-2a3.33 3.33 0 00-4.71-4.71L8.14 3.17" />
-      <path d="M9.33 7.33a3.33 3.33 0 00-5.03-.36l-2 2a3.33 3.33 0 004.71 4.71l.84-.84" />
-    </svg>
-  );
-}
-
-function BellNavIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 5.33A4 4 0 0 0 4 5.33c0 4.67-2 6-2 6h12s-2-1.33-2-6" />
-      <path d="M9.15 14a1.33 1.33 0 0 1-2.3 0" />
-    </svg>
-  );
-}
-
-function LogoutIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  );
-}
 
 /* ── Desktop NavLink ── */
 
@@ -162,7 +102,7 @@ function NotificationBell({ count }: { count: number }) {
         background: active ? 'rgba(0,212,170,0.06)' : 'transparent',
       }}
     >
-      <BellNavIcon size={16} />
+      <BellIcon className="w-4 h-4" />
       {count > 0 && (
         <span
           style={{
@@ -246,11 +186,11 @@ export function Layout() {
               </Link>
 
               <div className="flex items-center gap-1">
-                <NavLink to="/dashboard" icon={<DashboardIcon />}>Панель</NavLink>
-                <NavLink to="/subscriptions" icon={<SubscriptionsIcon />}>Подписки</NavLink>
-                <NavLink to="/analytics" icon={<AnalyticsIcon />}>Аналитика</NavLink>
-                <NavLink to="/forecast" icon={<ForecastIcon />}>Прогноз</NavLink>
-                <NavLink to="/connect-flex" icon={<ConnectIcon />}>Подключение</NavLink>
+                <NavLink to="/dashboard" icon={<Squares2X2Icon className="w-4 h-4" />}>Панель</NavLink>
+                <NavLink to="/subscriptions" icon={<SignalIcon className="w-4 h-4" />}>Подписки</NavLink>
+                <NavLink to="/analytics" icon={<PresentationChartLineIcon className="w-4 h-4" />}>Аналитика</NavLink>
+                <NavLink to="/forecast" icon={<ArrowTrendingUpIcon className="w-4 h-4" />}>Прогноз</NavLink>
+                <NavLink to="/connect-flex" icon={<LinkIcon className="w-4 h-4" />}>Подключение</NavLink>
               </div>
             </div>
 
@@ -273,7 +213,7 @@ export function Layout() {
                   e.currentTarget.style.borderColor = 'rgba(200,214,229,0.06)';
                 }}
               >
-                <LogoutIcon />
+                <ArrowRightOnRectangleIcon className="w-3.5 h-3.5" />
                 Выйти
               </button>
             </div>
@@ -301,7 +241,7 @@ export function Layout() {
                   color: unreadCount > 0 ? 'var(--signal-primary)' : 'rgba(200,214,229,0.35)',
                 }}
               >
-                <BellNavIcon size={16} />
+                <BellIcon className="w-4 h-4" />
                 {unreadCount > 0 && (
                   <span
                     style={{
@@ -330,7 +270,7 @@ export function Layout() {
                 className="p-2 rounded-lg cursor-pointer"
                 style={{ color: 'rgba(200,214,229,0.35)' }}
               >
-                <LogoutIcon />
+                <ArrowRightOnRectangleIcon className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -353,11 +293,11 @@ export function Layout() {
         {/* Mobile bottom nav */}
         {token && (
           <nav className="bottom-nav">
-            <BottomNavItem to="/dashboard" label="Панель" icon={<DashboardIcon size={20} />} />
-            <BottomNavItem to="/subscriptions" label="Подписки" icon={<SubscriptionsIcon size={20} />} />
-            <BottomNavItem to="/analytics" label="Аналитика" icon={<AnalyticsIcon size={20} />} />
-            <BottomNavItem to="/forecast" label="Прогноз" icon={<ForecastIcon size={20} />} />
-            <BottomNavItem to="/notifications" label="Сигналы" icon={<BellNavIcon size={20} />} badge={unreadCount} />
+            <BottomNavItem to="/dashboard" label="Панель" icon={<Squares2X2Icon className="w-5 h-5" />} />
+            <BottomNavItem to="/subscriptions" label="Подписки" icon={<SignalIcon className="w-5 h-5" />} />
+            <BottomNavItem to="/analytics" label="Аналитика" icon={<PresentationChartLineIcon className="w-5 h-5" />} />
+            <BottomNavItem to="/forecast" label="Прогноз" icon={<ArrowTrendingUpIcon className="w-5 h-5" />} />
+            <BottomNavItem to="/notifications" label="Сигналы" icon={<BellIcon className="w-5 h-5" />} badge={unreadCount} />
           </nav>
         )}
       </div>
