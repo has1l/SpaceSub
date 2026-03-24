@@ -259,6 +259,10 @@ async function main() {
       continue;
     }
 
+    // Stagger subscription charges across the month
+    const startOffsets = [2, 7, 13, 19, 25];
+    const dayOffset = startOffsets[subCount % startOffsets.length];
+
     // Create RecurringPayment
     const rp = await prisma.recurringPayment.create({
       data: {
@@ -268,7 +272,7 @@ async function main() {
         currency: service.currency,
         category: service.category,
         periodDays: service.periodDays,
-        nextChargeDate: daysFromNow(Math.floor(Math.random() * 25) + 3),
+        nextChargeDate: daysFromNow(dayOffset),
         status: 'ACTIVE',
       },
     });
@@ -285,16 +289,16 @@ async function main() {
       },
     });
 
-    // Generate 3-4 months of transaction history
+    // Generate 4 months of transaction history with staggered dates
     const monthsBack = 4;
     for (let m = 0; m < monthsBack; m++) {
-      const dayOffset = m * service.periodDays + Math.floor(Math.random() * 3);
-      if (dayOffset > 120) break;
+      const txDayOffset = m * service.periodDays + dayOffset;
+      if (txDayOffset > 120) break;
 
       await prisma.transaction.create({
         data: {
           accountId: checking.id,
-          date: daysAgo(dayOffset),
+          date: daysAgo(txDayOffset),
           amount: -service.amount,
           description: `Подписка: ${service.name}`,
           merchant: service.name,
@@ -307,14 +311,44 @@ async function main() {
   }
   console.log(`Seeded ${subCount} demo subscriptions`);
 
-  // ── One-off transactions ──
+  // ── One-off transactions spread across 4 months ──
   const oneOffs = [
-    { id: 'seed-tx-grocery',    days: -3,  amount: -4500,  desc: 'Пятёрочка',              merchant: 'Pyaterochka', type: TransactionType.EXPENSE,  cat: TransactionCategory.SUPERMARKETS },
-    { id: 'seed-tx-salary',     days: -5,  amount: 85000,  desc: 'Зарплата',               merchant: null,          type: TransactionType.INCOME,   cat: TransactionCategory.OTHER },
-    { id: 'seed-tx-uber',       days: -7,  amount: -1200,  desc: 'Uber поездка',           merchant: 'Uber',        type: TransactionType.EXPENSE,  cat: TransactionCategory.TRANSPORT },
-    { id: 'seed-tx-restaurant', days: -8,  amount: -3200,  desc: 'Ресторан "Место"',       merchant: 'Mesto',       type: TransactionType.EXPENSE,  cat: TransactionCategory.RESTAURANTS },
-    { id: 'seed-tx-transfer',   days: -12, amount: -15000, desc: 'Перевод на накопительный', merchant: null,         type: TransactionType.TRANSFER, cat: TransactionCategory.TRANSFERS },
-    { id: 'seed-tx-pharmacy',   days: -14, amount: -2100,  desc: 'Аптека "Здоровье"',      merchant: 'Zdorovye',    type: TransactionType.EXPENSE,  cat: TransactionCategory.HEALTH },
+    // Last 7 days
+    { id: 'seed-tx-magnit',     days: -1,  amount: -2300,  desc: 'Магнит',                  merchant: 'Magnit',      type: TransactionType.EXPENSE,  cat: TransactionCategory.SUPERMARKETS },
+    { id: 'seed-tx-grocery',    days: -3,  amount: -4500,  desc: 'Пятёрочка',               merchant: 'Pyaterochka', type: TransactionType.EXPENSE,  cat: TransactionCategory.SUPERMARKETS },
+    { id: 'seed-tx-taxi1',      days: -5,  amount: -1200,  desc: 'Яндекс Такси',            merchant: 'Yandex Taxi', type: TransactionType.EXPENSE,  cat: TransactionCategory.TRANSPORT },
+    { id: 'seed-tx-coffee1',    days: -6,  amount: -850,   desc: 'Кофейня',                  merchant: 'Coffee Shop', type: TransactionType.EXPENSE,  cat: TransactionCategory.RESTAURANTS },
+    // 7-14 days
+    { id: 'seed-tx-salary',     days: -8,  amount: 85000,  desc: 'Зарплата',                merchant: null,          type: TransactionType.INCOME,   cat: TransactionCategory.OTHER },
+    { id: 'seed-tx-restaurant', days: -9,  amount: -3200,  desc: 'Ресторан "Место"',        merchant: 'Mesto',       type: TransactionType.EXPENSE,  cat: TransactionCategory.RESTAURANTS },
+    { id: 'seed-tx-wb1',        days: -11, amount: -1500,  desc: 'Wildberries',             merchant: 'Wildberries', type: TransactionType.EXPENSE,  cat: TransactionCategory.OTHER },
+    { id: 'seed-tx-pharmacy',   days: -13, amount: -2100,  desc: 'Аптека "Здоровье"',       merchant: 'Zdorovye',    type: TransactionType.EXPENSE,  cat: TransactionCategory.HEALTH },
+    // 14-30 days
+    { id: 'seed-tx-perek1',     days: -16, amount: -5200,  desc: 'Перекрёсток',             merchant: 'Perekrestok', type: TransactionType.EXPENSE,  cat: TransactionCategory.SUPERMARKETS },
+    { id: 'seed-tx-uber1',      days: -18, amount: -1800,  desc: 'Uber поездка',            merchant: 'Uber',        type: TransactionType.EXPENSE,  cat: TransactionCategory.TRANSPORT },
+    { id: 'seed-tx-cafe1',      days: -21, amount: -950,   desc: 'Кафе Му-Му',              merchant: 'Mu-Mu',       type: TransactionType.EXPENSE,  cat: TransactionCategory.RESTAURANTS },
+    { id: 'seed-tx-grocery2',   days: -24, amount: -3800,  desc: 'Пятёрочка',               merchant: 'Pyaterochka', type: TransactionType.EXPENSE,  cat: TransactionCategory.SUPERMARKETS },
+    { id: 'seed-tx-transfer',   days: -26, amount: -15000, desc: 'Перевод на накопительный', merchant: null,          type: TransactionType.TRANSFER, cat: TransactionCategory.TRANSFERS },
+    { id: 'seed-tx-taxi2',      days: -27, amount: -1400,  desc: 'Яндекс Такси',            merchant: 'Yandex Taxi', type: TransactionType.EXPENSE,  cat: TransactionCategory.TRANSPORT },
+    // 30-60 days
+    { id: 'seed-tx-lenta1',     days: -32, amount: -4200,  desc: 'Лента',                    merchant: 'Lenta',       type: TransactionType.EXPENSE,  cat: TransactionCategory.SUPERMARKETS },
+    { id: 'seed-tx-salary2',    days: -35, amount: 85000,  desc: 'Зарплата',                merchant: null,          type: TransactionType.INCOME,   cat: TransactionCategory.OTHER },
+    { id: 'seed-tx-rest2',      days: -38, amount: -2800,  desc: 'Ресторан',                 merchant: 'Restaurant',  type: TransactionType.EXPENSE,  cat: TransactionCategory.RESTAURANTS },
+    { id: 'seed-tx-pharm2',     days: -42, amount: -1600,  desc: 'Аптека',                    merchant: 'Pharmacy',    type: TransactionType.EXPENSE,  cat: TransactionCategory.HEALTH },
+    { id: 'seed-tx-taxi3',      days: -45, amount: -900,   desc: 'Яндекс Такси',             merchant: 'Yandex Taxi', type: TransactionType.EXPENSE,  cat: TransactionCategory.TRANSPORT },
+    { id: 'seed-tx-perek2',     days: -48, amount: -5600,  desc: 'Перекрёсток',              merchant: 'Perekrestok', type: TransactionType.EXPENSE,  cat: TransactionCategory.SUPERMARKETS },
+    { id: 'seed-tx-ozon1',      days: -52, amount: -2200,  desc: 'OZON заказ',               merchant: 'Ozon',        type: TransactionType.EXPENSE,  cat: TransactionCategory.OTHER },
+    // 60-90 days
+    { id: 'seed-tx-salary3',    days: -62, amount: 85000,  desc: 'Зарплата',                merchant: null,          type: TransactionType.INCOME,   cat: TransactionCategory.OTHER },
+    { id: 'seed-tx-grocery3',   days: -65, amount: -3500,  desc: 'Пятёрочка',               merchant: 'Pyaterochka', type: TransactionType.EXPENSE,  cat: TransactionCategory.SUPERMARKETS },
+    { id: 'seed-tx-uber2',      days: -70, amount: -1300,  desc: 'Uber поездка',            merchant: 'Uber',        type: TransactionType.EXPENSE,  cat: TransactionCategory.TRANSPORT },
+    { id: 'seed-tx-rest3',      days: -75, amount: -2900,  desc: 'Ресторан',                 merchant: 'Restaurant',  type: TransactionType.EXPENSE,  cat: TransactionCategory.RESTAURANTS },
+    { id: 'seed-tx-lenta2',     days: -80, amount: -4100,  desc: 'Лента',                    merchant: 'Lenta',       type: TransactionType.EXPENSE,  cat: TransactionCategory.SUPERMARKETS },
+    // 90-120 days
+    { id: 'seed-tx-salary4',    days: -92,  amount: 85000, desc: 'Зарплата',                merchant: null,          type: TransactionType.INCOME,   cat: TransactionCategory.OTHER },
+    { id: 'seed-tx-perek3',     days: -95,  amount: -3700, desc: 'Перекрёсток',              merchant: 'Perekrestok', type: TransactionType.EXPENSE,  cat: TransactionCategory.SUPERMARKETS },
+    { id: 'seed-tx-taxi4',      days: -100, amount: -1100, desc: 'Яндекс Такси',             merchant: 'Yandex Taxi', type: TransactionType.EXPENSE,  cat: TransactionCategory.TRANSPORT },
+    { id: 'seed-tx-pharm3',     days: -110, amount: -2500, desc: 'Аптека',                    merchant: 'Pharmacy',    type: TransactionType.EXPENSE,  cat: TransactionCategory.HEALTH },
   ];
 
   for (const t of oneOffs) {

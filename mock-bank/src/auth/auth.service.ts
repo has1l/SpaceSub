@@ -256,7 +256,13 @@ export class AuthService {
     const shuffled = allServices.sort(() => Math.random() - 0.5);
     const picked = shuffled.slice(0, Math.min(5, shuffled.length));
 
-    for (const service of picked) {
+    // Stagger subscription start offsets so charges spread across the month
+    const startOffsets = [2, 7, 13, 19, 25];
+
+    for (let i = 0; i < picked.length; i++) {
+      const service = picked[i];
+      const dayOffset = startOffsets[i % startOffsets.length];
+
       const rp = await this.prisma.recurringPayment.create({
         data: {
           accountId: account.id,
@@ -265,7 +271,7 @@ export class AuthService {
           currency: service.currency,
           category: service.category,
           periodDays: service.periodDays,
-          nextChargeDate: new Date(Date.now() + (Math.floor(Math.random() * 25) + 3) * 86400000),
+          nextChargeDate: new Date(Date.now() + dayOffset * 86400000),
           status: 'ACTIVE',
         },
       });
@@ -281,11 +287,11 @@ export class AuthService {
         },
       });
 
-      // Generate 4 months of transaction history
+      // Generate 4 months of transaction history with staggered dates
       for (let m = 0; m < 4; m++) {
         const date = new Date();
-        date.setDate(date.getDate() - m * service.periodDays - Math.floor(Math.random() * 3));
-        date.setHours(12, 0, 0, 0);
+        date.setDate(date.getDate() - m * service.periodDays - dayOffset);
+        date.setHours(10 + Math.floor(Math.random() * 8), Math.floor(Math.random() * 60), 0, 0);
 
         await this.prisma.transaction.create({
           data: {
@@ -302,17 +308,43 @@ export class AuthService {
       }
     }
 
-    // 3. Add some one-off transactions for realistic analytics
+    // 3. Add many one-off transactions spread across 4 months for rich analytics
     const oneOffs = [
-      { days: 3,  amount: -4500,  desc: 'Пятёрочка',      merchant: 'Pyaterochka', type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
-      { days: 5,  amount: 85000,  desc: 'Зарплата',        merchant: null,          type: 'INCOME' as const,  cat: 'OTHER' as const },
-      { days: 7,  amount: -1200,  desc: 'Яндекс Такси',    merchant: 'Yandex Taxi', type: 'EXPENSE' as const, cat: 'TRANSPORT' as const },
-      { days: 10, amount: -3200,  desc: 'Ресторан',         merchant: 'Restaurant',  type: 'EXPENSE' as const, cat: 'RESTAURANTS' as const },
-      { days: 14, amount: -2100,  desc: 'Аптека',           merchant: 'Pharmacy',    type: 'EXPENSE' as const, cat: 'HEALTH' as const },
-      { days: 35, amount: 85000,  desc: 'Зарплата',         merchant: null,          type: 'INCOME' as const,  cat: 'OTHER' as const },
-      { days: 40, amount: -5600,  desc: 'Перекрёсток',      merchant: 'Perekrestok', type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
-      { days: 50, amount: -1800,  desc: 'Uber поездка',     merchant: 'Uber',        type: 'EXPENSE' as const, cat: 'TRANSPORT' as const },
-      { days: 65, amount: 85000,  desc: 'Зарплата',         merchant: null,          type: 'INCOME' as const,  cat: 'OTHER' as const },
+      // Last 7 days
+      { days: 1,  amount: -2300,  desc: 'Магнит',           merchant: 'Magnit',      type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
+      { days: 3,  amount: -4500,  desc: 'Пятёрочка',        merchant: 'Pyaterochka', type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
+      { days: 5,  amount: -1200,  desc: 'Яндекс Такси',     merchant: 'Yandex Taxi', type: 'EXPENSE' as const, cat: 'TRANSPORT' as const },
+      { days: 6,  amount: -850,   desc: 'Кофейня',           merchant: 'Coffee Shop', type: 'EXPENSE' as const, cat: 'RESTAURANTS' as const },
+      // 7-14 days
+      { days: 8,  amount: 85000,  desc: 'Зарплата',          merchant: null,          type: 'INCOME' as const,  cat: 'OTHER' as const },
+      { days: 9,  amount: -3200,  desc: 'Ресторан',           merchant: 'Restaurant',  type: 'EXPENSE' as const, cat: 'RESTAURANTS' as const },
+      { days: 11, amount: -1500,  desc: 'Wildberries',       merchant: 'Wildberries', type: 'EXPENSE' as const, cat: 'OTHER' as const },
+      { days: 13, amount: -2100,  desc: 'Аптека',             merchant: 'Pharmacy',    type: 'EXPENSE' as const, cat: 'HEALTH' as const },
+      // 14-30 days
+      { days: 16, amount: -5200,  desc: 'Перекрёсток',       merchant: 'Perekrestok', type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
+      { days: 18, amount: -1800,  desc: 'Uber поездка',      merchant: 'Uber',        type: 'EXPENSE' as const, cat: 'TRANSPORT' as const },
+      { days: 21, amount: -950,   desc: 'Кафе Му-Му',        merchant: 'Mu-Mu',       type: 'EXPENSE' as const, cat: 'RESTAURANTS' as const },
+      { days: 24, amount: -3800,  desc: 'Пятёрочка',         merchant: 'Pyaterochka', type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
+      { days: 27, amount: -1400,  desc: 'Яндекс Такси',      merchant: 'Yandex Taxi', type: 'EXPENSE' as const, cat: 'TRANSPORT' as const },
+      // 30-60 days
+      { days: 32, amount: -4200,  desc: 'Лента',              merchant: 'Lenta',       type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
+      { days: 35, amount: 85000,  desc: 'Зарплата',           merchant: null,          type: 'INCOME' as const,  cat: 'OTHER' as const },
+      { days: 38, amount: -2800,  desc: 'Ресторан',            merchant: 'Restaurant',  type: 'EXPENSE' as const, cat: 'RESTAURANTS' as const },
+      { days: 42, amount: -1600,  desc: 'Аптека',              merchant: 'Pharmacy',    type: 'EXPENSE' as const, cat: 'HEALTH' as const },
+      { days: 45, amount: -900,   desc: 'Яндекс Такси',       merchant: 'Yandex Taxi', type: 'EXPENSE' as const, cat: 'TRANSPORT' as const },
+      { days: 48, amount: -5600,  desc: 'Перекрёсток',        merchant: 'Perekrestok', type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
+      { days: 52, amount: -2200,  desc: 'OZON заказ',         merchant: 'Ozon',        type: 'EXPENSE' as const, cat: 'OTHER' as const },
+      // 60-90 days
+      { days: 62, amount: 85000,  desc: 'Зарплата',           merchant: null,          type: 'INCOME' as const,  cat: 'OTHER' as const },
+      { days: 65, amount: -3500,  desc: 'Пятёрочка',          merchant: 'Pyaterochka', type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
+      { days: 70, amount: -1300,  desc: 'Uber поездка',       merchant: 'Uber',        type: 'EXPENSE' as const, cat: 'TRANSPORT' as const },
+      { days: 75, amount: -2900,  desc: 'Ресторан',            merchant: 'Restaurant',  type: 'EXPENSE' as const, cat: 'RESTAURANTS' as const },
+      { days: 80, amount: -4100,  desc: 'Лента',               merchant: 'Lenta',       type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
+      // 90-120 days
+      { days: 92, amount: 85000,  desc: 'Зарплата',            merchant: null,          type: 'INCOME' as const,  cat: 'OTHER' as const },
+      { days: 95, amount: -3700,  desc: 'Перекрёсток',         merchant: 'Perekrestok', type: 'EXPENSE' as const, cat: 'SUPERMARKETS' as const },
+      { days: 100, amount: -1100, desc: 'Яндекс Такси',        merchant: 'Yandex Taxi', type: 'EXPENSE' as const, cat: 'TRANSPORT' as const },
+      { days: 110, amount: -2500, desc: 'Аптека',               merchant: 'Pharmacy',    type: 'EXPENSE' as const, cat: 'HEALTH' as const },
     ];
 
     for (const t of oneOffs) {
