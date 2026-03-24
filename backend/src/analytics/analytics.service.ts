@@ -105,8 +105,32 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Игры':             '#8b5cf6',
   'Фитнес':           '#ef4444',
   'Новости':          '#64748b',
+  'Подписки':         '#a855f7',
+  'Супермаркеты':     '#22c55e',
+  'Переводы':         '#3b82f6',
+  'Цифровые услуги':  '#06b6d4',
+  'Инвестиции':       '#f59e0b',
+  'Транспорт':        '#f97316',
+  'Рестораны':        '#ef4444',
+  'Здоровье':         '#ec4899',
   'Другое':           '#475569',
 };
+
+/** Map bank transaction categories to display names */
+function bankCategoryToDisplay(bankCategory: string): SubscriptionCategory {
+  const map: Record<string, string> = {
+    SUBSCRIPTIONS:     'Подписки',
+    SUPERMARKETS:      'Супермаркеты',
+    TRANSFERS:         'Переводы',
+    DIGITAL_SERVICES:  'Цифровые услуги',
+    INVESTMENTS:       'Инвестиции',
+    TRANSPORT:         'Транспорт',
+    RESTAURANTS:       'Рестораны',
+    HEALTH:            'Здоровье',
+    OTHER:             'Другое',
+  };
+  return (map[bankCategory] ?? 'Другое') as SubscriptionCategory;
+}
 
 function categoryColor(cat: string): string {
   return CATEGORY_COLORS[cat] ?? '#475569';
@@ -195,12 +219,13 @@ export class AnalyticsService {
 
     const [currentTxs, prevTxs, periodAgg] = await Promise.all([
       this.prisma.importedTransaction.aggregate({
-        where: { userId, occurredAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) } },
+        where: { userId, amount: { lt: 0 }, occurredAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) } },
         _sum: { amount: true },
       }),
       this.prisma.importedTransaction.aggregate({
         where: {
           userId,
+          amount: { lt: 0 },
           occurredAt: {
             gte: new Date(now.getFullYear(), now.getMonth() - 1, 1),
             lt: new Date(now.getFullYear(), now.getMonth(), 1),
@@ -209,7 +234,7 @@ export class AnalyticsService {
         _sum: { amount: true },
       }),
       this.prisma.importedTransaction.aggregate({
-        where: { userId, occurredAt: { gte: periodFrom, lte: periodTo } },
+        where: { userId, amount: { lt: 0 }, occurredAt: { gte: periodFrom, lte: periodTo } },
         _sum: { amount: true },
       }),
     ]);
@@ -238,14 +263,15 @@ export class AnalyticsService {
     // If date range given — aggregate from transactions
     if (from && to) {
       const txs = await this.prisma.importedTransaction.findMany({
-        where: { userId, occurredAt: { gte: from, lte: to } },
-        select: { merchant: true, description: true, amount: true },
+        where: { userId, occurredAt: { gte: from, lte: to }, amount: { lt: 0 } },
+        select: { merchant: true, description: true, amount: true, category: true },
       });
 
       const catMap = new Map<string, { color: string; total: number; count: number }>();
       for (const tx of txs) {
         const merchant = tx.merchant ?? tx.description;
-        const cat = categorize(merchant);
+        // Use bank category if available, fall back to merchant-based categorization
+        const cat = tx.category ? bankCategoryToDisplay(tx.category) : categorize(merchant);
         const color = categoryColor(cat);
         const existing = catMap.get(cat) ?? { color, total: 0, count: 0 };
         catMap.set(cat, { color, total: existing.total + Math.abs(Number(tx.amount)), count: existing.count + 1 });
@@ -313,7 +339,7 @@ export class AnalyticsService {
     // If date range — adjust amounts by actual transaction spend in period
     if (from && to) {
       const txs = await this.prisma.importedTransaction.findMany({
-        where: { userId, occurredAt: { gte: from, lte: to } },
+        where: { userId, amount: { lt: 0 }, occurredAt: { gte: from, lte: to } },
         select: { merchant: true, description: true, amount: true },
       });
 
@@ -345,7 +371,7 @@ export class AnalyticsService {
     const rangeTo = to ?? now;
 
     const txs = await this.prisma.importedTransaction.findMany({
-      where: { userId, occurredAt: { gte: rangeFrom, lte: rangeTo } },
+      where: { userId, amount: { lt: 0 }, occurredAt: { gte: rangeFrom, lte: rangeTo } },
       select: { occurredAt: true, amount: true },
       orderBy: { occurredAt: 'asc' },
     });

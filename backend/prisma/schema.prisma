@@ -190,6 +190,7 @@ model ImportedTransaction {
   currency          String       @default("RUB")
   description       String
   merchant          String?
+  category          String?
   accountExternalId String?      @map("account_external_id")
   raw               Json
   createdAt         DateTime     @default(now()) @map("created_at")
