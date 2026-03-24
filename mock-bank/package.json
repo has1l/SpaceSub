@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "prisma generate && nest build",
-    "start": "npm run migrate && node dist/main.js",
+    "start": "npm run migrate && node prisma/seed.js && node dist/main.js",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
