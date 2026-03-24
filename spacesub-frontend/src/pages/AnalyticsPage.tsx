@@ -81,120 +81,44 @@ function getPeriodDates(key: PeriodKey): { from: string; to: string } {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-// ─── SVG Category Icons ───
+import {
+  FilmIcon,
+  MusicalNoteIcon,
+  TableCellsIcon,
+  CloudIcon,
+  ShieldCheckIcon,
+  AcademicCapIcon,
+  PuzzlePieceIcon,
+  HeartIcon,
+  NewspaperIcon,
+  EllipsisHorizontalCircleIcon,
+  ChartPieIcon,
+  SignalIcon as SignalIconHero,
+  ArrowsRightLeftIcon,
+  GlobeAltIcon,
+  BoltIcon,
+  ExclamationTriangleIcon,
+  ArrowDownIcon,
+  ArrowsPointingInIcon,
+} from '@heroicons/react/24/outline';
 
-function CategoryIcon({ category, size = 16, color = 'currentColor' }: { category: string; size?: number; color?: string }) {
-  const s = size;
-  const props = { width: s, height: s, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+// ─── Category Icons ───
 
-  switch (category) {
-    case 'Развлечения':
-      return <svg {...props}><rect x="2" y="4" width="20" height="14" rx="2" /><polygon points="10,8 10,14 15,11" fill={color} opacity={0.6} stroke="none" /></svg>;
-    case 'Музыка':
-      return <svg {...props}><rect x="6" y="10" width="3" height="8" rx="1" opacity={0.7} /><rect x="11" y="6" width="3" height="12" rx="1" /><rect x="16" y="8" width="3" height="10" rx="1" opacity={0.7} /></svg>;
-    case 'Продуктивность':
-      return <svg {...props}><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="13" y="3" width="8" height="8" rx="1.5" opacity={0.6} /><rect x="3" y="13" width="8" height="8" rx="1.5" opacity={0.6} /><rect x="13" y="13" width="8" height="8" rx="1.5" /></svg>;
-    case 'Облако и хостинг':
-      return <svg {...props}><path d="M18 10a4 4 0 00-7.5-2A3.5 3.5 0 004 11.5 3 3 0 005 17h12a3 3 0 001-5.8z" /><polyline points="12 13 12 9" /><polyline points="10 11 12 9 14 11" /></svg>;
-    case 'Безопасность':
-      return <svg {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><rect x="10" y="10" width="4" height="5" rx="1" /><circle cx="12" cy="8" r="2" /></svg>;
-    case 'Образование':
-      return <svg {...props}><path d="M2 12l10-5 10 5-10 5z" /><path d="M6 14v4c0 1 3 3 6 3s6-2 6-3v-4" /><line x1="22" y1="12" x2="22" y2="18" /></svg>;
-    case 'Игры':
-      return <svg {...props}><rect x="2" y="6" width="20" height="12" rx="4" /><circle cx="8" cy="12" r="1.5" fill={color} opacity={0.5} stroke="none" /><circle cx="16" cy="10" r="1" fill={color} opacity={0.5} stroke="none" /><circle cx="18" cy="12" r="1" fill={color} opacity={0.5} stroke="none" /><circle cx="16" cy="14" r="1" fill={color} opacity={0.5} stroke="none" /></svg>;
-    case 'Фитнес':
-      return <svg {...props}><polyline points="2 12 6 12 8 8 12 16 14 12 18 12 20 10 22 12" /></svg>;
-    case 'Новости':
-      return <svg {...props}><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="7" y1="8" x2="17" y2="8" /><line x1="7" y1="12" x2="14" y2="12" opacity={0.6} /><line x1="7" y1="16" x2="12" y2="16" opacity={0.4} /></svg>;
-    default:
-      return <svg {...props}><circle cx="6" cy="12" r="1.5" fill={color} opacity={0.5} stroke="none" /><circle cx="12" cy="12" r="1.5" fill={color} opacity={0.5} stroke="none" /><circle cx="18" cy="12" r="1.5" fill={color} opacity={0.5} stroke="none" /></svg>;
-  }
-}
+const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  'Развлечения': FilmIcon,
+  'Музыка': MusicalNoteIcon,
+  'Продуктивность': TableCellsIcon,
+  'Облако и хостинг': CloudIcon,
+  'Безопасность': ShieldCheckIcon,
+  'Образование': AcademicCapIcon,
+  'Игры': PuzzlePieceIcon,
+  'Фитнес': HeartIcon,
+  'Новости': NewspaperIcon,
+};
 
-// ─── SVG HUD Icons ───
-
-function RadarIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-      <circle cx="12" cy="12" r="10" opacity="0.3" />
-      <circle cx="12" cy="12" r="6" opacity="0.5" />
-      <circle cx="12" cy="12" r="2" fill="currentColor" opacity="0.8" />
-      <line x1="12" y1="12" x2="18" y2="6" strokeWidth="1.5" />
-      <path d="M17 7a8 8 0 01.5 4" strokeWidth="1" opacity="0.4" />
-    </svg>
-  );
-}
-
-function SignalTowerIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-      <line x1="12" y1="22" x2="12" y2="10" />
-      <path d="M8 10l4-6 4 6" strokeWidth="1.5" fill="none" />
-      <path d="M7 14a7 7 0 010-8" opacity="0.4" />
-      <path d="M17 14a7 7 0 000-8" opacity="0.4" />
-      <path d="M4 16a11 11 0 010-12" opacity="0.25" />
-      <path d="M20 16a11 11 0 000-12" opacity="0.25" />
-    </svg>
-  );
-}
-
-function DataFlowIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-      <rect x="2" y="3" width="8" height="6" rx="1" />
-      <rect x="14" y="15" width="8" height="6" rx="1" />
-      <path d="M6 9v3a3 3 0 003 3h6" />
-      <polyline points="13 13 15 15 13 17" />
-    </svg>
-  );
-}
-
-function OrbitIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-30 12 12)" opacity="0.4" />
-      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(30 12 12)" opacity="0.4" />
-      <circle cx="12" cy="12" r="2.5" fill="currentColor" opacity="0.7" />
-      <circle cx="5" cy="8" r="1.2" fill="currentColor" opacity="0.5" />
-      <circle cx="19" cy="16" r="1.2" fill="currentColor" opacity="0.5" />
-    </svg>
-  );
-}
-
-function TelemetryIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-    </svg>
-  );
-}
-
-function WarningTriangleIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-      <line x1="12" y1="9" x2="12" y2="13" />
-      <line x1="12" y1="17" x2="12.01" y2="17" />
-    </svg>
-  );
-}
-
-function DowngradeIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M12 5v14M5 12l7 7 7-7" />
-    </svg>
-  );
-}
-
-function MergeIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <circle cx="18" cy="18" r="3" />
-      <circle cx="6" cy="6" r="3" />
-      <path d="M6 21V9a9 9 0 009 9" />
-    </svg>
-  );
+function CategoryIcon({ category, size = 16 }: { category: string; size?: number }) {
+  const Icon = CATEGORY_ICON_MAP[category] ?? EllipsisHorizontalCircleIcon;
+  return <Icon className={`w-[${size}px] h-[${size}px]`} style={{ width: size, height: size }} />;
 }
 
 function ShieldCheckIcon({ size = 16 }: { size?: number }) {
@@ -344,17 +268,17 @@ function fmtMonth(key: string) {
   const parts = key.split('-');
   if (parts.length < 2) return key;
   const second = parts[1];
-  if (second.startsWith('W')) return `Н${second.slice(1)}`;
+  if (second.startsWith('W')) return `Н${second.slice(1).padStart(2, '0')}`;
   const m = parseInt(second, 10);
   if (!m) return key;
   return ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][m - 1] ?? key;
 }
 
 const RECO_ICONS: Record<string, (props: { size?: number }) => React.ReactNode> = {
-  CANCEL: WarningTriangleIcon,
-  REVIEW: WarningTriangleIcon,
-  DOWNGRADE: DowngradeIcon,
-  CONSOLIDATE: MergeIcon,
+  CANCEL: ExclamationTriangleIcon,
+  REVIEW: ExclamationTriangleIcon,
+  DOWNGRADE: ArrowDownIcon,
+  CONSOLIDATE: ArrowsPointingInIcon,
 };
 const RECO_LABELS: Record<string, string> = { CANCEL: 'Отменить', REVIEW: 'Проверить', DOWNGRADE: 'Сменить план', CONSOLIDATE: 'Дубликат' };
 const RECO_COLORS: Record<string, { text: string; bg: string; border: string; glow: string }> = {
@@ -836,7 +760,7 @@ function BudgetRadarSection({ overview, categories, recommendations }: {
       value: density,
       suffix: '/кат',
       color: '#a78bfa',
-      icon: <OrbitIcon size={16} />,
+      icon: <GlobeAltIcon className="w-4 h-4" />,
       gauge: Math.min(100, density * 20),
     },
   ];
@@ -1134,10 +1058,10 @@ export function AnalyticsPage() {
   }
 
   const heroStats = [
-    { label: 'ПОДПИСОК', value: overview?.activeCount ?? 0, color: '#00d4aa', icon: <OrbitIcon size={20} /> },
-    { label: 'В МЕСЯЦ', value: overview?.mrr ?? 0, color: '#0ea5e9', icon: <DataFlowIcon size={20} />, prefix: '₽' },
-    { label: 'В ГОД', value: overview?.arr ?? 0, color: '#a78bfa', icon: <SignalTowerIcon size={20} />, prefix: '₽' },
-    { label: 'СКОРО', value: overview?.upcomingCount ?? 0, color: '#f59e0b', icon: <TelemetryIcon size={20} /> },
+    { label: 'ПОДПИСОК', value: overview?.activeCount ?? 0, color: '#00d4aa', icon: <GlobeAltIcon className="w-5 h-5" /> },
+    { label: 'В МЕСЯЦ', value: overview?.mrr ?? 0, color: '#0ea5e9', icon: <ArrowsRightLeftIcon className="w-5 h-5" />, prefix: '₽' },
+    { label: 'В ГОД', value: overview?.arr ?? 0, color: '#a78bfa', icon: <SignalIconHero className="w-5 h-5" />, prefix: '₽' },
+    { label: 'СКОРО', value: overview?.upcomingCount ?? 0, color: '#f59e0b', icon: <BoltIcon className="w-5 h-5" /> },
   ];
 
   return (
@@ -1168,7 +1092,7 @@ export function AnalyticsPage() {
           <motion.div variants={fadeUp} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-                <span style={{ color: '#00d4aa', opacity: 0.7 }}><RadarIcon size={28} /></span>
+                <span style={{ color: '#00d4aa', opacity: 0.7 }}><ChartPieIcon className="w-7 h-7" /></span>
                 <h1 style={{
                   fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 800, margin: 0,
                   background: 'linear-gradient(135deg, #00d4aa, #0ea5e9)',
@@ -1282,7 +1206,7 @@ export function AnalyticsPage() {
             <div>
               <HudPanel accent="#0ea5e9">
                 <div style={{ padding: '20px 22px' }}>
-                  <SectionLabel icon={<OrbitIcon size={14} />}>Категории</SectionLabel>
+                  <SectionLabel icon={<GlobeAltIcon className="w-3.5 h-3.5" />}>Категории</SectionLabel>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(200,214,229,0.2)', marginBottom: 8, letterSpacing: '0.08em' }}>
                     НАЖМИТЕ НА СЕКТОР ДЛЯ ДЕТАЛИЗАЦИИ
                   </p>
@@ -1311,7 +1235,7 @@ export function AnalyticsPage() {
 
             <HudPanel accent="#a78bfa">
               <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '100%' }}>
-                <SectionLabel icon={<TelemetryIcon size={14} />}>Распределение</SectionLabel>
+                <SectionLabel icon={<BoltIcon className="w-3.5 h-3.5" />}>Распределение</SectionLabel>
                 {chartLoading
                   ? <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>{[...Array(5)].map((_, i) => <Skeleton key={i} h={34} r={6} />)}</div>
                   : <CategoryAccordion
@@ -1330,7 +1254,7 @@ export function AnalyticsPage() {
             <HudPanel accent="#00d4aa">
               <div style={{ padding: '20px 22px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <SectionLabel icon={<DataFlowIcon size={14} />}>Динамика расходов</SectionLabel>
+                  <SectionLabel icon={<ArrowsRightLeftIcon className="w-3.5 h-3.5" />}>Динамика расходов</SectionLabel>
                   {!chartLoading && periods.some((p) => p.total > 0) && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1347,7 +1271,7 @@ export function AnalyticsPage() {
 
                 {chartLoading ? <Skeleton h={220} r={8} /> : periods.every((p) => p.total === 0) ? (
                   <div style={{ height: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    <span style={{ color: 'rgba(200,214,229,0.15)' }}><SignalTowerIcon size={32} /></span>
+                    <span style={{ color: 'rgba(200,214,229,0.15)' }}><SignalIconHero className="w-8 h-8" /></span>
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'rgba(200,214,229,0.25)' }}>
                       Нет транзакций за этот период
                     </p>
@@ -1405,7 +1329,7 @@ export function AnalyticsPage() {
             <motion.div variants={fadeUp} style={{ marginBottom: 16 }}>
               <HudPanel accent="#0ea5e9">
                 <div style={{ padding: '20px 22px' }}>
-                  <SectionLabel icon={<SignalTowerIcon size={14} />}>Топ сервисов по стоимости</SectionLabel>
+                  <SectionLabel icon={<SignalIconHero className="w-3.5 h-3.5" />}>Топ сервисов по стоимости</SectionLabel>
                   {chartLoading ? <Skeleton h={rankedServices.length * 42} r={8} /> : (
                     <ResponsiveContainer width="100%" height={Math.max(200, Math.min(rankedServices.length, 10) * 44)}>
                       <BarChart data={rankedServices.slice(0, 10)} layout="vertical" margin={{ top: 0, right: 12, left: 8, bottom: 0 }}>
@@ -1477,7 +1401,7 @@ export function AnalyticsPage() {
 
             {/* Recommendations */}
             <motion.div variants={fadeUp}>
-              <SectionLabel icon={<WarningTriangleIcon size={14} />}>Рекомендации</SectionLabel>
+              <SectionLabel icon={<ExclamationTriangleIcon className="w-3.5 h-3.5" />}>Рекомендации</SectionLabel>
 
               {/* Total savings counter */}
               {recommendations.length > 0 && (
@@ -1588,7 +1512,7 @@ export function AnalyticsPage() {
               {scores.length === 0 ? (
                 <HudPanel accent="#00d4aa">
                   <div style={{ padding: '28px', textAlign: 'center' }}>
-                    <span style={{ color: 'rgba(200,214,229,0.2)' }}><OrbitIcon size={28} /></span>
+                    <span style={{ color: 'rgba(200,214,229,0.2)' }}><GlobeAltIcon className="w-7 h-7" /></span>
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(200,214,229,0.4)', marginTop: 10 }}>
                       Нет активных подписок
                     </p>

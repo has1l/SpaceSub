@@ -721,70 +721,94 @@ private struct AreaChartContent: View {
     let periodsWithAvg: [PeriodItemWithAvg]
 
     var body: some View {
-        Chart {
-            ForEach(periodsWithAvg) { item in
-                AreaMark(
-                    x: .value("Период", Self.shortenPeriod(item.period)),
-                    y: .value("Сумма", item.total)
-                )
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.signalPrimary.opacity(0.25), Color.signalPrimary.opacity(0.05), .clear],
+        VStack(spacing: 6) {
+            // First / last period labels
+            if periodsWithAvg.count > 1 {
+                HStack {
+                    Text(Self.shortenPeriod(periodsWithAvg.first!.period))
+                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color.textMuted)
+                    Spacer()
+                    Text(Self.shortenPeriod(periodsWithAvg.last!.period))
+                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color.textMuted)
+                }
+            }
+
+            // Hand-drawn area chart — no Swift Charts sorting issues
+            GeometryReader { geo in
+                let w = geo.size.width
+                let h = geo.size.height
+                let n = periodsWithAvg.count
+                guard n > 1 else { return AnyView(EmptyView()) }
+
+                let totals  = periodsWithAvg.map(\.total)
+                let avgs    = periodsWithAvg.map(\.movingAvg)
+                let maxVal  = max((totals + avgs).max() ?? 1, 1)
+                let padY: CGFloat = 4
+
+                func xAt(_ i: Int) -> CGFloat { CGFloat(i) / CGFloat(n - 1) * w }
+                func yAt(_ v: Double) -> CGFloat { h - padY - CGFloat(v / maxVal) * (h - padY * 2) }
+                func pts(_ vals: [Double]) -> [CGPoint] { vals.indices.map { CGPoint(x: xAt($0), y: yAt(vals[$0])) } }
+
+                // Smooth bezier path through points (no overshooting)
+                func smoothPath(_ points: [CGPoint]) -> Path {
+                    var path = Path()
+                    guard points.count > 1 else { return path }
+                    path.move(to: points[0])
+                    for i in 1..<points.count {
+                        let prev = points[i - 1], curr = points[i]
+                        let cp1: CGPoint = i == 1
+                            ? CGPoint(x: prev.x + (curr.x - prev.x) / 3, y: prev.y + (curr.y - prev.y) / 3)
+                            : CGPoint(x: prev.x + (curr.x - points[i-2].x) / 6, y: prev.y + (curr.y - points[i-2].y) / 6)
+                        let cp2: CGPoint = i == points.count - 1
+                            ? CGPoint(x: curr.x - (curr.x - prev.x) / 3, y: curr.y - (curr.y - prev.y) / 3)
+                            : CGPoint(x: curr.x - (points[i+1].x - prev.x) / 6, y: curr.y - (points[i+1].y - prev.y) / 6)
+                        path.addCurve(to: curr, control1: cp1, control2: cp2)
+                    }
+                    return path
+                }
+
+                let totalPts = pts(totals)
+                let avgPts   = pts(avgs)
+                let smoothTotal = smoothPath(totalPts)
+
+                return AnyView(ZStack {
+                    // Gradient fill (smooth)
+                    Path { p in
+                        p.move(to: CGPoint(x: xAt(0), y: h))
+                        p.addPath(smoothTotal)
+                        p.addLine(to: CGPoint(x: xAt(n - 1), y: h))
+                        p.closeSubpath()
+                    }
+                    .fill(LinearGradient(
+                        colors: [Color.signalPrimary.opacity(0.25), Color.signalPrimary.opacity(0.0)],
                         startPoint: .top, endPoint: .bottom
-                    )
-                )
-                .interpolationMethod(.monotone)
-            }
-            ForEach(periodsWithAvg) { item in
-                LineMark(
-                    x: .value("Период", Self.shortenPeriod(item.period)),
-                    y: .value("Сумма", item.total)
-                )
-                .foregroundStyle(Color.signalPrimary)
-                .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                .interpolationMethod(.monotone)
-            }
-            ForEach(periodsWithAvg) { item in
-                LineMark(
-                    x: .value("Период", Self.shortenPeriod(item.period)),
-                    y: .value("Среднее", item.movingAvg)
-                )
-                .foregroundStyle(Color.signalSecondary.opacity(0.4))
-                .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [6, 4]))
-                .interpolationMethod(.monotone)
+                    ))
+
+                    // Main line (smooth)
+                    smoothTotal
+                        .stroke(Color.signalPrimary,
+                                style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+
+                    // Moving average dashed line (smooth)
+                    smoothPath(avgPts)
+                        .stroke(Color.signalSecondary.opacity(0.4),
+                                style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [6, 4]))
+                })
             }
         }
-        .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: 5)) { _ in
-                AxisValueLabel()
-                    .font(.system(size: 8, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color.textMuted)
-            }
-        }
-        .chartYAxis {
-            AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { _ in
-                AxisValueLabel()
-                    .font(.system(size: 8, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color.textMuted.opacity(0.5))
-                AxisGridLine()
-                    .foregroundStyle(Color.signalPrimary.opacity(0.04))
-            }
-        }
-        .drawingGroup()
     }
 
-    /// "2025-03" → "мар", "2025-W12" → "Н12", "2025-03-01" → "мар"
-    private static func shortenPeriod(_ period: String) -> String {
+    static func shortenPeriod(_ period: String) -> String {
         let months = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"]
         let parts = period.split(separator: "-")
         guard parts.count >= 2 else { return period }
-        let secondPart = String(parts[1])
-        // Week format: "2025-W12"
-        if secondPart.hasPrefix("W"), let week = Int(secondPart.dropFirst()) {
-            return "Н\(week)"
+        let second = String(parts[1])
+        if second.hasPrefix("W"), let week = Int(second.dropFirst()) {
+            return String(format: "Н%02d", week)
         }
-        // Month/date format: "2025-03" or "2025-03-01"
-        guard let m = Int(secondPart), m >= 1, m <= 12 else { return String(period.suffix(5)) }
+        guard let m = Int(second), m >= 1, m <= 12 else { return String(period.suffix(5)) }
         return months[m - 1]
     }
 }

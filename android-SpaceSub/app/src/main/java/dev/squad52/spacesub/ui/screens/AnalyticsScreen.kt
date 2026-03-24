@@ -3,6 +3,11 @@ package dev.squad52.spacesub.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
@@ -716,53 +721,109 @@ private fun CategoryAccordion(categories: List<CategoryItem>) {
 
 @Composable
 private fun PeriodAreaChart(periods: List<PeriodItem>) {
+    // Compute moving average (window=3) same as iOS
+    val movingAvgs = periods.indices.map { i ->
+        val window = periods.subList(maxOf(0, i - 2), i + 1)
+        window.map { it.total }.average().toFloat()
+    }
+    val totals = periods.map { it.total.toFloat() }
+
     SpaceCard(glowColor = SignalPrimary) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Period labels
+            // First / last period labels
             if (periods.size > 1) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = formatPeriodLabel(periods.first().period),
-                        fontSize = 9.sp,
-                        color = TextMuted
-                    )
-                    Text(
-                        text = formatPeriodLabel(periods.last().period),
-                        fontSize = 9.sp,
-                        color = TextMuted
-                    )
+                    Text(formatPeriodLabel(periods.first().period), fontSize = 9.sp, color = TextMuted)
+                    Text(formatPeriodLabel(periods.last().period), fontSize = 9.sp, color = TextMuted)
                 }
             }
 
-            AreaSparkline(
-                data = periods.map { it.total.toFloat() },
-                color = SignalPrimary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
+            SmoothAreaChart(
+                totals = totals,
+                movingAvgs = movingAvgs,
+                modifier = Modifier.fillMaxWidth().height(130.dp)
             )
 
             // Legend
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(14.dp)
-                            .height(2.dp)
-                            .background(SignalPrimary, RoundedCornerShape(1.dp))
-                    )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Box(Modifier.width(14.dp).height(2.dp).background(SignalPrimary, RoundedCornerShape(1.dp)))
                     Text("Расходы", fontSize = 8.sp, color = TextMuted)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Box(Modifier.width(14.dp).height(2.dp).background(SignalSecondary.copy(alpha = 0.4f), RoundedCornerShape(1.dp)))
+                    Text("Среднее", fontSize = 8.sp, color = TextMuted)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SmoothAreaChart(
+    totals: List<Float>,
+    movingAvgs: List<Float>,
+    modifier: Modifier = Modifier
+) {
+    val animProgress = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(totals) {
+        animProgress.snapTo(0f)
+        animProgress.animateTo(1f, androidx.compose.animation.core.tween(900))
+    }
+
+    Canvas(modifier = modifier) {
+        if (totals.size < 2) return@Canvas
+        val n = totals.size
+        val maxVal = (totals + movingAvgs).max().coerceAtLeast(1f)
+        val padY = 4f
+
+        fun xAt(i: Int) = i.toFloat() / (n - 1) * size.width * animProgress.value
+        fun yAt(v: Float) = size.height - padY - (v / maxVal) * (size.height - padY * 2)
+
+        // Build smooth bezier path from points
+        fun smoothPath(vals: List<Float>): Path {
+            val pts = vals.indices.map { androidx.compose.ui.geometry.Offset(xAt(it), yAt(vals[it])) }
+            val path = Path()
+            path.moveTo(pts[0].x, pts[0].y)
+            for (i in 1 until pts.size) {
+                val prev = pts[i - 1]; val curr = pts[i]
+                val cp1 = if (i == 1)
+                    androidx.compose.ui.geometry.Offset(prev.x + (curr.x - prev.x) / 3, prev.y + (curr.y - prev.y) / 3)
+                else
+                    androidx.compose.ui.geometry.Offset(prev.x + (curr.x - pts[i-2].x) / 6, prev.y + (curr.y - pts[i-2].y) / 6)
+                val cp2 = if (i == pts.size - 1)
+                    androidx.compose.ui.geometry.Offset(curr.x - (curr.x - prev.x) / 3, curr.y - (curr.y - prev.y) / 3)
+                else
+                    androidx.compose.ui.geometry.Offset(curr.x - (pts[i+1].x - prev.x) / 6, curr.y - (pts[i+1].y - prev.y) / 6)
+                path.cubicTo(cp1.x, cp1.y, cp2.x, cp2.y, curr.x, curr.y)
+            }
+            return path
+        }
+
+        val totalPath = smoothPath(totals)
+
+        // Gradient fill
+        val fillPath = Path().apply {
+            moveTo(0f, size.height)
+            addPath(totalPath)
+            lineTo(xAt(n - 1), size.height)
+            close()
+        }
+        drawPath(fillPath, brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+            listOf(SignalPrimary.copy(alpha = 0.25f), SignalPrimary.copy(alpha = 0f))
+        ))
+
+        // Main line
+        drawPath(totalPath, color = SignalPrimary,
+            style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+
+        // Moving avg dashed line
+        drawPath(smoothPath(movingAvgs), color = SignalSecondary.copy(alpha = 0.4f),
+            style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round,
+                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(12f, 8f))))
     }
 }
 
@@ -1039,7 +1100,7 @@ private fun formatPeriodLabel(period: String): String {
     val second = parts[1]
     if (second.startsWith("W")) {
         val week = second.drop(1).toIntOrNull() ?: return period
-        return "Н$week"
+        return "Н${week.toString().padStart(2, '0')}"
     }
     val m = second.toIntOrNull() ?: return period
     return if (m in 1..12) months[m - 1] else period
