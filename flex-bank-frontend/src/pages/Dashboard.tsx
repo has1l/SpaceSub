@@ -141,9 +141,7 @@ export default function Dashboard() {
                     <select value={form.currency}
                       onChange={(e) => setForm({ ...form, currency: e.target.value })}
                       className="w-full input-cosmic px-4 py-2.5 text-sm">
-                      <option value="RUB">RUB</option>
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
+                      <option value="RUB">RUB (₽)</option>
                     </select>
                   </div>
                   <div>
@@ -255,9 +253,7 @@ export default function Dashboard() {
                 onChange={(e) => setForm({ ...form, currency: e.target.value })}
                 className="w-full input-cosmic px-4 py-2.5 text-sm"
               >
-                <option value="RUB">RUB</option>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
+                <option value="RUB">RUB (₽)</option>
               </select>
             </div>
             <div>
