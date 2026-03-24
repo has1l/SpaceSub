@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
-import { Prisma, type Subscription } from '@prisma/client';
+import { Prisma, type Subscription, type BillingCycle } from '@prisma/client';
 import type { SubscriptionSuggestion } from '../transactions/transactions-analysis.service';
 
 function toDto(sub: Subscription) {
@@ -14,25 +14,70 @@ function toDto(sub: Subscription) {
   };
 }
 
+function normalize(s: string): string {
+  return s.toLowerCase().replace(/[^a-zа-яё0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
 @Injectable()
 export class SubscriptionsService {
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateSubscriptionDto) {
+    const billingCycle = (dto.billingCycle || 'MONTHLY') as BillingCycle;
+    const amount = dto.amount;
+    const currency = dto.currency || 'RUB';
+    const nextBilling = new Date(dto.nextBilling);
+
     const sub = await this.prisma.subscription.create({
       data: {
         userId,
         name: dto.name,
         description: dto.description,
-        amount: new Prisma.Decimal(dto.amount),
-        currency: dto.currency || 'RUB',
-        billingCycle: dto.billingCycle || 'MONTHLY',
-        nextBilling: new Date(dto.nextBilling),
+        amount: new Prisma.Decimal(amount),
+        currency,
+        billingCycle,
+        nextBilling,
         category: dto.category,
         isActive: dto.isActive ?? true,
         logoUrl: dto.logoUrl,
       },
     });
+
+    // Sync to DetectedSubscription so analytics/counters pick it up
+    const normalizedMerchant = normalize(dto.name);
+    await this.prisma.detectedSubscription.upsert({
+      where: {
+        userId_normalizedMerchant_amount_currency: {
+          userId,
+          normalizedMerchant,
+          amount,
+          currency,
+        },
+      },
+      update: {
+        merchant: dto.name,
+        isActive: dto.isActive ?? true,
+        nextExpectedCharge: nextBilling,
+        periodType: billingCycle,
+        confidence: 1.0,
+        logoUrl: dto.logoUrl,
+      },
+      create: {
+        userId,
+        merchant: dto.name,
+        normalizedMerchant,
+        amount: new Prisma.Decimal(amount),
+        currency,
+        periodType: billingCycle,
+        lastChargeDate: new Date(),
+        nextExpectedCharge: nextBilling,
+        isActive: dto.isActive ?? true,
+        confidence: 1.0,
+        transactionCount: 0,
+        logoUrl: dto.logoUrl,
+      },
+    });
+
     return toDto(sub);
   }
 
@@ -68,7 +113,9 @@ export class SubscriptionsService {
   }
 
   async update(id: string, userId: string, dto: UpdateSubscriptionDto) {
-    await this.findOne(id, userId);
+    const existing = await this.prisma.subscription.findFirst({ where: { id, userId } });
+    if (!existing) throw new NotFoundException('Subscription not found');
+
     const sub = await this.prisma.subscription.update({
       where: { id },
       data: {
@@ -87,12 +134,51 @@ export class SubscriptionsService {
         ...(dto.logoUrl !== undefined && { logoUrl: dto.logoUrl }),
       },
     });
+
+    // Sync to DetectedSubscription
+    const oldNorm = normalize(existing.name);
+    const newName = dto.name ?? existing.name;
+    const newAmount = dto.amount ?? existing.amount.toNumber();
+    const newCurrency = dto.currency ?? existing.currency;
+    const newNorm = normalize(newName);
+
+    // Find the linked DetectedSubscription by old normalized merchant
+    const linked = await this.prisma.detectedSubscription.findFirst({
+      where: { userId, normalizedMerchant: oldNorm, currency: existing.currency },
+    });
+
+    if (linked) {
+      await this.prisma.detectedSubscription.update({
+        where: { id: linked.id },
+        data: {
+          merchant: newName,
+          normalizedMerchant: newNorm,
+          ...(dto.amount !== undefined && { amount: new Prisma.Decimal(newAmount) }),
+          ...(dto.currency !== undefined && { currency: newCurrency }),
+          ...(dto.billingCycle !== undefined && { periodType: dto.billingCycle as BillingCycle }),
+          ...(dto.nextBilling !== undefined && { nextExpectedCharge: new Date(dto.nextBilling) }),
+          ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+          ...(dto.logoUrl !== undefined && { logoUrl: dto.logoUrl }),
+        },
+      });
+    }
+
     return toDto(sub);
   }
 
   async remove(id: string, userId: string) {
-    await this.findOne(id, userId);
+    const existing = await this.prisma.subscription.findFirst({ where: { id, userId } });
+    if (!existing) throw new NotFoundException('Subscription not found');
+
     const sub = await this.prisma.subscription.delete({ where: { id } });
+
+    // Deactivate linked DetectedSubscription
+    const normalizedMerchant = normalize(existing.name);
+    await this.prisma.detectedSubscription.updateMany({
+      where: { userId, normalizedMerchant, currency: existing.currency },
+      data: { isActive: false },
+    });
+
     return toDto(sub);
   }
 }

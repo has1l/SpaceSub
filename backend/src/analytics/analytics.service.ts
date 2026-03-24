@@ -359,6 +359,44 @@ export class AnalyticsService {
       periodMap.set(key, { total: existing.total + Math.abs(Number(tx.amount)), count: existing.count + 1 });
     }
 
+    // Add virtual charges for manual subscriptions (no real transactions)
+    const activeSubs = await this.prisma.detectedSubscription.findMany({
+      where: { userId, isActive: true },
+    });
+    const subMerchantSet = new Set(subMerchants);
+    for (const sub of activeSubs) {
+      if (subMerchantSet.has(sub.merchant) && txs.some((t) => true)) {
+        // Check if this sub has any real transactions in the period
+        const hasRealTx = txs.some(
+          (t) => Math.abs(Number(t.amount) - sub.amount.toNumber()) < 1,
+        );
+        if (hasRealTx) continue;
+      }
+      if (sub.transactionCount > 0) continue; // has real tx history, skip
+
+      // Generate virtual charges based on billing cycle
+      const amount = sub.amount.toNumber();
+      const cycleDays = periodToDays(sub.periodType);
+      let chargeDate = new Date(sub.nextExpectedCharge);
+      // Go back to find charges within the range
+      while (chargeDate > rangeFrom) {
+        chargeDate = new Date(chargeDate.getTime() - cycleDays * 86400000);
+      }
+      // Now walk forward through the range
+      chargeDate = new Date(chargeDate.getTime() + cycleDays * 86400000);
+      while (chargeDate <= rangeTo) {
+        if (chargeDate >= rangeFrom) {
+          const key =
+            granularity === 'month'
+              ? toMonthKey(chargeDate)
+              : `${chargeDate.getFullYear()}-W${getISOWeek(chargeDate)}`;
+          const existing = periodMap.get(key) ?? { total: 0, count: 0 };
+          periodMap.set(key, { total: existing.total + amount, count: existing.count + 1 });
+        }
+        chargeDate = new Date(chargeDate.getTime() + cycleDays * 86400000);
+      }
+    }
+
     // Fill missing months
     if (granularity === 'month') {
       let cursor = new Date(rangeFrom.getFullYear(), rangeFrom.getMonth(), 1);
