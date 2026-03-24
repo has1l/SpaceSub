@@ -721,34 +721,38 @@ private struct AreaChartContent: View {
     let periodsWithAvg: [PeriodItemWithAvg]
 
     var body: some View {
-        Chart(periodsWithAvg) { item in
-            AreaMark(
-                x: .value("Период", Self.shortenPeriod(item.period)),
-                y: .value("Сумма", item.total)
-            )
-            .foregroundStyle(
-                LinearGradient(
-                    colors: [Color.signalPrimary.opacity(0.25), Color.signalPrimary.opacity(0.05), .clear],
-                    startPoint: .top, endPoint: .bottom
+        Chart {
+            ForEach(periodsWithAvg) { item in
+                AreaMark(
+                    x: .value("Период", Self.shortenPeriod(item.period)),
+                    y: .value("Сумма", item.total)
                 )
-            )
-            .interpolationMethod(.monotone)
-
-            LineMark(
-                x: .value("Период", Self.shortenPeriod(item.period)),
-                y: .value("Сумма", item.total)
-            )
-            .foregroundStyle(Color.signalPrimary)
-            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-            .interpolationMethod(.monotone)
-
-            LineMark(
-                x: .value("Период", Self.shortenPeriod(item.period)),
-                y: .value("Среднее", item.movingAvg)
-            )
-            .foregroundStyle(Color.signalSecondary.opacity(0.4))
-            .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [6, 4]))
-            .interpolationMethod(.monotone)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color.signalPrimary.opacity(0.25), Color.signalPrimary.opacity(0.05), .clear],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                )
+                .interpolationMethod(.monotone)
+            }
+            ForEach(periodsWithAvg) { item in
+                LineMark(
+                    x: .value("Период", Self.shortenPeriod(item.period)),
+                    y: .value("Сумма", item.total)
+                )
+                .foregroundStyle(Color.signalPrimary)
+                .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                .interpolationMethod(.monotone)
+            }
+            ForEach(periodsWithAvg) { item in
+                LineMark(
+                    x: .value("Период", Self.shortenPeriod(item.period)),
+                    y: .value("Среднее", item.movingAvg)
+                )
+                .foregroundStyle(Color.signalSecondary.opacity(0.4))
+                .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [6, 4]))
+                .interpolationMethod(.monotone)
+            }
         }
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 5)) { _ in
