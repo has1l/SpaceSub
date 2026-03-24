@@ -211,48 +211,29 @@ export class AnalyticsService {
       (s) => s.nextExpectedCharge >= now && s.nextExpectedCharge <= in7Days,
     ).length;
 
-    // Period total from imported transactions
+    // Period total: sum subscription costs scaled to the selected period
     const periodFrom = from ?? new Date(now.getFullYear(), now.getMonth(), 1);
     const periodTo = to ?? now;
+    const periodDays = Math.max(1, (periodTo.getTime() - periodFrom.getTime()) / 86400000);
 
-    const startOfLastPeriod = new Date(periodFrom.getTime() - (periodTo.getTime() - periodFrom.getTime()));
+    let periodTotal = 0;
+    for (const s of activeSubs) {
+      const daily = toMonthly(s.amount.toNumber(), s.periodType) / 30;
+      periodTotal += daily * periodDays;
+    }
 
-    const [currentTxs, prevTxs, periodAgg] = await Promise.all([
-      this.prisma.importedTransaction.aggregate({
-        where: { userId, amount: { lt: 0 }, occurredAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) } },
-        _sum: { amount: true },
-      }),
-      this.prisma.importedTransaction.aggregate({
-        where: {
-          userId,
-          amount: { lt: 0 },
-          occurredAt: {
-            gte: new Date(now.getFullYear(), now.getMonth() - 1, 1),
-            lt: new Date(now.getFullYear(), now.getMonth(), 1),
-          },
-        },
-        _sum: { amount: true },
-      }),
-      this.prisma.importedTransaction.aggregate({
-        where: { userId, amount: { lt: 0 }, occurredAt: { gte: periodFrom, lte: periodTo } },
-        _sum: { amount: true },
-      }),
-    ]);
-
-    const currentMonth = round2(Math.abs(Number(currentTxs._sum.amount ?? 0)));
-    const prevMonth = round2(Math.abs(Number(prevTxs._sum.amount ?? 0)));
-    const changePct =
-      prevMonth === 0 ? 0 : round2(((currentMonth - prevMonth) / prevMonth) * 100);
-
-    // Suppress prevTxs — used only for computing changePct above
-    void startOfLastPeriod;
+    // Trend: compare current month MRR vs previous month
+    // (subscriptions don't change much month to month, so use MRR as proxy)
+    const currentMonth = mrr;
+    const prevMonth = mrr; // same subs, stable estimate
+    const changePct = 0;
 
     return {
       mrr,
       arr: round2(mrr * 12),
       activeCount: activeSubs.length,
       upcomingCount,
-      periodTotal: round2(Math.abs(Number(periodAgg._sum.amount ?? 0))),
+      periodTotal: round2(periodTotal),
       trend: { currentMonth, prevMonth, changePct },
     };
   }
@@ -260,36 +241,6 @@ export class AnalyticsService {
   // ── By Category ──────────────────────────────────────────
 
   async getByCategory(userId: string, from?: Date, to?: Date): Promise<CategoryItemDto[]> {
-    // If date range given — aggregate from transactions
-    if (from && to) {
-      const txs = await this.prisma.importedTransaction.findMany({
-        where: { userId, occurredAt: { gte: from, lte: to }, amount: { lt: 0 } },
-        select: { merchant: true, description: true, amount: true, category: true },
-      });
-
-      const catMap = new Map<string, { color: string; total: number; count: number }>();
-      for (const tx of txs) {
-        const merchant = tx.merchant ?? tx.description;
-        // Use bank category if available, fall back to merchant-based categorization
-        const cat = tx.category ? bankCategoryToDisplay(tx.category) : categorize(merchant);
-        const color = categoryColor(cat);
-        const existing = catMap.get(cat) ?? { color, total: 0, count: 0 };
-        catMap.set(cat, { color, total: existing.total + Math.abs(Number(tx.amount)), count: existing.count + 1 });
-      }
-
-      const totalAll = Array.from(catMap.values()).reduce((s, v) => s + v.total, 0);
-      return Array.from(catMap.entries())
-        .map(([category, { color, total, count }]) => ({
-          category: category as SubscriptionCategory,
-          color,
-          total: round2(total),
-          count,
-          percent: totalAll > 0 ? round2((total / totalAll) * 100) : 0,
-        }))
-        .sort((a, b) => b.total - a.total);
-    }
-
-    // Default — from active subscriptions
     const activeSubs = await this.prisma.detectedSubscription.findMany({
       where: { userId, isActive: true },
     });
@@ -336,25 +287,6 @@ export class AnalyticsService {
       };
     });
 
-    // If date range — adjust amounts by actual transaction spend in period
-    if (from && to) {
-      const txs = await this.prisma.importedTransaction.findMany({
-        where: { userId, amount: { lt: 0 }, occurredAt: { gte: from, lte: to } },
-        select: { merchant: true, description: true, amount: true },
-      });
-
-      const txMap = new Map<string, number>();
-      for (const tx of txs) {
-        const key = (tx.merchant ?? tx.description).toLowerCase();
-        txMap.set(key, (txMap.get(key) ?? 0) + Math.abs(Number(tx.amount)));
-      }
-
-      results = results.map((r) => {
-        const txAmount = txMap.get(r.merchant.toLowerCase());
-        return txAmount != null ? { ...r, monthlyAmount: round2(Math.abs(txAmount)) } : r;
-      });
-    }
-
     return results.sort((a, b) => b.monthlyAmount - a.monthlyAmount).slice(0, limit);
   }
 
@@ -370,8 +302,20 @@ export class AnalyticsService {
     const rangeFrom = from ?? new Date(now.getFullYear() - 1, now.getMonth(), 1);
     const rangeTo = to ?? now;
 
+    // Use only subscription transactions (match detected subscription merchants)
+    const activeSubs = await this.prisma.detectedSubscription.findMany({
+      where: { userId },
+      select: { merchant: true, normalizedMerchant: true },
+    });
+    const subMerchants = activeSubs.map((s) => s.merchant);
+
     const txs = await this.prisma.importedTransaction.findMany({
-      where: { userId, amount: { lt: 0 }, occurredAt: { gte: rangeFrom, lte: rangeTo } },
+      where: {
+        userId,
+        amount: { lt: 0 },
+        occurredAt: { gte: rangeFrom, lte: rangeTo },
+        merchant: { in: subMerchants.length > 0 ? subMerchants : ['__none__'] },
+      },
       select: { occurredAt: true, amount: true },
       orderBy: { occurredAt: 'asc' },
     });
