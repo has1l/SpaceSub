@@ -211,22 +211,33 @@ export class AnalyticsService {
       (s) => s.nextExpectedCharge >= now && s.nextExpectedCharge <= in7Days,
     ).length;
 
-    // Period total: sum subscription costs scaled to the selected period
+    // Period total: count how many charges fall within the period for each sub
     const periodFrom = from ?? new Date(now.getFullYear(), now.getMonth(), 1);
     const periodTo = to ?? now;
     const periodDays = Math.max(1, (periodTo.getTime() - periodFrom.getTime()) / 86400000);
 
     let periodTotal = 0;
     for (const s of activeSubs) {
-      const daily = toMonthly(s.amount.toNumber(), s.periodType) / 30;
-      periodTotal += daily * periodDays;
+      const amount = s.amount.toNumber();
+      const cycleDays = periodToDays(s.periodType);
+      const chargesInPeriod = Math.max(1, Math.round(periodDays / cycleDays));
+      periodTotal += amount * chargesInPeriod;
     }
 
-    // Trend: compare current month MRR vs previous month
-    // (subscriptions don't change much month to month, so use MRR as proxy)
-    const currentMonth = mrr;
-    const prevMonth = mrr; // same subs, stable estimate
-    const changePct = 0;
+    // Trend: previous equivalent period
+    const prevPeriodFrom = new Date(periodFrom.getTime() - (periodTo.getTime() - periodFrom.getTime()));
+    let prevPeriodTotal = 0;
+    for (const s of activeSubs) {
+      const amount = s.amount.toNumber();
+      const cycleDays = periodToDays(s.periodType);
+      const chargesInPeriod = Math.max(1, Math.round(periodDays / cycleDays));
+      prevPeriodTotal += amount * chargesInPeriod;
+    }
+    void prevPeriodFrom;
+    const currentMonth = round2(periodTotal);
+    const prevMonth = round2(prevPeriodTotal);
+    const changePct =
+      prevMonth === 0 ? 0 : round2(((currentMonth - prevMonth) / prevMonth) * 100);
 
     return {
       mrr,
@@ -245,13 +256,21 @@ export class AnalyticsService {
       where: { userId, isActive: true },
     });
 
+    const now = new Date();
+    const periodFrom = from ?? new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodTo = to ?? now;
+    const periodDays = Math.max(1, (periodTo.getTime() - periodFrom.getTime()) / 86400000);
+
     const categoryMap = new Map<string, { color: string; total: number; count: number }>();
     for (const sub of activeSubs) {
       const cat = categorize(sub.merchant);
       const color = categoryColor(cat);
-      const monthly = toMonthly(sub.amount.toNumber(), sub.periodType);
+      const amount = sub.amount.toNumber();
+      const cycleDays = periodToDays(sub.periodType);
+      const chargesInPeriod = Math.max(1, Math.round(periodDays / cycleDays));
+      const total = amount * chargesInPeriod;
       const existing = categoryMap.get(cat) ?? { color, total: 0, count: 0 };
-      categoryMap.set(cat, { color, total: existing.total + monthly, count: existing.count + 1 });
+      categoryMap.set(cat, { color, total: existing.total + total, count: existing.count + 1 });
     }
 
     const totalAll = Array.from(categoryMap.values()).reduce((s, v) => s + v.total, 0);
@@ -274,12 +293,20 @@ export class AnalyticsService {
       orderBy: { amount: 'desc' },
     });
 
+    const now = new Date();
+    const periodFrom = from ?? new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodTo = to ?? now;
+    const periodDays = Math.max(1, (periodTo.getTime() - periodFrom.getTime()) / 86400000);
+
     let results = activeSubs.map((sub) => {
       const amount = sub.amount.toNumber();
+      const cycleDays = periodToDays(sub.periodType);
+      const chargesInPeriod = Math.max(1, Math.round(periodDays / cycleDays));
+      const periodAmount = amount * chargesInPeriod;
       const cat = categorize(sub.merchant);
       return {
         merchant: sub.merchant,
-        monthlyAmount: round2(toMonthly(amount, sub.periodType)),
+        monthlyAmount: round2(periodAmount),
         yearlyAmount: round2(toYearly(amount, sub.periodType)),
         periodType: sub.periodType,
         category: cat,
@@ -302,43 +329,55 @@ export class AnalyticsService {
     const rangeFrom = from ?? new Date(now.getFullYear() - 1, now.getMonth(), 1);
     const rangeTo = to ?? now;
 
-    // Use only subscription transactions (match detected subscription merchants)
     const activeSubs = await this.prisma.detectedSubscription.findMany({
-      where: { userId },
-      select: { merchant: true, normalizedMerchant: true },
-    });
-    const subMerchants = activeSubs.map((s) => s.merchant);
-
-    const txs = await this.prisma.importedTransaction.findMany({
-      where: {
-        userId,
-        amount: { lt: 0 },
-        occurredAt: { gte: rangeFrom, lte: rangeTo },
-        merchant: { in: subMerchants.length > 0 ? subMerchants : ['__none__'] },
-      },
-      select: { occurredAt: true, amount: true },
-      orderBy: { occurredAt: 'asc' },
+      where: { userId, isActive: true },
     });
 
+    // Build period buckets and distribute subscription charges into them
     const periodMap = new Map<string, { total: number; count: number }>();
 
-    for (const tx of txs) {
-      const key =
-        granularity === 'month'
-          ? toMonthKey(tx.occurredAt)
-          : `${tx.occurredAt.getFullYear()}-W${getISOWeek(tx.occurredAt)}`;
-
-      const existing = periodMap.get(key) ?? { total: 0, count: 0 };
-      periodMap.set(key, { total: existing.total + Math.abs(Number(tx.amount)), count: existing.count + 1 });
-    }
-
-    // Fill missing months (granularity=month only)
     if (granularity === 'month') {
+      // Fill all months in range
       let cursor = new Date(rangeFrom.getFullYear(), rangeFrom.getMonth(), 1);
       while (cursor <= rangeTo) {
         const key = toMonthKey(cursor);
-        if (!periodMap.has(key)) periodMap.set(key, { total: 0, count: 0 });
+        periodMap.set(key, { total: 0, count: 0 });
         cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      }
+
+      // Add subscription costs to each month
+      for (const sub of activeSubs) {
+        const amount = sub.amount.toNumber();
+        const cycleDays = periodToDays(sub.periodType);
+        const monthlyCharges = 30 / cycleDays; // e.g. weekly=4.28, monthly=1, yearly=0.08
+
+        for (const [key, val] of periodMap) {
+          periodMap.set(key, {
+            total: val.total + amount * monthlyCharges,
+            count: val.count + 1,
+          });
+        }
+      }
+    } else {
+      // Weekly granularity
+      let cursor = new Date(rangeFrom);
+      while (cursor <= rangeTo) {
+        const key = `${cursor.getFullYear()}-W${getISOWeek(cursor)}`;
+        periodMap.set(key, { total: 0, count: 0 });
+        cursor = new Date(cursor.getTime() + 7 * 86400000);
+      }
+
+      for (const sub of activeSubs) {
+        const amount = sub.amount.toNumber();
+        const cycleDays = periodToDays(sub.periodType);
+        const weeklyCharges = 7 / cycleDays;
+
+        for (const [key, val] of periodMap) {
+          periodMap.set(key, {
+            total: val.total + amount * weeklyCharges,
+            count: val.count + 1,
+          });
+        }
       }
     }
 
