@@ -329,55 +329,43 @@ export class AnalyticsService {
     const rangeFrom = from ?? new Date(now.getFullYear() - 1, now.getMonth(), 1);
     const rangeTo = to ?? now;
 
-    const activeSubs = await this.prisma.detectedSubscription.findMany({
-      where: { userId, isActive: true },
+    // Get subscription merchants to filter only subscription transactions
+    const subs = await this.prisma.detectedSubscription.findMany({
+      where: { userId },
+      select: { merchant: true },
+    });
+    const subMerchants = subs.map((s) => s.merchant);
+
+    const txs = await this.prisma.importedTransaction.findMany({
+      where: {
+        userId,
+        amount: { lt: 0 },
+        occurredAt: { gte: rangeFrom, lte: rangeTo },
+        ...(subMerchants.length > 0 ? { merchant: { in: subMerchants } } : { merchant: '__none__' }),
+      },
+      select: { occurredAt: true, amount: true },
+      orderBy: { occurredAt: 'asc' },
     });
 
-    // Build period buckets and distribute subscription charges into them
     const periodMap = new Map<string, { total: number; count: number }>();
 
+    for (const tx of txs) {
+      const key =
+        granularity === 'month'
+          ? toMonthKey(tx.occurredAt)
+          : `${tx.occurredAt.getFullYear()}-W${getISOWeek(tx.occurredAt)}`;
+
+      const existing = periodMap.get(key) ?? { total: 0, count: 0 };
+      periodMap.set(key, { total: existing.total + Math.abs(Number(tx.amount)), count: existing.count + 1 });
+    }
+
+    // Fill missing months
     if (granularity === 'month') {
-      // Fill all months in range
       let cursor = new Date(rangeFrom.getFullYear(), rangeFrom.getMonth(), 1);
       while (cursor <= rangeTo) {
         const key = toMonthKey(cursor);
-        periodMap.set(key, { total: 0, count: 0 });
+        if (!periodMap.has(key)) periodMap.set(key, { total: 0, count: 0 });
         cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-      }
-
-      // Add subscription costs to each month
-      for (const sub of activeSubs) {
-        const amount = sub.amount.toNumber();
-        const cycleDays = periodToDays(sub.periodType);
-        const monthlyCharges = 30 / cycleDays; // e.g. weekly=4.28, monthly=1, yearly=0.08
-
-        for (const [key, val] of periodMap) {
-          periodMap.set(key, {
-            total: val.total + amount * monthlyCharges,
-            count: val.count + 1,
-          });
-        }
-      }
-    } else {
-      // Weekly granularity
-      let cursor = new Date(rangeFrom);
-      while (cursor <= rangeTo) {
-        const key = `${cursor.getFullYear()}-W${getISOWeek(cursor)}`;
-        periodMap.set(key, { total: 0, count: 0 });
-        cursor = new Date(cursor.getTime() + 7 * 86400000);
-      }
-
-      for (const sub of activeSubs) {
-        const amount = sub.amount.toNumber();
-        const cycleDays = periodToDays(sub.periodType);
-        const weeklyCharges = 7 / cycleDays;
-
-        for (const [key, val] of periodMap) {
-          periodMap.set(key, {
-            total: val.total + amount * weeklyCharges,
-            count: val.count + 1,
-          });
-        }
       }
     }
 
