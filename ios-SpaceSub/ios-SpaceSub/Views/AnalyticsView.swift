@@ -732,7 +732,7 @@ private struct AreaChartContent: View {
                     startPoint: .top, endPoint: .bottom
                 )
             )
-            .interpolationMethod(.catmullRom)
+            .interpolationMethod(.monotone)
 
             LineMark(
                 x: .value("Период", Self.shortenPeriod(item.period)),
@@ -740,7 +740,7 @@ private struct AreaChartContent: View {
             )
             .foregroundStyle(Color.signalPrimary)
             .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-            .interpolationMethod(.catmullRom)
+            .interpolationMethod(.monotone)
 
             LineMark(
                 x: .value("Период", Self.shortenPeriod(item.period)),
@@ -748,7 +748,7 @@ private struct AreaChartContent: View {
             )
             .foregroundStyle(Color.signalSecondary.opacity(0.4))
             .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [6, 4]))
-            .interpolationMethod(.catmullRom)
+            .interpolationMethod(.monotone)
         }
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 5)) { _ in
