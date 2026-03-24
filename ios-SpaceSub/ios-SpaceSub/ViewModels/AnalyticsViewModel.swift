@@ -206,7 +206,8 @@ final class AnalyticsViewModel {
     @MainActor
     private func fetchPeriods(from: Date, to: Date) async {
         do {
-            periods = try await service.fetchByPeriod(from: from, to: to)
+            let granularity = (selectedPeriod == .week || selectedPeriod == .oneMonth) ? "week" : "month"
+            periods = try await service.fetchByPeriod(granularity: granularity, from: from, to: to)
         } catch is APIError {} catch {}
     }
 

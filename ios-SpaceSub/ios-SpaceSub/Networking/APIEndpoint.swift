@@ -96,8 +96,10 @@ extension APIEndpoint {
         return APIEndpoint(path: "/analytics/by-service", queryItems: items)
     }
 
-    static func analyticsByPeriod(from: Date? = nil, to: Date? = nil) -> APIEndpoint {
-        APIEndpoint(path: "/analytics/by-period", queryItems: dateQueryItems(from: from, to: to))
+    static func analyticsByPeriod(granularity: String = "month", from: Date? = nil, to: Date? = nil) -> APIEndpoint {
+        var items = dateQueryItems(from: from, to: to)
+        items.append(URLQueryItem(name: "granularity", value: granularity))
+        return APIEndpoint(path: "/analytics/by-period", queryItems: items)
     }
 
     static func analyticsScores() -> APIEndpoint {

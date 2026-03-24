@@ -780,18 +780,18 @@ private struct AreaChartContent: View {
         .drawingGroup()
     }
 
-    /// "2025-03-01" → "мар", "2025-03" → "мар"
+    /// "2025-03" → "мар", "2025-W12" → "Н12", "2025-03-01" → "мар"
     private static func shortenPeriod(_ period: String) -> String {
         let months = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"]
         let parts = period.split(separator: "-")
-        guard parts.count >= 2, let m = Int(parts[1]), m >= 1, m <= 12 else {
-            // fallback: last 5 chars
-            return String(period.suffix(5))
+        guard parts.count >= 2 else { return period }
+        let secondPart = String(parts[1])
+        // Week format: "2025-W12"
+        if secondPart.hasPrefix("W"), let week = Int(secondPart.dropFirst()) {
+            return "Н\(week)"
         }
-        if parts.count >= 3 {
-            // "2025-03-01" → "мар 01"
-            return "\(months[m - 1])"
-        }
+        // Month/date format: "2025-03" or "2025-03-01"
+        guard let m = Int(secondPart), m >= 1, m <= 12 else { return String(period.suffix(5)) }
         return months[m - 1]
     }
 }

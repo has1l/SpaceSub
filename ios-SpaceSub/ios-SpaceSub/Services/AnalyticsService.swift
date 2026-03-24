@@ -26,8 +26,8 @@ final class AnalyticsService {
         try await client.request(.analyticsByService(limit: limit, from: from, to: to))
     }
 
-    func fetchByPeriod(from: Date? = nil, to: Date? = nil) async throws -> [PeriodItem] {
-        try await client.request(.analyticsByPeriod(from: from, to: to))
+    func fetchByPeriod(granularity: String = "month", from: Date? = nil, to: Date? = nil) async throws -> [PeriodItem] {
+        try await client.request(.analyticsByPeriod(granularity: granularity, from: from, to: to))
     }
 
     func fetchScores() async throws -> [ScoreItem] {
