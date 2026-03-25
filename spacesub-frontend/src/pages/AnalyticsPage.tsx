@@ -120,7 +120,7 @@ const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ className?: string
 
 function CategoryIcon({ category, size = 16 }: { category: string; size?: number; color?: string }) {
   const Icon = CATEGORY_ICON_MAP[category] ?? EllipsisHorizontalCircleIcon;
-  return <Icon style={{ width: size, height: size, flexShrink: 0 }} />;
+  return <span style={{ display: 'inline-flex', width: size, height: size, flexShrink: 0 }}><Icon className="w-full h-full" /></span>;
 }
 
 function ChevronIcon({ size = 12, rotated = false }: { size?: number; rotated?: boolean }) {
@@ -1444,7 +1444,7 @@ export function AnalyticsPage() {
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
                           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', minWidth: 0 }}>
-                            <span style={{ color: cfg.text, flexShrink: 0, marginTop: 2 }}>{Icon && <Icon size={16} />}</span>
+                            <span style={{ color: cfg.text, flexShrink: 0, marginTop: 2 }}>{Icon && <Icon className="w-4 h-4" />}</span>
                             <div style={{ minWidth: 0 }}>
                               <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
                                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: cfg.text }}>
