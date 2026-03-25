@@ -65,9 +65,7 @@ class SubscriptionsViewModel(application: Application) : AndroidViewModel(applic
             _cancellingId.value = id
             try {
                 api.cancelDetectedSubscription(id)
-                _active.value = _active.value.filter { it.id != id }
-                _upcoming.value = _upcoming.value.filter { it.id != id }
-                runCatching { _summary.value = api.getDetectedSubscriptionsSummary() }
+                load()
             } catch (e: Exception) {
                 _error.value = "Ошибка отмены: ${e.message}"
             } finally {

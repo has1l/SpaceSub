@@ -46,11 +46,7 @@ final class SubscriptionsViewModel {
 
         do {
             _ = try await service.cancelDetectedSubscription(id: id)
-            active.removeAll { $0.id == id }
-            upcoming.removeAll { $0.id == id }
-            if let s = try? await service.fetchSummary() {
-                summary = s
-            }
+            await load()
         } catch let apiError as APIError where apiError.isUnauthorized {
             onUnauthorized?()
         } catch {

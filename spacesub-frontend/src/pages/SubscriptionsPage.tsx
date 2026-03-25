@@ -813,8 +813,8 @@ export function SubscriptionsPage() {
   const handleDelete = useCallback((id: string) => {
     setActive((prev) => prev.filter((s) => s.id !== id));
     setUpcoming((prev) => prev.filter((s) => s.id !== id));
-    subscriptionsApi.getSummary().then(setSummary).catch(() => {});
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   const handleManualDelete = useCallback((id: string) => {
     setManualSubs((prev) => prev.filter((s) => s.id !== id));
