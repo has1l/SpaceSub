@@ -118,6 +118,16 @@ export class DetectedSubscriptionsService {
       data: { isActive: false },
     });
 
+    // Also deactivate linked manual subscription
+    await this.prisma.subscription.updateMany({
+      where: {
+        userId,
+        name: sub.merchant,
+        isActive: true,
+      },
+      data: { isActive: false },
+    });
+
     return { cancelled: true, bankPaymentId };
   }
 
