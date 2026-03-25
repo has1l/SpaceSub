@@ -129,7 +129,7 @@ fun DashboardScreen(
                             color = TextPrimary
                         )
                     }
-                    items(connections, key = { it.id }) { conn ->
+                    items(connections.distinctBy { it.id }) { conn ->
                         BankConnectionCard(
                             connection = conn,
                             isSyncing = isSyncing,
