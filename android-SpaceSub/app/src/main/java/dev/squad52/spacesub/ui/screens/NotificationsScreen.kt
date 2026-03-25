@@ -132,7 +132,7 @@ fun NotificationsScreen(
                     }
                 }
 
-                items(notifications, key = { it.id }) { notification ->
+                items(notifications) { notification ->
                     NotificationCard(
                         notification = notification,
                         onClick = {

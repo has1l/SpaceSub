@@ -28,7 +28,7 @@ class NotificationsViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _notifications.value = api.getNotifications()
+                _notifications.value = api.getNotifications().distinctBy { it.id }
             } catch (_: Exception) {}
             _isLoading.value = false
         }
