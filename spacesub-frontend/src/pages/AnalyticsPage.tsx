@@ -118,15 +118,15 @@ const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ className?: string
   'Новости': NewspaperIcon,
 };
 
-function CategoryIcon({ category, size = 16 }: { category: string; size?: number }) {
+function CategoryIcon({ category, size = 16 }: { category: string; size?: number; color?: string }) {
   const Icon = CATEGORY_ICON_MAP[category] ?? EllipsisHorizontalCircleIcon;
-  return <Icon className={`w-[${size}px] h-[${size}px]`} style={{ width: size, height: size }} />;
+  return <Icon style={{ width: size, height: size, flexShrink: 0 }} />;
 }
 
 function ChevronIcon({ size = 12, rotated = false }: { size?: number; rotated?: boolean }) {
   return (
     <ChevronRightIcon
-      style={{ width: size, height: size, transition: 'transform 0.25s ease', transform: rotated ? 'rotate(90deg)' : 'rotate(0deg)' }}
+      style={{ width: size, height: size, flexShrink: 0, transition: 'transform 0.25s ease', transform: rotated ? 'rotate(90deg)' : 'rotate(0deg)' } as React.CSSProperties}
     />
   );
 }
@@ -255,7 +255,7 @@ function fmtMonth(key: string) {
   return ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][m - 1] ?? key;
 }
 
-const RECO_ICONS: Record<string, (props: { size?: number }) => React.ReactNode> = {
+const RECO_ICONS: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
   CANCEL: ExclamationTriangleIcon,
   REVIEW: ExclamationTriangleIcon,
   DOWNGRADE: ArrowDownIcon,
