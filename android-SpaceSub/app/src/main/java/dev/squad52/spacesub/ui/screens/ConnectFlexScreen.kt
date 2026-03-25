@@ -44,7 +44,6 @@ fun ConnectFlexScreen(
     val isCodeLoading by viewModel.isCodeLoading.collectAsState()
     val success by viewModel.success.collectAsState()
     val error by viewModel.error.collectAsState()
-    val context = LocalContext.current
 
     SpaceBackground {
         LazyColumn(
