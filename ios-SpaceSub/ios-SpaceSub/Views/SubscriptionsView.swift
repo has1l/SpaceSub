@@ -118,10 +118,7 @@ struct SubscriptionsView: View {
                 onCancel: { vm.editingSub = nil }
             )
         }
-        .alert("Отменить подписку?", isPresented: Binding(
-            get: { vm.showCancelConfirm },
-            set: { if !$0 { vm.dismissCancel() } }
-        )) {
+        .alert("Отменить подписку?", isPresented: $vm.showCancelConfirm) {
             Button("Отменить подписку", role: .destructive) {
                 Task { await vm.confirmCancel() }
             }
@@ -131,10 +128,7 @@ struct SubscriptionsView: View {
         } message: {
             Text("Автоплатёж в банке будет отменён. Новых списаний не будет.")
         }
-        .alert("Удалить подписку?", isPresented: Binding(
-            get: { vm.showDeleteManualConfirm },
-            set: { if !$0 { vm.dismissDeleteManual() } }
-        )) {
+        .alert("Удалить подписку?", isPresented: $vm.showDeleteManualConfirm) {
             Button("Удалить", role: .destructive) {
                 Task { await vm.confirmDeleteManual() }
             }

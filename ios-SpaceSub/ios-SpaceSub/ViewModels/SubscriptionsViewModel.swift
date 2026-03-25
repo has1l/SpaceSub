@@ -24,8 +24,8 @@ final class SubscriptionsViewModel {
 
     private(set) var cancellingId: String?
     private(set) var deletingManualId: String?
-    private(set) var showCancelConfirm = false
-    private(set) var showDeleteManualConfirm = false
+    var showCancelConfirm = false
+    var showDeleteManualConfirm = false
     private var pendingCancelId: String?
     private var pendingDeleteManualId: String?
 
