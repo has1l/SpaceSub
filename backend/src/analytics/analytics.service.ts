@@ -224,16 +224,19 @@ export class AnalyticsService {
       periodTotal += amount * chargesInPeriod;
     }
 
-    // Trend: previous equivalent period
+    // Trend: compare current period vs previous equivalent period using real transactions
     const prevPeriodFrom = new Date(periodFrom.getTime() - (periodTo.getTime() - periodFrom.getTime()));
-    let prevPeriodTotal = 0;
-    for (const s of activeSubs) {
-      const amount = s.amount.toNumber();
-      const cycleDays = periodToDays(s.periodType);
-      const chargesInPeriod = Math.max(1, Math.round(periodDays / cycleDays));
-      prevPeriodTotal += amount * chargesInPeriod;
-    }
-    void prevPeriodFrom;
+    const subMerchantsForTrend = activeSubs.map((s) => s.merchant);
+    const prevTxs = await this.prisma.importedTransaction.findMany({
+      where: {
+        userId,
+        amount: { lt: 0 },
+        occurredAt: { gte: prevPeriodFrom, lt: periodFrom },
+        ...(subMerchantsForTrend.length > 0 ? { merchant: { in: subMerchantsForTrend } } : {}),
+      },
+      select: { amount: true },
+    });
+    const prevPeriodTotal = prevTxs.reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
     const currentMonth = round2(periodTotal);
     const prevMonth = round2(prevPeriodTotal);
     const changePct =
@@ -353,7 +356,7 @@ export class AnalyticsService {
       const key =
         granularity === 'month'
           ? toMonthKey(tx.occurredAt)
-          : `${tx.occurredAt.getFullYear()}-W${getISOWeek(tx.occurredAt)}`;
+          : toWeekKey(tx.occurredAt);
 
       const existing = periodMap.get(key) ?? { total: 0, count: 0 };
       periodMap.set(key, { total: existing.total + Math.abs(Number(tx.amount)), count: existing.count + 1 });
@@ -389,7 +392,7 @@ export class AnalyticsService {
           const key =
             granularity === 'month'
               ? toMonthKey(chargeDate)
-              : `${chargeDate.getFullYear()}-W${getISOWeek(chargeDate)}`;
+              : toWeekKey(chargeDate);
           const existing = periodMap.get(key) ?? { total: 0, count: 0 };
           periodMap.set(key, { total: existing.total + amount, count: existing.count + 1 });
         }
@@ -397,13 +400,24 @@ export class AnalyticsService {
       }
     }
 
-    // Fill missing months
+    // Fill missing periods
     if (granularity === 'month') {
       let cursor = new Date(rangeFrom.getFullYear(), rangeFrom.getMonth(), 1);
       while (cursor <= rangeTo) {
         const key = toMonthKey(cursor);
         if (!periodMap.has(key)) periodMap.set(key, { total: 0, count: 0 });
         cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      }
+    } else {
+      // Fill missing weeks — start from Monday of the week containing rangeFrom
+      const cursor = new Date(rangeFrom);
+      const dow = cursor.getDay();
+      cursor.setDate(cursor.getDate() - (dow === 0 ? 6 : dow - 1));
+      cursor.setHours(0, 0, 0, 0);
+      while (cursor <= rangeTo) {
+        const key = toWeekKey(cursor);
+        if (!periodMap.has(key)) periodMap.set(key, { total: 0, count: 0 });
+        cursor.setDate(cursor.getDate() + 7);
       }
     }
 
@@ -454,7 +468,14 @@ export class AnalyticsService {
         else if (valueScore >= 25) label = 'Marginal';
         else label = 'Low Value';
 
-        const daysOverdue = (now.getTime() - sub.nextExpectedCharge.getTime()) / 86400000;
+        // For manual subs (no real transactions), advance stale nextExpectedCharge to avoid false HIGH churn
+        let effectiveNextCharge = sub.nextExpectedCharge;
+        if (sub.transactionCount === 0) {
+          while (effectiveNextCharge < now) {
+            effectiveNextCharge = new Date(effectiveNextCharge.getTime() + expectedDays * 86400000);
+          }
+        }
+        const daysOverdue = (now.getTime() - effectiveNextCharge.getTime()) / 86400000;
         const overdueRatio = Math.max(0, daysOverdue / expectedDays);
         let churnScore = Math.round(overdueRatio * 50);
         if (sub.transactionCount < 3) churnScore += 20;
@@ -504,7 +525,15 @@ export class AnalyticsService {
       const amount = sub.amount.toNumber();
       const monthly = toMonthly(amount, sub.periodType);
       const expectedDays = periodToDays(sub.periodType);
-      const daysOverdue = (now.getTime() - sub.nextExpectedCharge.getTime()) / 86400000;
+
+      // For manual subs (no real transactions), advance stale nextExpectedCharge to avoid false CANCEL
+      let effectiveNextCharge = sub.nextExpectedCharge;
+      if (sub.transactionCount === 0) {
+        while (effectiveNextCharge < now) {
+          effectiveNextCharge = new Date(effectiveNextCharge.getTime() + expectedDays * 86400000);
+        }
+      }
+      const daysOverdue = (now.getTime() - effectiveNextCharge.getTime()) / 86400000;
 
       if (daysOverdue > expectedDays * 2) {
         results.push({
@@ -563,6 +592,10 @@ export class AnalyticsService {
 }
 
 // ── Helpers ───────────────────────────────────────────────
+
+function toWeekKey(date: Date): string {
+  return `${date.getFullYear()}-W${String(getISOWeek(date)).padStart(2, '0')}`;
+}
 
 function getISOWeek(date: Date): number {
   const d = new Date(date);
