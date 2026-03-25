@@ -17,7 +17,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.squad52.spacesub.R
 import dev.squad52.spacesub.models.AppNotification
+import dev.squad52.spacesub.models.NotificationSettings
 import dev.squad52.spacesub.models.NotificationType
 import dev.squad52.spacesub.ui.components.FullScreenSpinner
 import dev.squad52.spacesub.ui.components.SpaceBackground
@@ -51,9 +55,13 @@ fun NotificationsScreen(
 ) {
     val notifications by viewModel.notifications.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val settings by viewModel.settings.collectAsState()
     val unread = notifications.count { !it.isRead }
 
-    LaunchedEffect(Unit) { viewModel.load() }
+    LaunchedEffect(Unit) {
+        viewModel.load()
+        viewModel.loadSettings()
+    }
 
     SpaceBackground {
         if (isLoading && notifications.isEmpty()) {
@@ -133,6 +141,17 @@ fun NotificationsScreen(
                     )
                 }
 
+                // Settings section
+                if (settings != null) {
+                    item {
+                        NotifSettingsSection(
+                            settings = settings!!,
+                            onEmailToggle = { viewModel.updateEmailNotifications(it) },
+                            onDaysChange = { viewModel.updateDaysBefore(it) }
+                        )
+                    }
+                }
+
                 item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
@@ -190,4 +209,130 @@ private fun formatTime(iso: String): String {
         val zdt = ZonedDateTime.parse(iso)
         zdt.format(DateTimeFormatter.ofPattern("dd.MM HH:mm"))
     } catch (_: Exception) { "" }
+}
+
+@Composable
+private fun NotifSettingsSection(
+    settings: NotificationSettings,
+    onEmailToggle: (Boolean) -> Unit,
+    onDaysChange: (Int) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Section header
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Настройки",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextMuted
+            )
+        }
+
+        SpaceCard {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Email toggle row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Email-уведомления",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Отправлять на почту при новых списаниях",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+                    }
+                    Switch(
+                        checked = settings.emailNotifications,
+                        onCheckedChange = onEmailToggle,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = SpaceBlack,
+                            checkedTrackColor = SignalPrimary,
+                            uncheckedThumbColor = TextMuted,
+                            uncheckedTrackColor = SpaceCardBg
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Divider(color = TextMuted.copy(alpha = 0.1f))
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Days before row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Напоминать за",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Дней до списания",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (settings.daysBefore > 1) SignalPrimary.copy(alpha = 0.15f)
+                                    else TextMuted.copy(alpha = 0.05f)
+                                )
+                                .clickable(enabled = settings.daysBefore > 1) {
+                                    onDaysChange(settings.daysBefore - 1)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "−",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (settings.daysBefore > 1) SignalPrimary else TextMuted.copy(alpha = 0.3f)
+                            )
+                        }
+                        Text(
+                            text = "${settings.daysBefore} дн",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = SignalPrimary,
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (settings.daysBefore < 7) SignalPrimary.copy(alpha = 0.15f)
+                                    else TextMuted.copy(alpha = 0.05f)
+                                )
+                                .clickable(enabled = settings.daysBefore < 7) {
+                                    onDaysChange(settings.daysBefore + 1)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "+",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (settings.daysBefore < 7) SignalPrimary else TextMuted.copy(alpha = 0.3f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
