@@ -25,10 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.squad52.spacesub.ui.components.GlowButton
@@ -44,7 +42,6 @@ fun ConnectFlexScreen(
 ) {
     val code by viewModel.code.collectAsState()
     val isCodeLoading by viewModel.isCodeLoading.collectAsState()
-    val isOAuthLoading by viewModel.isOAuthLoading.collectAsState()
     val success by viewModel.success.collectAsState()
     val error by viewModel.error.collectAsState()
     val context = LocalContext.current
@@ -71,7 +68,7 @@ fun ConnectFlexScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Свяжите банковский спутник со SpaceSub",
+                        text = "Свяжите банковский спутник со SpaceSub через код подключения",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = TextSecondary
@@ -138,21 +135,6 @@ fun ConnectFlexScreen(
             item {
                 SpaceCard(glowColor = SignalPrimary) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(SignalPrimary.copy(alpha = 0.08f))
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
-                        ) {
-                            Text(
-                                text = "СПОСОБ 01",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = SignalPrimary,
-                                letterSpacing = 2.sp
-                            )
-                        }
-
                         Text(
                             text = "Код подключения",
                             fontSize = 18.sp,
@@ -206,82 +188,6 @@ fun ConnectFlexScreen(
                                 enabled = !isCodeLoading && viewModel.isCodeValid
                             )
                         }
-                    }
-                }
-            }
-
-            // Divider
-            item {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(1.dp)
-                            .background(SignalPrimary.copy(alpha = 0.06f))
-                    )
-                    Text(
-                        text = "ИЛИ",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextMuted.copy(alpha = 0.3f),
-                        letterSpacing = 2.sp,
-                        modifier = Modifier.padding(horizontal = 12.dp)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(1.dp)
-                            .background(SignalPrimary.copy(alpha = 0.06f))
-                    )
-                }
-            }
-
-            // Method 2: OAuth
-            item {
-                SpaceCard {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(SignalSecondary.copy(alpha = 0.08f))
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
-                        ) {
-                            Text(
-                                text = "СПОСОБ 02",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = SignalSecondary,
-                                letterSpacing = 2.sp
-                            )
-                        }
-
-                        Text(
-                            text = "Через Яндекс",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
-                        )
-
-                        Text(
-                            text = "Авторизуйтесь через Яндекс для автоматического подключения",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextMuted,
-                            textAlign = TextAlign.Center
-                        )
-
-                        GlowButton(
-                            text = if (isOAuthLoading) "Перенаправление..." else "Подключить через Яндекс",
-                            onClick = { viewModel.startOAuth(context) },
-                            enabled = !isOAuthLoading,
-                            modifier = Modifier.fillMaxWidth()
-                        )
                     }
                 }
             }

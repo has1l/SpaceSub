@@ -25,7 +25,7 @@ struct ConnectFlexView: View {
                                 )
                             )
 
-                        Text("Свяжите банковский спутник со SpaceSub одним из двух способов")
+                        Text("Свяжите банковский спутник со SpaceSub через код подключения")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(Color.textSecondary)
                     }
@@ -73,25 +73,6 @@ struct ConnectFlexView: View {
 
                     // Method 1: Connection Code
                     codeSection
-
-                    // Divider
-                    HStack(spacing: 12) {
-                        Rectangle()
-                            .fill(Color.signalPrimary.opacity(0.06))
-                            .frame(height: 1)
-
-                        Text("ИЛИ")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            .tracking(2)
-                            .foregroundStyle(Color.textMuted.opacity(0.3))
-
-                        Rectangle()
-                            .fill(Color.signalPrimary.opacity(0.06))
-                            .frame(height: 1)
-                    }
-
-                    // Method 2: OAuth
-                    oauthSection
                 }
                 .padding(SpaceMetrics.screenPadding)
                 .padding(.bottom, 20)
@@ -105,15 +86,6 @@ struct ConnectFlexView: View {
     private var codeSection: some View {
         SpaceCard(glowing: true) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("СПОСОБ 01")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .tracking(2)
-                    .foregroundStyle(Color.signalPrimary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.signalPrimary.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-
                 Text("Код подключения")
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.textPrimary)
@@ -149,60 +121,4 @@ struct ConnectFlexView: View {
         }
     }
 
-    // MARK: - OAuth Section
-
-    private var oauthSection: some View {
-        SpaceCard {
-            VStack(spacing: 12) {
-                Text("СПОСОБ 02")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .tracking(2)
-                    .foregroundStyle(Color.signalSecondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.signalSecondary.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-
-                Text("Через Яндекс")
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.textPrimary)
-
-                Text("Авторизуйтесь через Яндекс для автоматического подключения")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.textMuted)
-                    .multilineTextAlignment(.center)
-
-                Button {
-                    Task {
-                        if let url = await vm.getOAuthURL(),
-                           let oauthURL = URL(string: url) {
-                            await UIApplication.shared.open(oauthURL)
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.up.right.square")
-                            .font(.system(size: 14, weight: .medium))
-
-                        Text(vm.isOAuthLoading ? "Перенаправление..." : "Подключить через Яндекс")
-                            .font(.system(size: 14, weight: .bold))
-                    }
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.signalSecondary, Color(red: 0.01, green: 0.52, blue: 0.78)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .shadow(color: Color.signalSecondary.opacity(0.15), radius: 6, y: 3)
-                }
-                .disabled(vm.isOAuthLoading)
-                .buttonStyle(.plain)
-            }
-        }
-    }
 }
